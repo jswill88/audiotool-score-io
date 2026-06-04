@@ -1,0 +1,18 @@
+{
+  "name": "@midi-to-xml/audiotool-to-midi",
+  "version": "0.1.0",
+  "description": "Extract Audiotool project note data and turn it into standard MIDI.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "check": "find src test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@audiotool/nexus": "^0.0.17",
+    "@tonejs/midi": "^2.0.28"
+  }
+}

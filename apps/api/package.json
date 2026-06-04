@@ -1,0 +1,19 @@
+{
+  "name": "@midi-to-xml/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HTTP API for MIDI, MusicXML, and Audiotool conversion workflows.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "check": "find src -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@midi-to-xml/audiotool-to-midi": "0.1.0",
+    "@midi-to-xml/midi-to-musicxml": "0.1.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.4",
+    "multer": "^1.4.5-lts.1"
+  }
+}

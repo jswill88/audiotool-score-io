@@ -1,0 +1,16 @@
+{
+  "name": "midi-to-xml-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Workspace for MIDI, MusicXML, and Audiotool conversion tools.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "check": "npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "start": "npm run start --workspace @midi-to-xml/api",
+    "start:api": "npm run start --workspace @midi-to-xml/api"
+  }
+}
