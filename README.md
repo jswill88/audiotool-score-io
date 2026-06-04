@@ -84,6 +84,37 @@ The exporter handles note regions, collection offsets, looping regions, disabled
 
 Project references can be a full Audiotool Studio URL, a UUID, or a `projects/{project_id}` resource name. Full URLs are useful for the site flow because the app can fetch project details first, show the user what they selected, and then open the project for track inspection/export.
 
+### Audiotool API flow
+
+Set `AUDIOTOOL_PAT` in `.env`, or send a bearer token in the request.
+
+Fetch project details without opening the full DAW document:
+
+```bash
+curl -X POST http://localhost:3000/audiotool/project \
+  -H "Content-Type: application/json" \
+  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>"}'
+```
+
+Inspect exportable note tracks:
+
+```bash
+curl -X POST http://localhost:3000/audiotool/inspect \
+  -H "Content-Type: application/json" \
+  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>"}'
+```
+
+Convert selected Audiotool tracks all the way to MusicXML:
+
+```bash
+curl -X POST "http://localhost:3000/audiotool/convert?quantize=false" \
+  -H "Content-Type: application/json" \
+  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score"}' \
+  --output audiotool.musicxml
+```
+
+Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts. Add `"includeMidi":true` to include the intermediate MIDI files in the zip.
+
 ## MuseScore configuration
 
 The service searches for `mscore`, `mscore4`, `musescore`, `musescore3`, or `musescore4` in `PATH`. Set `MUSESCORE_BIN=/path/to/musescore` to use a specific executable.
@@ -95,8 +126,10 @@ Useful environment variables:
 - `MUSESCORE_USE_XVFB=auto|always|never` controls virtual-display usage. Default: `auto`.
 - `XVFB_RUN_BIN=/path/to/xvfb-run` points at a custom wrapper.
 - `MAX_UPLOAD_BYTES=52428800` controls the upload limit. Default: 50 MB.
+- `JSON_BODY_LIMIT=1mb` controls JSON request size. Default: 1 MB.
 - `CONVERSION_TIMEOUT_MS=120000` controls the MuseScore timeout. Default: 120 seconds.
 - `DEFAULT_QUANTIZATION_GRID=48` controls quantization when `?grid=` is not supplied.
+- `AUDIOTOOL_PAT` optionally provides server-side Audiotool auth for the Audiotool API routes.
 
 ## Docker
 

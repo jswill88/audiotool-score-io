@@ -13,6 +13,8 @@ function parsePositiveInteger(value, fallback) {
 export const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 export const uploadDir = path.join(os.tmpdir(), 'midi-to-musicxml');
 export const maxUploadBytes = parsePositiveInteger(process.env.MAX_UPLOAD_BYTES, 50 * 1024 * 1024);
+export const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '1mb';
+export const audiotoolPat = process.env.AUDIOTOOL_PAT || undefined;
 
 export const conversionOptions = {
   conversionTimeoutMs: parsePositiveInteger(process.env.CONVERSION_TIMEOUT_MS, defaultConversionTimeoutMs),
