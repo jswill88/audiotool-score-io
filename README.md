@@ -10,6 +10,8 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 
 ## Run locally
 
+Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that are not available in Node 20.
+
 1. Install dependencies:
 
    ```bash
