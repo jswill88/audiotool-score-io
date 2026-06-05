@@ -7,6 +7,7 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 - `packages/midi-to-musicxml`: standalone MIDI to MusicXML conversion package with optional quantization and MuseScore support.
 - `packages/audiotool-to-midi`: standalone Audiotool note-track to MIDI package. Audiotool extraction is intentionally separate from MIDI to MusicXML conversion.
 - `apps/api`: Express API that wraps the packages for upload/conversion workflows.
+- `apps/web`: React browser app for Audiotool sign-in, project/track selection, conversion, and MusicXML viewing.
 
 ## Run locally
 
@@ -24,13 +25,31 @@ Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that ar
    cp .env.example .env
    ```
 
-3. Start the server:
+3. Register an Audiotool application at `https://developer.audiotool.com/applications`.
+
+   For Vite dev, add this redirect URI to the Audiotool application:
+
+   ```text
+   http://127.0.0.1:5173/
+   ```
+
+   Then set `VITE_AUDIOTOOL_CLIENT_ID` in `.env`. The client ID is safe to expose in the browser.
+
+4. Start the server:
 
    ```bash
    npm run start:api
    ```
 
-4. Send a `POST` request to `/convert` with a `multipart/form-data` field named `file`.
+5. Start the web app:
+
+   ```bash
+   npm run dev:web
+   ```
+
+   Open `http://127.0.0.1:5173/`. The Vite dev server proxies API requests to `http://127.0.0.1:3000`.
+
+6. Send a `POST` request to `/convert` with a `multipart/form-data` field named `file`.
 
    Example using `curl`:
 
@@ -88,9 +107,17 @@ Project references can be a full Audiotool Studio URL, a UUID, or a `projects/{p
 
 ### Audiotool API flow
 
-Set `AUDIOTOOL_PAT` in `.env`, or send a bearer token in the request.
+The web app uses Audiotool browser OAuth through `@audiotool/nexus`, exports the user's access/refresh token data, and sends those tokens to the API for server-side conversion. For scripts or server-only demos, set `AUDIOTOOL_PAT` in `.env`, or send a bearer token in the request.
 
 Fetch project details without opening the full DAW document:
+
+List accessible projects:
+
+```bash
+curl -X POST http://localhost:3000/audiotool/projects \
+  -H "Content-Type: application/json" \
+  -d '{"pageSize":25}'
+```
 
 ```bash
 curl -X POST http://localhost:3000/audiotool/project \
@@ -131,9 +158,37 @@ Useful environment variables:
 - `JSON_BODY_LIMIT=1mb` controls JSON request size. Default: 1 MB.
 - `CONVERSION_TIMEOUT_MS=120000` controls the MuseScore timeout. Default: 120 seconds.
 - `DEFAULT_QUANTIZATION_GRID=48` controls quantization when `?grid=` is not supplied.
+- `VITE_AUDIOTOOL_CLIENT_ID` enables browser OAuth login for the web app.
+- `VITE_AUDIOTOOL_REDIRECT_URL` overrides the OAuth redirect URL. Leave blank to use the browser's current origin.
+- `VITE_AUDIOTOOL_SCOPE=project:read` controls requested Audiotool OAuth scopes.
+- `AUDIOTOOL_CLIENT_ID` optionally provides an API-side client ID fallback for browser-exported OAuth tokens.
 - `AUDIOTOOL_PAT` optionally provides server-side Audiotool auth for the Audiotool API routes.
 
 ## Docker
+
+Start the API and web app together:
+
+```bash
+docker compose up --build
+```
+
+Register `http://127.0.0.1:8080/` as an Audiotool redirect URI, set `VITE_AUDIOTOOL_CLIENT_ID` in `.env`, then open `http://127.0.0.1:8080/`. The web container serves the React app and proxies `/audiotool`, `/convert`, `/health`, and `/ready` to the API container.
+
+Optional host port overrides:
+
+```bash
+API_PORT=3100 WEB_PORT=8180 docker compose up --build
+```
+
+Compose reads values from `.env` for settings such as `AUDIOTOOL_PAT`, `DEFAULT_QUANTIZATION_GRID`, and upload limits. The API container includes MuseScore, `xvfb`, and `xauth`, so headless MusicXML conversion can run with `MUSESCORE_USE_XVFB=auto`.
+
+Stop both containers:
+
+```bash
+docker compose down
+```
+
+### API-only image
 
 Build the image:
 

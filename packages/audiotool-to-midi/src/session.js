@@ -18,6 +18,7 @@ export async function createAudiotoolSession(options = {}) {
     refreshToken,
     expiresAt,
     clientId,
+    onTokenRefresh,
     transport,
     wasm
   } = options;
@@ -29,7 +30,8 @@ export async function createAudiotoolSession(options = {}) {
     accessToken,
     refreshToken,
     expiresAt,
-    clientId
+    clientId,
+    onTokenRefresh
   });
 
   return nexus.createAudiotoolClient({
@@ -45,6 +47,7 @@ export async function listAudiotoolProjects(client, params = {}) {
   }
 
   const result = await client.projects.listProjects(params);
+  throwIfAudiotoolServiceError(result);
   return result.projects ?? result;
 }
 
@@ -57,6 +60,7 @@ export async function getAudiotoolProjectDetails(client, projectReference) {
   const result = await client.projects.getProject({
     name: audiotoolProjectReferenceToName(reference)
   });
+  throwIfAudiotoolServiceError(result);
 
   return {
     reference,
@@ -71,12 +75,26 @@ export async function openAudiotoolProject(client, project, options = {}) {
 
   const reference = parseAudiotoolProjectReference(project);
   const document = await client.open(audiotoolProjectReferenceToOpenReference(reference));
+  throwIfAudiotoolServiceError(document);
 
   if (options.start !== false && typeof document.start === 'function') {
     await document.start();
   }
 
   return document;
+}
+
+function throwIfAudiotoolServiceError(result) {
+  if (!(result instanceof Error)) {
+    return;
+  }
+
+  const statusCode = result.message?.includes('unauthenticated') ||
+    result.cause?.message?.includes('unauthenticated')
+    ? 401
+    : 502;
+
+  throw new AudiotoolProjectError(result.cause?.message ?? result.message, statusCode);
 }
 
 export async function inspectAudiotoolProjectReference(client, projectReference, options = {}) {
@@ -124,7 +142,8 @@ function resolveAuth(nexus, options) {
       accessToken: options.accessToken,
       refreshToken: options.refreshToken,
       expiresAt: options.expiresAt,
-      clientId: options.clientId
+      clientId: options.clientId,
+      onTokenRefresh: options.onTokenRefresh
     });
   }
 

@@ -1,0 +1,63 @@
+.viewer-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 58px;
+  padding: 12px 14px;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 248, 234, 0.04) 0,
+      rgba(255, 248, 234, 0.04) 1px,
+      transparent 1px,
+      transparent 28px
+    ),
+    rgba(25, 22, 20, 0.82);
+}
+
+.viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-strip {
+  display: flex;
+  gap: 8px;
+  margin: 10px 14px 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.file-strip button {
+  flex: 0 0 auto;
+  max-width: 220px;
+  height: 32px;
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.file-strip button.is-active {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+@media (max-width: 1180px) {
+  .viewer-panel {
+    grid-column: 1 / -1;
+  }
+}

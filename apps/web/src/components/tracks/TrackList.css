@@ -1,0 +1,119 @@
+.track-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 220px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.track-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 0 22px minmax(0, 1fr) 46px;
+  align-items: center;
+  min-height: 60px;
+  padding: 8px 12px 8px 10px;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(201, 151, 62, 0.2) 0, rgba(201, 151, 62, 0.07) 6px, transparent 6px),
+    linear-gradient(180deg, rgba(47, 42, 37, 0.98), rgba(29, 26, 23, 0.98));
+}
+
+.track-row:hover {
+  border-color: rgba(231, 189, 103, 0.62);
+  background:
+    linear-gradient(180deg, rgba(74, 61, 43, 0.92), rgba(38, 32, 28, 0.98)),
+    var(--console-3);
+}
+
+.track-row::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background:
+    linear-gradient(to top, var(--teal), var(--brass-strong));
+  opacity: 0.52;
+}
+
+.track-row input {
+  pointer-events: none;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.track-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #151311;
+  color: var(--brass-strong);
+}
+
+.track-main {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.track-main strong,
+.track-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-main strong {
+  font-size: 14px;
+}
+
+.track-main small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.track-count {
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  height: 28px;
+  border: 1px solid rgba(201, 151, 62, 0.28);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 234, 0.08), rgba(0, 0, 0, 0.04)),
+    var(--brass-soft);
+  color: var(--brass-strong);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.track-row.is-empty {
+  opacity: 0.62;
+}
+
+.empty-track-list {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(35, 199, 183, 0.04) 0,
+      rgba(35, 199, 183, 0.04) 1px,
+      transparent 1px,
+      transparent 46px
+    ),
+    rgba(20, 18, 16, 0.54);
+}

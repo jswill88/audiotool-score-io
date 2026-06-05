@@ -1,0 +1,23 @@
+{
+  "name": "@midi-to-xml/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser app for Audiotool to MusicXML conversion.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "check": "vite build",
+    "dev": "vite --host 127.0.0.1",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@audiotool/nexus": "^0.0.17",
+    "@vitejs/plugin-react": "^6.0.2",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.17.0",
+    "opensheetmusicdisplay": "^1.9.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.0.16"
+  }
+}

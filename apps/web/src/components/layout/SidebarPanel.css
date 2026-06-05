@@ -1,0 +1,17 @@
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+  gap: 16px;
+}
+
+.sidebar-section {
+  display: grid;
+  min-height: 0;
+  gap: 10px;
+}
+
+.grow-section {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}

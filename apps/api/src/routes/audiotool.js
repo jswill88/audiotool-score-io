@@ -12,6 +12,7 @@ import {
 import { convertMidiToMusicXml } from '@midi-to-xml/midi-to-musicxml';
 import { Router } from 'express';
 import {
+  audiotoolClientId,
   audiotoolPat,
   conversionOptions,
   uploadDir
@@ -25,6 +26,22 @@ import {
 import { sendError } from '../utils/responses.js';
 
 export const audiotoolRouter = Router();
+
+audiotoolRouter.post('/audiotool/projects', async (req, res) => {
+  try {
+    const client = await createRequestAudiotoolSession(req);
+    const result = await client.projects.listProjects(readProjectListOptions(req));
+    throwIfAudiotoolServiceError(result);
+    const projects = Array.isArray(result) ? result : result.projects ?? [];
+
+    res.json({
+      projects: projects.map(serializeProject),
+      nextPageToken: Array.isArray(result) ? '' : result.nextPageToken ?? ''
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
+});
 
 audiotoolRouter.post('/audiotool/project', async (req, res) => {
   try {
@@ -141,12 +158,16 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
 });
 
 async function createRequestAudiotoolSession(req) {
-  return createAudiotoolSession({
-    pat: readAudiotoolPat(req)
-  });
+  return createAudiotoolSession(readAudiotoolAuth(req));
 }
 
-function readAudiotoolPat(req) {
+function readAudiotoolAuth(req) {
+  const tokenData = req.body?.audiotoolAuth ?? req.body?.authTokens ?? req.body?.tokens;
+
+  if (tokenData !== undefined && tokenData !== null) {
+    return readAudiotoolBrowserAuth(tokenData);
+  }
+
   const headerValue = req.get('authorization') ?? '';
   const bearerToken = headerValue.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
   const bodyToken = req.body?.authToken ?? req.body?.pat;
@@ -154,12 +175,34 @@ function readAudiotoolPat(req) {
 
   if (!token) {
     throw new ClientError(
-      'Audiotool auth is required. Set AUDIOTOOL_PAT, pass authToken/pat in JSON, or send an Authorization bearer token.',
+      'Audiotool auth is required. Sign in with Audiotool in the browser, set AUDIOTOOL_PAT, pass authToken/pat in JSON, or send an Authorization bearer token.',
       401
     );
   }
 
-  return token;
+  return { pat: token };
+}
+
+function readAudiotoolBrowserAuth(tokenData) {
+  if (typeof tokenData !== 'object') {
+    throw new ClientError('"audiotoolAuth" must be an object with accessToken, refreshToken, expiresAt, and clientId.');
+  }
+
+  const accessToken = stringifyOptional(tokenData.accessToken)?.trim();
+  const refreshToken = stringifyOptional(tokenData.refreshToken)?.trim();
+  const expiresAt = Number(tokenData.expiresAt);
+  const clientId = stringifyOptional(tokenData.clientId ?? audiotoolClientId)?.trim();
+
+  if (!accessToken || !refreshToken || !Number.isFinite(expiresAt) || !clientId) {
+    throw new ClientError('"audiotoolAuth" must include accessToken, refreshToken, expiresAt, and clientId.');
+  }
+
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt,
+    clientId
+  };
 }
 
 function readProjectReference(req) {
@@ -180,6 +223,15 @@ function readInspectOptions(req) {
     includeDetails: readBooleanBody(req.body?.includeDetails, true, 'includeDetails'),
     start: readBooleanBody(req.body?.start, true, 'start'),
     stop: readBooleanBody(req.body?.stop, true, 'stop')
+  };
+}
+
+function readProjectListOptions(req) {
+  return {
+    pageSize: readPositiveInteger(req.body?.pageSize, 25, 'pageSize'),
+    pageToken: stringifyOptional(req.body?.pageToken) ?? '',
+    orderBy: stringifyOptional(req.body?.orderBy) ?? 'project.update_time desc',
+    filter: stringifyOptional(req.body?.filter) ?? ''
   };
 }
 
@@ -209,6 +261,18 @@ function readConversionRequestOptions(req) {
       stringifyOptional(req.body?.grid ?? queryValue(req.query.grid, 'grid'))
     )
   };
+}
+
+function readPositiveInteger(value, fallback, name) {
+  if (value === undefined) return fallback;
+
+  const number = Number(value);
+
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new ClientError(`"${name}" must be a positive integer.`);
+  }
+
+  return number;
 }
 
 function readAudiotoolOutputMode(value = 'combined') {
@@ -338,6 +402,16 @@ function serializeProject(project) {
   return JSON.parse(JSON.stringify(project, (_key, value) => {
     return typeof value === 'bigint' ? value.toString() : value;
   }));
+}
+
+function throwIfAudiotoolServiceError(result) {
+  if (!(result instanceof Error)) {
+    return;
+  }
+
+  const message = result.cause?.message ?? result.message;
+  const statusCode = message.includes('unauthenticated') ? 401 : 502;
+  throw new ClientError(message, statusCode);
 }
 
 function buildArchiveName(project) {

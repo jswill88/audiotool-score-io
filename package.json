@@ -12,8 +12,13 @@
   ],
   "scripts": {
     "check": "npm run check --workspaces --if-present",
+    "docker:down": "docker compose down",
+    "docker:up": "docker compose up --build",
+    "dev:api": "npm run start --workspace @midi-to-xml/api",
+    "dev:web": "npm run dev --workspace @midi-to-xml/web",
     "test": "npm run test --workspaces --if-present",
     "start": "npm run start --workspace @midi-to-xml/api",
-    "start:api": "npm run start --workspace @midi-to-xml/api"
+    "start:api": "npm run start --workspace @midi-to-xml/api",
+    "start:web": "npm run preview --workspace @midi-to-xml/web"
   }
 }

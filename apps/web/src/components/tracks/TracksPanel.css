@@ -1,0 +1,62 @@
+.tracks-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+  gap: 12px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 12px;
+}
+
+.options-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.select-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.select-label select {
+  width: 74px;
+  appearance: none;
+  padding: 0 26px 0 10px;
+}
+
+.select-label svg:last-child {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .options-bar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .primary-button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

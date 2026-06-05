@@ -1,0 +1,45 @@
+.project-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.project-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.project-row:hover,
+.project-row.is-active {
+  border-color: rgba(231, 189, 103, 0.62);
+  background:
+    linear-gradient(180deg, rgba(74, 61, 43, 0.92), rgba(38, 32, 28, 0.98)),
+    var(--console-3);
+}
+
+.project-row.is-active {
+  box-shadow: inset 3px 0 0 var(--brass-strong);
+}
+
+.project-row span,
+.project-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-row span {
+  font-weight: 720;
+}
+
+.project-row small {
+  color: var(--muted);
+  font-size: 12px;
+}
