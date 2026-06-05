@@ -3,6 +3,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { test } from 'node:test';
 import {
+  applyMusicXmlFinalBarline,
+  applyMusicXmlTitle,
   assertAllowedQuantizationGrid,
   assertValidMidiFile,
   convertMidiToMusicXml,
@@ -64,6 +66,37 @@ test('preprocessMidi snaps note starts and durations to the requested grid', asy
   ]);
 });
 
+test('applyMusicXmlTitle writes work and movement titles', () => {
+  const xml = applyMusicXmlTitle(
+    '<?xml version="1.0"?><score-partwise version="3.1"><part-list /></score-partwise>',
+    'Moon & Stars <Demo>'
+  );
+
+  assert.match(xml, /<work-title>Moon &amp; Stars &lt;Demo&gt;<\/work-title>/);
+  assert.match(xml, /<movement-title>Moon &amp; Stars &lt;Demo&gt;<\/movement-title>/);
+});
+
+test('applyMusicXmlFinalBarline ends each part with a final barline', () => {
+  const xml = applyMusicXmlFinalBarline(`
+    <score-partwise version="3.1">
+      <part-list />
+      <part id="P1">
+        <measure number="1"></measure>
+        <measure number="2">
+          <barline location="right"><bar-style>regular</bar-style></barline>
+        </measure>
+      </part>
+      <part id="P2">
+        <measure number="1"></measure>
+      </part>
+    </score-partwise>
+  `);
+
+  assert.equal(xml.match(/<bar-style>light-heavy<\/bar-style>/g)?.length, 2);
+  assert.match(xml, /<part id="P1">[\s\S]*<measure number="2">[\s\S]*<bar-style>light-heavy<\/bar-style>[\s\S]*<\/measure>/);
+  assert.match(xml, /<part id="P2">[\s\S]*<measure number="1">[\s\S]*<bar-style>light-heavy<\/bar-style>[\s\S]*<\/measure>/);
+});
+
 test('convertMidiToMusicXml can bypass quantization and send the original MIDI to MuseScore', async (t) => {
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'input.mid');
@@ -88,6 +121,33 @@ test('convertMidiToMusicXml can bypass quantization and send the original MIDI t
   assert.equal(result.preprocessedPath, undefined);
   assert.equal(await fs.readFile(logPath, 'utf8'), inputPath);
   assert.match(await fs.readFile(outputPath, 'utf8'), /score-partwise/);
+  assert.match(await fs.readFile(outputPath, 'utf8'), /<bar-style>light-heavy<\/bar-style>/);
+});
+
+test('convertMidiToMusicXml can write a requested MusicXML title', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'input.mid');
+  const outputPath = path.join(dir, 'output.musicxml');
+  const logPath = path.join(dir, 'musescore-input.log');
+  const museScoreBin = path.join(dir, 'fake-mscore');
+
+  await writeMidiFile(inputPath);
+  await writeFakeMuseScore(museScoreBin, logPath);
+
+  await convertMidiToMusicXml({
+    inputPath,
+    outputPath,
+    quantize: false,
+    title: 'Project Sonata',
+    museScore: {
+      museScoreBin,
+      virtualDisplayMode: 'never'
+    }
+  });
+
+  const xml = await fs.readFile(outputPath, 'utf8');
+  assert.match(xml, /<work-title>Project Sonata<\/work-title>/);
+  assert.match(xml, /<movement-title>Project Sonata<\/movement-title>/);
 });
 
 test('convertMidiToMusicXml uses a provided preprocessed path when quantization is enabled', async (t) => {

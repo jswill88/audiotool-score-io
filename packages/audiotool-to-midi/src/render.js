@@ -14,6 +14,10 @@ import {
   getRegionsForTrack,
   selectTracks
 } from './tracks.js';
+import {
+  NotationStatuses,
+  shouldExportTrackByDefault
+} from './notation-classification.js';
 import { audiotoolTicksToMidiTicks } from './ticks.js';
 
 const { Midi } = tonejsMidi;
@@ -32,17 +36,34 @@ export async function exportAudiotoolProjectToMidi(projectSource, options = {}) 
 export function exportAudiotoolEntitiesToMidi(entities, options = {}) {
   const mode = normalizeMode(options.mode);
   const context = createProjectContext(collectAudiotoolEntities(entities), options);
-  const selectedTracks = selectTracks(context, options.tracks ?? options.trackIds);
-  const exportableTracks = selectedTracks.filter((track) => {
-    return options.includeDisabledTracks === true || track.isEnabled !== false;
-  });
+  const trackSelection = options.tracks ?? options.trackIds;
+  const selectedTracks = selectTracks(context, trackSelection);
   const warnings = [...context.warnings];
+  const exportableTracks = filterExportableTracks(selectedTracks, {
+    options,
+    trackSelection,
+    warnings
+  });
 
   if (selectedTracks.length > 0 && exportableTracks.length === 0) {
     warnings.push({
-      code: 'all-selected-tracks-disabled',
-      message: 'All selected Audiotool note tracks are disabled and were skipped.'
+      code: 'no-exportable-tracks',
+      message: 'All selected Audiotool note tracks were empty, disabled, or skipped by export defaults.'
     });
+  }
+
+  addNotationWarnings(exportableTracks, warnings);
+
+  if (exportableTracks.length === 0) {
+    return {
+      mode,
+      files: [],
+      tracks: selectedTracks,
+      exportedTracks: exportableTracks,
+      tempo: context.tempo,
+      timeSignature: context.timeSignature,
+      warnings
+    };
   }
 
   const files = [];
@@ -94,17 +115,86 @@ export function exportAudiotoolEntitiesToMidi(entities, options = {}) {
 
 export function createMidiFromAudiotoolEntities(entities, options = {}) {
   const context = createProjectContext(collectAudiotoolEntities(entities), options);
-  const selectedTracks = selectTracks(context, options.tracks ?? options.trackIds);
-  const exportableTracks = selectedTracks.filter((track) => {
-    return options.includeDisabledTracks === true || track.isEnabled !== false;
+  const trackSelection = options.tracks ?? options.trackIds;
+  const selectedTracks = selectTracks(context, trackSelection);
+  const warnings = [];
+  const exportableTracks = filterExportableTracks(selectedTracks, {
+    options,
+    trackSelection,
+    warnings
   });
 
   return buildMidi({
     context,
     tracks: exportableTracks,
     options,
-    warnings: []
+    warnings
   });
+}
+
+function filterExportableTracks(tracks, { options, trackSelection, warnings }) {
+  const hasExplicitSelection = isExplicitTrackSelection(trackSelection);
+
+  return tracks.filter((track) => {
+    if (track.noteCount <= 0) {
+      if (hasExplicitSelection) {
+        warnings.push({
+          code: 'track-empty',
+          trackId: track.id,
+          message: `${track.label} was skipped because it has no notes to export.`
+        });
+      }
+
+      return false;
+    }
+
+    if (options.includeDisabledTracks !== true && track.isEnabled === false) {
+      return false;
+    }
+
+    if (
+      options.includeSkippedTracks !== true &&
+      !hasExplicitSelection &&
+      !shouldExportTrackByDefault(track)
+    ) {
+      warnings.push({
+        code: 'track-skipped-by-default',
+        trackId: track.id,
+        kind: track.notation?.kind,
+        message: `${track.label} was skipped because ${track.notation?.reason ?? 'it is not recommended for notation export'}`
+      });
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function addNotationWarnings(tracks, warnings) {
+  for (const track of tracks) {
+    if (track.notation?.status === NotationStatuses.Ready) {
+      continue;
+    }
+
+    warnings.push({
+      code: 'track-notation-warning',
+      trackId: track.id,
+      kind: track.notation.kind,
+      message: `${track.label}: ${track.notation.reason}`
+    });
+  }
+}
+
+function isExplicitTrackSelection(selection) {
+  if (selection === undefined || selection === null) {
+    return false;
+  }
+
+  if (Array.isArray(selection)) {
+    return selection.length > 0;
+  }
+
+  return String(selection).trim().length > 0;
 }
 
 function buildMidi({ context, tracks, options, warnings }) {
@@ -291,6 +381,7 @@ function createMidiFile({ kind, name, midi, trackIds }) {
   return {
     kind,
     name,
+    title: midi.header.name || undefined,
     trackIds,
     midi,
     bytes: Uint8Array.from(midi.toArray())

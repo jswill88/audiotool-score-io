@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 import {
   AudiotoolProjectError,
   AudiotoolTicks,
+  NotationKinds,
+  NotationStatuses,
   createMidiFromAudiotoolProject,
   exportAudiotoolEntitiesToMidi,
   inspectAudiotoolProject
@@ -54,8 +56,135 @@ describe('audiotool-to-midi project inspection', () => {
       })
     ]);
 
-    assert.equal(manifest.tracks[0].label, 'Track 4 - Wrapped Synth');
+    assert.equal(manifest.tracks[0].label, 'Track 1 - Wrapped Synth');
     assert.equal(manifest.tracks[0].noteCount, 1);
+  });
+
+  it('uses clean visual track numbers instead of raw ids when no player name exists', () => {
+    const manifest = inspectAudiotoolProject([
+      entity('heisenberg', 'player-opaque-id'),
+      entity('noteTrack', 'track-opaque-id', {
+        orderAmongTracks: 7,
+        player: location('player-opaque-id', 'heisenberg'),
+        isEnabled: true
+      })
+    ]);
+
+    assert.equal(manifest.tracks[0].id, 'track-opaque-id');
+    assert.equal(manifest.tracks[0].playerId, 'player-opaque-id');
+    assert.equal(manifest.tracks[0].playerName, null);
+    assert.equal(manifest.tracks[0].order, 1);
+    assert.equal(manifest.tracks[0].rawOrder, 7);
+    assert.equal(manifest.tracks[0].label, 'Track 1');
+  });
+
+  it('normalizes floating Audiotool sort keys into clean track numbers', () => {
+    const manifest = inspectAudiotoolProject([
+      entity('heisenberg', 'player-1', { displayName: 'Lead' }),
+      entity('heisenberg', 'player-2', { displayName: 'Pad' }),
+      entity('noteTrack', 'track-2', {
+        orderAmongTracks: 8.000000238418579,
+        player: location('player-2', 'heisenberg')
+      }),
+      entity('noteTrack', 'track-1', {
+        orderAmongTracks: 4.0000001192092896,
+        player: location('player-1', 'heisenberg')
+      })
+    ]);
+
+    assert.deepEqual(manifest.tracks.map((track) => track.id), ['track-1', 'track-2']);
+    assert.deepEqual(manifest.tracks.map((track) => track.order), [1, 2]);
+    assert.deepEqual(manifest.tracks.map((track) => track.label), ['Track 1 - Lead', 'Track 2 - Pad']);
+  });
+
+  it('classifies from the track player pointer when the player entity is unavailable', () => {
+    const manifest = inspectAudiotoolProject([
+      entity('noteTrack', 'track-1', {
+        orderAmongTracks: 1,
+        player: location('player-1', 'heisenberg')
+      })
+    ]);
+
+    assert.equal(manifest.tracks[0].playerId, 'player-1');
+    assert.equal(manifest.tracks[0].playerType, 'heisenberg');
+    assert.equal(manifest.tracks[0].notation.kind, NotationKinds.Melodic);
+    assert.equal(manifest.tracks[0].notation.status, NotationStatuses.Ready);
+  });
+
+  it('classifies tracks for notation export defaults', () => {
+    const manifest = inspectAudiotoolProject([
+      entity('heisenberg', 'player-1', { displayName: 'Lead' }),
+      entity('beatbox9', 'player-2', { displayName: 'Drums' }),
+      entity('machiniste', 'player-3', { displayName: 'Samples' }),
+      entity('genericVst3PluginBeta', 'player-4', { displayName: 'Plugin' }),
+      entity('spitfireLabsVst3Plugin', 'player-5', { displayName: 'Spitfire' }),
+      entity('matrixArpeggiator', 'player-6', { displayName: 'Arp' }),
+      entity('noteSplitter', 'player-7', { displayName: 'Split' }),
+      entity('mysteryDevice', 'player-8', { displayName: 'Mystery' }),
+      entity('noteTrack', 'track-1', {
+        orderAmongTracks: 1,
+        player: location('player-1', 'heisenberg')
+      }),
+      entity('noteTrack', 'track-2', {
+        orderAmongTracks: 2,
+        player: location('player-2', 'beatbox9')
+      }),
+      entity('noteTrack', 'track-3', {
+        orderAmongTracks: 3,
+        player: location('player-3', 'machiniste')
+      }),
+      entity('noteTrack', 'track-4', {
+        orderAmongTracks: 4,
+        player: location('player-4', 'genericVst3PluginBeta')
+      }),
+      entity('noteTrack', 'track-5', {
+        orderAmongTracks: 5,
+        player: location('player-5', 'spitfireLabsVst3Plugin')
+      }),
+      entity('noteTrack', 'track-6', {
+        orderAmongTracks: 6,
+        player: location('player-6', 'matrixArpeggiator')
+      }),
+      entity('noteTrack', 'track-7', {
+        orderAmongTracks: 7,
+        player: location('player-7', 'noteSplitter')
+      }),
+      entity('noteTrack', 'track-8', {
+        orderAmongTracks: 8,
+        player: location('player-8', 'mysteryDevice')
+      })
+    ]);
+
+    assert.deepEqual(
+      manifest.tracks.map((track) => track.notation.kind),
+      [
+        NotationKinds.Melodic,
+        NotationKinds.DrumMachine,
+        NotationKinds.Sampler,
+        NotationKinds.Plugin,
+        NotationKinds.Plugin,
+        NotationKinds.Melodic,
+        NotationKinds.Melodic,
+        NotationKinds.Unknown
+      ]
+    );
+    assert.deepEqual(
+      manifest.tracks.map((track) => track.notation.status),
+      [
+        NotationStatuses.Ready,
+        NotationStatuses.Skipped,
+        NotationStatuses.Warning,
+        NotationStatuses.Warning,
+        NotationStatuses.Warning,
+        NotationStatuses.Ready,
+        NotationStatuses.Ready,
+        NotationStatuses.Warning
+      ]
+    );
+    assert.deepEqual(
+      manifest.tracks.map((track) => track.notation.shouldExportByDefault),
+      [true, false, true, true, true, true, true, true]
+    );
   });
 
   it('accepts a real Audiotool offline document shape', async () => {
@@ -93,7 +222,7 @@ describe('audiotool-to-midi project inspection', () => {
     const result = exportAudiotoolEntitiesToMidi(nexus);
 
     assert.equal(manifest.tracks.length, 1);
-    assert.equal(manifest.tracks[0].label, 'Track 0 - Offline Synth');
+    assert.equal(manifest.tracks[0].label, 'Track 1 - Offline Synth');
     assert.equal(noteSummaries(readMidi(result.files[0].bytes)).length, 1);
   });
 });
@@ -118,6 +247,16 @@ describe('audiotool-to-midi export', () => {
     assert.equal(notes[0].ticks, 480);
     assert.equal(notes[0].durationTicks, 120);
     assert.equal(Math.round(notes[0].velocity * 127), 63);
+  });
+
+  it('keeps the requested score title on exported MIDI files', () => {
+    const result = exportAudiotoolEntitiesToMidi(basicProject(), {
+      title: 'Project Sonata'
+    });
+    const midi = readMidi(result.files[0].bytes);
+
+    assert.equal(result.files[0].title, 'Project Sonata');
+    assert.equal(midi.header.name, 'Project Sonata');
   });
 
   it('can return one MIDI file per selected track', () => {
@@ -154,6 +293,50 @@ describe('audiotool-to-midi export', () => {
 
     assert.deepEqual(defaultResult.exportedTracks.map((track) => track.id), ['track-2']);
     assert.deepEqual(includedResult.exportedTracks.map((track) => track.id), ['track-1', 'track-2']);
+  });
+
+  it('skips empty tracks and creates no MIDI files for an empty selection', () => {
+    const result = exportAudiotoolEntitiesToMidi([
+      entity('heisenberg', 'player-1', { displayName: 'Empty Synth' }),
+      entity('noteTrack', 'track-1', {
+        orderAmongTracks: 1,
+        player: location('player-1', 'heisenberg')
+      })
+    ], {
+      tracks: ['track-1']
+    });
+
+    assert.deepEqual(result.exportedTracks.map((track) => track.id), []);
+    assert.deepEqual(result.files, []);
+    assert.equal(result.warnings.some((warning) => warning.code === 'track-empty'), true);
+    assert.equal(result.warnings.some((warning) => warning.code === 'no-exportable-tracks'), true);
+  });
+
+  it('skips drum-machine tracks by default but exports explicit selections', () => {
+    const project = singleTrackProject('beatbox9');
+    const defaultResult = exportAudiotoolEntitiesToMidi(project);
+    const explicitResult = exportAudiotoolEntitiesToMidi(project, {
+      tracks: ['track-1']
+    });
+
+    assert.deepEqual(defaultResult.exportedTracks.map((track) => track.id), []);
+    assert.equal(defaultResult.warnings.some((warning) => warning.code === 'track-skipped-by-default'), true);
+    assert.deepEqual(explicitResult.exportedTracks.map((track) => track.id), ['track-1']);
+    assert.equal(explicitResult.warnings.some((warning) => warning.code === 'track-notation-warning'), true);
+    assert.equal(noteSummaries(readMidi(explicitResult.files[0].bytes)).length, 1);
+  });
+
+  it('exports sampler, plugin, and unknown tracks by default with warnings', () => {
+    const samplerResult = exportAudiotoolEntitiesToMidi(singleTrackProject('machiniste'));
+    const pluginResult = exportAudiotoolEntitiesToMidi(singleTrackProject('genericVst3PluginBeta'));
+    const unknownResult = exportAudiotoolEntitiesToMidi(singleTrackProject('mysteryDevice'));
+
+    assert.deepEqual(samplerResult.exportedTracks.map((track) => track.notation.kind), [NotationKinds.Sampler]);
+    assert.equal(samplerResult.warnings.some((warning) => warning.code === 'track-notation-warning'), true);
+    assert.deepEqual(pluginResult.exportedTracks.map((track) => track.notation.kind), [NotationKinds.Plugin]);
+    assert.equal(pluginResult.warnings.some((warning) => warning.code === 'track-notation-warning'), true);
+    assert.deepEqual(unknownResult.exportedTracks.map((track) => track.notation.kind), [NotationKinds.Unknown]);
+    assert.equal(unknownResult.warnings.some((warning) => warning.code === 'track-notation-warning'), true);
   });
 
   it('expands looping regions into repeated MIDI notes', () => {
@@ -256,3 +439,26 @@ describe('audiotool-to-midi export', () => {
     assert.equal(noteSummaries(midi).length, 1);
   });
 });
+
+function singleTrackProject(playerType) {
+  return [
+    entity(playerType, 'player-1', { displayName: 'Player' }),
+    entity('noteTrack', 'track-1', {
+      orderAmongTracks: 1,
+      player: location('player-1', playerType)
+    }),
+    entity('noteCollection', 'collection-1'),
+    entity('noteRegion', 'region-1', {
+      track: location('track-1', 'noteTrack'),
+      collection: location('collection-1', 'noteCollection'),
+      region: region({ durationTicks: AudiotoolTicks.Beat })
+    }),
+    entity('note', 'note-1', {
+      collection: location('collection-1', 'noteCollection'),
+      positionTicks: 0,
+      durationTicks: AudiotoolTicks.SemiQuaver,
+      pitch: 60,
+      velocity: 0.8
+    })
+  ];
+}

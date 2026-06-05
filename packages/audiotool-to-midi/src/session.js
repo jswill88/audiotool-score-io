@@ -74,7 +74,7 @@ export async function openAudiotoolProject(client, project, options = {}) {
   }
 
   const reference = parseAudiotoolProjectReference(project);
-  const document = await client.open(audiotoolProjectReferenceToOpenReference(reference));
+  const document = await openProjectDocument(client, reference);
   throwIfAudiotoolServiceError(document);
 
   if (options.start !== false && typeof document.start === 'function') {
@@ -84,17 +84,43 @@ export async function openAudiotoolProject(client, project, options = {}) {
   return document;
 }
 
+async function openProjectDocument(client, reference) {
+  try {
+    return await client.open(audiotoolProjectReferenceToOpenReference(reference));
+  } catch (error) {
+    throwAudiotoolProjectError(error);
+  }
+}
+
 function throwIfAudiotoolServiceError(result) {
   if (!(result instanceof Error)) {
     return;
   }
 
-  const statusCode = result.message?.includes('unauthenticated') ||
-    result.cause?.message?.includes('unauthenticated')
-    ? 401
-    : 502;
+  throwAudiotoolProjectError(result);
+}
 
-  throw new AudiotoolProjectError(result.cause?.message ?? result.message, statusCode);
+function throwAudiotoolProjectError(error) {
+  const message = error?.cause?.message ?? error?.message ?? 'Audiotool project request failed.';
+  throw new AudiotoolProjectError(message, statusCodeForAudiotoolError(message));
+}
+
+function statusCodeForAudiotoolError(message) {
+  const normalized = String(message).toLowerCase();
+
+  if (normalized.includes('unauthenticated') || normalized.includes('unauthorized')) {
+    return 401;
+  }
+
+  if (
+    normalized.includes('permission') ||
+    normalized.includes('forbidden') ||
+    normalized.includes('scope')
+  ) {
+    return 403;
+  }
+
+  return 502;
 }
 
 export async function inspectAudiotoolProjectReference(client, projectReference, options = {}) {

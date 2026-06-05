@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   convertAudiotoolProject,
   inspectAudiotoolProject,
@@ -13,6 +13,8 @@ import './App.css';
 
 export function App() {
   const audiotoolAuth = useAudiotoolBrowserAuth();
+  const inspectRequestId = useRef(0);
+  const conversionRequestId = useRef(0);
   const [projectInput, setProjectInput] = useState('');
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -30,13 +32,29 @@ export function App() {
     message: 'Ready'
   });
 
+  const selectedProjectReference = selectedProject?.reference ?? '';
+  const visibleResult = useMemo(() => {
+    if (!activeResult || activeResult.projectReference !== selectedProjectReference) {
+      return null;
+    }
+
+    return activeResult;
+  }, [activeResult, selectedProjectReference]);
   const activeFile = useMemo(() => {
-    return activeResult?.files?.find((file) => file.name === activeFileName) ??
-      activeResult?.files?.[0] ??
+    return visibleResult?.files?.find((file) => file.name === activeFileName) ??
+      visibleResult?.files?.[0] ??
       null;
-  }, [activeFileName, activeResult]);
+  }, [activeFileName, visibleResult]);
   const canUseApi = audiotoolAuth.isAuthenticated;
-  const canConvert = Boolean(selectedProject && selectedTrackIds.length > 0);
+  const selectableTrackIds = useMemo(() => {
+    return new Set((manifest?.tracks ?? [])
+      .filter(isSelectableTrack)
+      .map((track) => track.id));
+  }, [manifest]);
+  const canConvert = Boolean(
+    selectedProject &&
+    selectedTrackIds.some((trackId) => selectableTrackIds.has(trackId))
+  );
 
   useEffect(() => {
     return () => {
@@ -81,23 +99,48 @@ export function App() {
     }
 
     setStatus({ phase: 'loading', message: 'Inspecting tracks' });
+    const requestId = inspectRequestId.current + 1;
+    inspectRequestId.current = requestId;
+    conversionRequestId.current += 1;
+    setSelectedProject({ reference, details: null });
     setManifest(null);
+    setSelectedTrackIds([]);
     setActiveResult(null);
     setActiveFileName('');
 
     try {
       const data = await inspectAudiotoolProject(reference, auth);
+
+      if (requestId !== inspectRequestId.current) {
+        return;
+      }
+
       const tracks = data.manifest?.tracks ?? [];
-      const noteTracks = tracks.filter((track) => track.noteCount > 0);
+      const defaultTracks = tracks.filter((track) => (
+        track.noteCount > 0 &&
+        track.notation?.shouldExportByDefault !== false
+      ));
+      const skippedTracks = tracks.filter((track) => (
+        track.noteCount > 0 &&
+        track.notation?.shouldExportByDefault === false
+      ));
 
       setSelectedProject({
         reference,
         details: data.details
       });
       setManifest(data.manifest);
-      setSelectedTrackIds((noteTracks.length > 0 ? noteTracks : tracks).map((track) => track.id));
-      setStatus({ phase: 'success', message: `${tracks.length} tracks inspected` });
+      setSelectedTrackIds(defaultTracks.map((track) => track.id));
+      setStatus({
+        phase: 'success',
+        message: `${tracks.length} tracks inspected${skippedTracks.length > 0 ? `, ${skippedTracks.length} skipped by default` : ''}`
+      });
     } catch (error) {
+      if (requestId !== inspectRequestId.current) {
+        return;
+      }
+
+      setSelectedProject(null);
       setStatus({ phase: 'error', message: error.message });
     }
   }, [audiotoolAuth, canUseApi]);
@@ -116,13 +159,16 @@ export function App() {
     }
 
     setStatus({ phase: 'loading', message: 'Converting to MusicXML' });
+    const requestId = conversionRequestId.current + 1;
+    conversionRequestId.current = requestId;
+    const projectReference = selectedProject.reference;
     setActiveResult(null);
     setActiveFileName('');
 
     try {
       const result = await convertAudiotoolProject({
         auth,
-        project: selectedProject.reference,
+        project: projectReference,
         tracks: selectedTrackIds,
         mode,
         quantize,
@@ -130,11 +176,22 @@ export function App() {
         includeMidi
       });
 
-      setActiveResult(result);
+      if (requestId !== conversionRequestId.current) {
+        if (result.downloadUrl) {
+          URL.revokeObjectURL(result.downloadUrl);
+        }
+        return;
+      }
+
+      setActiveResult({ ...result, projectReference });
       setActiveFileName(result.files[0]?.name ?? '');
       setViewerTab('score');
       setStatus({ phase: 'success', message: `${result.files.length} MusicXML file${result.files.length === 1 ? '' : 's'} ready` });
     } catch (error) {
+      if (requestId !== conversionRequestId.current) {
+        return;
+      }
+
       setStatus({ phase: 'error', message: error.message });
     }
   }, [audiotoolAuth, canConvert, grid, includeMidi, mode, quantize, selectedProject, selectedTrackIds]);
@@ -160,6 +217,10 @@ export function App() {
           mode={mode}
           onConvert={convertProject}
           onTrackToggle={(trackId) => {
+            if (!selectableTrackIds.has(trackId)) {
+              return;
+            }
+
             setSelectedTrackIds((current) => (
               current.includes(trackId)
                 ? current.filter((id) => id !== trackId)
@@ -178,7 +239,7 @@ export function App() {
         <ResultPanel
           activeFile={activeFile}
           activeFileName={activeFileName}
-          activeResult={activeResult}
+          activeResult={visibleResult}
           setActiveFileName={setActiveFileName}
           setViewerTab={setViewerTab}
           viewerTab={viewerTab}
@@ -190,4 +251,8 @@ export function App() {
 
 function readRequestAuth(audiotoolAuth) {
   return audiotoolAuth.exportServerAuth() ?? false;
+}
+
+function isSelectableTrack(track) {
+  return track.noteCount > 0;
 }

@@ -133,6 +133,6 @@ describe('Audiotool project references', () => {
     );
 
     assert.equal(result.details.project.displayName, 'Reference Project');
-    assert.equal(result.manifest.tracks[0].label, 'Track 0 - Reference Synth');
+    assert.equal(result.manifest.tracks[0].label, 'Track 1 - Reference Synth');
   });
 });

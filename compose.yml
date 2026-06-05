@@ -30,9 +30,9 @@ services:
       args:
         VITE_AUDIOTOOL_CLIENT_ID: ${VITE_AUDIOTOOL_CLIENT_ID:-}
         VITE_AUDIOTOOL_REDIRECT_URL: ${VITE_AUDIOTOOL_REDIRECT_URL:-}
-        VITE_AUDIOTOOL_SCOPE: ${VITE_AUDIOTOOL_SCOPE:-project:read}
+        VITE_AUDIOTOOL_SCOPE: ${VITE_AUDIOTOOL_SCOPE:-project:write}
     depends_on:
       api:
         condition: service_healthy
     ports:
-      - "${WEB_PORT:-8080}:8080"
+      - "${WEB_PORT:-5173}:8080"

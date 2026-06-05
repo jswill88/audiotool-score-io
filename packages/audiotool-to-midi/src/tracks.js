@@ -4,12 +4,15 @@ import {
   collectAudiotoolEntities,
   getEntityByLocation,
   getEntityId,
+  getEntityType,
   getField,
   getObjectField,
+  locationEntityType,
   locationKey,
   toFiniteNumber
 } from './entities.js';
 import { AudiotoolProjectError } from './errors.js';
+import { classifyTrackForNotation } from './notation-classification.js';
 
 export function inspectAudiotoolProject(projectSource, options = {}) {
   const entities = collectAudiotoolEntities(projectSource);
@@ -18,7 +21,7 @@ export function inspectAudiotoolProject(projectSource, options = {}) {
 
 export function inspectAudiotoolEntities(entities, options = {}) {
   const context = createProjectContext(entities, options);
-  const tracks = context.noteTracks.map((track) => buildTrackManifest(track, context));
+  const tracks = context.noteTracks.map((track, index) => buildTrackManifest(track, context, index));
 
   return {
     tracks,
@@ -62,7 +65,7 @@ export function createProjectContext(entities, options = {}) {
 }
 
 export function selectTracks(context, selection = undefined) {
-  const tracks = context.noteTracks.map((track) => buildTrackManifest(track, context));
+  const tracks = context.noteTracks.map((track, index) => buildTrackManifest(track, context, index));
 
   if (!selection || selection.length === 0 || selection === 'all') {
     return tracks;
@@ -71,10 +74,11 @@ export function selectTracks(context, selection = undefined) {
   const selected = new Set(Array.isArray(selection) ? selection.map(String) : [String(selection)]);
   const byId = new Map(tracks.map((track) => [track.id, track]));
   const byOrder = new Map(tracks.map((track) => [String(track.order), track]));
+  const byRawOrder = new Map(tracks.map((track) => [String(track.rawOrder), track]));
   const chosen = [];
 
   for (const key of selected) {
-    const track = byId.get(key) ?? byOrder.get(key);
+    const track = byId.get(key) ?? byOrder.get(key) ?? byRawOrder.get(key);
 
     if (!track) {
       throw new AudiotoolProjectError(`No Audiotool note track matches selection "${key}".`);
@@ -104,15 +108,20 @@ export function getNotesForCollection(collectionId, context) {
     .sort((a, b) => toFiniteNumber(getField(a, 'positionTicks')) - toFiniteNumber(getField(b, 'positionTicks')));
 }
 
-function buildTrackManifest(track, context) {
+function buildTrackManifest(track, context, visualIndex = 0) {
   const id = getEntityId(track);
-  const order = toFiniteNumber(getField(track, 'orderAmongTracks'), 0);
+  const rawOrder = toFiniteNumber(getField(track, 'orderAmongTracks'), 0);
+  const order = visualIndex + 1;
   const isEnabled = getField(track, 'isEnabled', true) !== false;
   const playerLocation = getField(track, 'player');
   const playerId = locationKey(playerLocation);
   const player = getEntityByLocation(context.index, playerLocation);
-  const playerType = player ? getField(player, 'type', undefined) ?? player.type : null;
-  const playerName = player ? getPlayerName(player) : playerId;
+  const playerType = player
+    ? getEntityType(player) ?? getField(player, 'type', undefined)
+    : locationEntityType(playerLocation);
+  const presetName = player ? getField(player, 'presetName', null) : null;
+  const playerName = player ? getPlayerName(player) : null;
+  const notation = classifyTrackForNotation({ playerType, presetName });
   const regions = getRegionsForTrack(id, context);
   const noteCount = regions.reduce((total, region) => {
     const collectionId = locationKey(getField(region, 'collection'));
@@ -122,10 +131,13 @@ function buildTrackManifest(track, context) {
   return {
     id,
     order,
+    rawOrder,
     playerId,
     playerType,
+    presetName,
     playerName,
-    label: buildTrackLabel(order, playerName, id),
+    label: buildTrackLabel(order, playerName),
+    notation,
     isEnabled,
     regionCount: regions.length,
     noteCount,
@@ -149,15 +161,14 @@ function sortTracks(tracks) {
 function getPlayerName(player) {
   return (
     getField(player, 'displayName') ??
-    getField(player, 'presetName') ??
     getField(player, 'name') ??
-    getEntityId(player)
+    null
   );
 }
 
-function buildTrackLabel(order, playerName, id) {
+function buildTrackLabel(order, playerName) {
   const trackPrefix = Number.isFinite(order) ? `Track ${order}` : 'Track';
-  return playerName ? `${trackPrefix} - ${playerName}` : `${trackPrefix} - ${id}`;
+  return playerName ? `${trackPrefix} - ${playerName}` : trackPrefix;
 }
 
 function extractTempo(index, options) {

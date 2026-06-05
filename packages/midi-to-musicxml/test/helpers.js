@@ -62,6 +62,6 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 printf "%s" "$input" > "${logPath}"
-printf "%s\\n" "<?xml version=\\"1.0\\"?><score-partwise version=\\"3.1\\"></score-partwise>" > "$output"
+printf "%s\\n" "<?xml version=\\"1.0\\"?><score-partwise version=\\"3.1\\"><part-list><score-part id=\\"P1\\"><part-name>Music</part-name></score-part></part-list><part id=\\"P1\\"><measure number=\\"1\\"></measure></part></score-partwise>" > "$output"
 `);
 }

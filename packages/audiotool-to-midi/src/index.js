@@ -30,6 +30,12 @@ export {
   exportAudiotoolProjectToMidi
 } from './render.js';
 export {
+  NotationKinds,
+  NotationStatuses,
+  classifyTrackForNotation,
+  shouldExportTrackByDefault
+} from './notation-classification.js';
+export {
   audiotoolProjectReferenceToName,
   audiotoolProjectReferenceToOpenReference,
   parseAudiotoolProjectReference

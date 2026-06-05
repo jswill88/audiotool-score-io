@@ -1,7 +1,7 @@
 export const audiotoolAuthConfig = {
   clientId: readEnv('VITE_AUDIOTOOL_CLIENT_ID'),
   redirectUrl: readEnv('VITE_AUDIOTOOL_REDIRECT_URL') || browserRedirectUrl(),
-  scope: readEnv('VITE_AUDIOTOOL_SCOPE') || 'project:read'
+  scope: readEnv('VITE_AUDIOTOOL_SCOPE') || 'project:write'
 };
 
 export function browserRedirectUrl() {

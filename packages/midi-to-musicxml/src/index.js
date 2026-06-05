@@ -16,6 +16,12 @@ export {
   preprocessMidi
 } from './midi.js';
 export {
+  applyMusicXmlFinalBarline,
+  applyMusicXmlTitle,
+  writeMusicXmlFinalBarline,
+  writeMusicXmlTitle
+} from './musicxml.js';
+export {
   buildMuseScoreCommand,
   convertWithMuseScore,
   readMuseScoreStatus,

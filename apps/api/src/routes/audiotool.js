@@ -104,28 +104,31 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
     const projectReference = readProjectReference(req);
     const options = readConversionRequestOptions(req);
     const details = await getAudiotoolProjectDetails(client, projectReference);
+    const projectTitle = readProjectTitle(details.project);
     const midiResult = await withAudiotoolProject(
       client,
       projectReference,
       (document) => exportAudiotoolProjectToMidi(document, {
         mode: options.mode,
         tracks: options.tracks,
-        title: details.project?.displayName || 'Audiotool Export',
+        title: projectTitle,
         includeDisabledTracks: options.includeDisabledTracks,
-        includeDisabledRegions: options.includeDisabledRegions
+        includeDisabledRegions: options.includeDisabledRegions,
+        includeSkippedTracks: options.includeSkippedTracks
       }),
       options
     );
 
     if (midiResult.exportedTracks.length === 0) {
-      throw new ClientError('No enabled Audiotool note tracks matched the request.');
+      throw new ClientError('No exportable Audiotool note tracks matched the request.');
     }
 
     const musicXmlFiles = await convertMidiFilesToMusicXml({
       midiFiles: midiResult.files,
       workDir,
       quantize: options.quantize,
-      grid: options.grid
+      grid: options.grid,
+      title: projectTitle
     });
 
     if (musicXmlFiles.length === 1 && !options.includeMidi && !options.forceZip) {
@@ -249,6 +252,11 @@ function readConversionRequestOptions(req) {
       false,
       'includeDisabledRegions'
     ),
+    includeSkippedTracks: readBooleanBody(
+      req.body?.includeSkippedTracks,
+      false,
+      'includeSkippedTracks'
+    ),
     includeMidi: readBooleanBody(req.body?.includeMidi, false, 'includeMidi'),
     forceZip: readBooleanBody(req.body?.forceZip, false, 'forceZip'),
     start: readBooleanBody(req.body?.start, true, 'start'),
@@ -324,7 +332,8 @@ async function convertMidiFilesToMusicXml({
   midiFiles,
   workDir,
   quantize,
-  grid
+  grid,
+  title
 }) {
   const outputs = [];
 
@@ -339,6 +348,7 @@ async function convertMidiFilesToMusicXml({
       outputPath,
       quantize,
       grid,
+      title: midiFile.title || title,
       museScore: conversionOptions
     });
 
@@ -415,8 +425,17 @@ function throwIfAudiotoolServiceError(result) {
 }
 
 function buildArchiveName(project) {
-  const projectName = sanitizeFileBase(project?.displayName || 'audiotool-export');
+  const projectName = sanitizeFileBase(readProjectTitle(project));
   return `${projectName}.zip`;
+}
+
+function readProjectTitle(project) {
+  return (
+    project?.displayName ||
+    project?.title ||
+    project?.name?.split('/').pop() ||
+    'Audiotool Export'
+  );
 }
 
 function sanitizeFileBase(value) {

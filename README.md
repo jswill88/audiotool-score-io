@@ -160,7 +160,7 @@ Useful environment variables:
 - `DEFAULT_QUANTIZATION_GRID=48` controls quantization when `?grid=` is not supplied.
 - `VITE_AUDIOTOOL_CLIENT_ID` enables browser OAuth login for the web app.
 - `VITE_AUDIOTOOL_REDIRECT_URL` overrides the OAuth redirect URL. Leave blank to use the browser's current origin.
-- `VITE_AUDIOTOOL_SCOPE=project:read` controls requested Audiotool OAuth scopes.
+- `VITE_AUDIOTOOL_SCOPE=project:write` controls requested Audiotool OAuth scopes. The browser app opens/syncs projects through Nexus, which currently requires `project:write`.
 - `AUDIOTOOL_CLIENT_ID` optionally provides an API-side client ID fallback for browser-exported OAuth tokens.
 - `AUDIOTOOL_PAT` optionally provides server-side Audiotool auth for the Audiotool API routes.
 
@@ -172,7 +172,7 @@ Start the API and web app together:
 docker compose up --build
 ```
 
-Register `http://127.0.0.1:8080/` as an Audiotool redirect URI, set `VITE_AUDIOTOOL_CLIENT_ID` in `.env`, then open `http://127.0.0.1:8080/`. The web container serves the React app and proxies `/audiotool`, `/convert`, `/health`, and `/ready` to the API container.
+Register `http://127.0.0.1:5173/` as an Audiotool redirect URI, set `VITE_AUDIOTOOL_CLIENT_ID` in `.env`, then open `http://127.0.0.1:5173/`. The web container serves the React app and proxies `/audiotool`, `/convert`, `/health`, and `/ready` to the API container.
 
 Optional host port overrides:
 

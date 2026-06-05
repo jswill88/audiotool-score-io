@@ -65,6 +65,28 @@ export function getEntityType(entity) {
   );
 }
 
+export function locationEntityType(value) {
+  const unwrapped = unwrapFieldValue(value, value);
+
+  if (!unwrapped || typeof unwrapped !== 'object') {
+    return null;
+  }
+
+  if (unwrapped.entityType) {
+    return unwrapped.entityType;
+  }
+
+  if (unwrapped.location) {
+    return locationEntityType(unwrapped.location);
+  }
+
+  if (unwrapped.value && unwrapped.value !== unwrapped) {
+    return locationEntityType(unwrapped.value);
+  }
+
+  return null;
+}
+
 export function getField(entity, fieldName, fallback = undefined) {
   const fields = entity?.fields;
 

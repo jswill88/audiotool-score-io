@@ -7,6 +7,10 @@ import {
   defaultQuantizationGrid
 } from './defaults.js';
 import { MidiValidationError } from './errors.js';
+import {
+  writeMusicXmlFinalBarline,
+  writeMusicXmlTitle
+} from './musicxml.js';
 import { convertWithMuseScore } from './musescore.js';
 
 const { Midi } = tonejsMidi;
@@ -89,7 +93,8 @@ export async function convertMidiToMusicXml({
   quantize = true,
   grid = defaultQuantizationGrid,
   preprocessedPath,
-  museScore = {}
+  museScore = {},
+  title
 }) {
   if (!inputPath) {
     throw new MidiValidationError('inputPath is required.');
@@ -121,6 +126,8 @@ export async function convertMidiToMusicXml({
     }
 
     await convertWithMuseScore(convertPath, outputPath, museScore);
+    await writeMusicXmlTitle(outputPath, title);
+    await writeMusicXmlFinalBarline(outputPath);
 
     return {
       inputPath,
