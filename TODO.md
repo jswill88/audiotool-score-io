@@ -11,6 +11,8 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [x] The track numbers are still long floating point numbers. They should be the order, and should look like "1", "2". These are in the tracks and the score.
 - [x] End music part with an ending double bar.
 - [x] When switching between projects, the score from the previous project is not hidden.
+- [ ] add space between tempo and part name, and part name and staff
+- [x] make a handoff document to a new session
 - [ ] Add a favicon.
 - [ ] Decide whether the default quantization grid should change to 24 or stay at 48.
 

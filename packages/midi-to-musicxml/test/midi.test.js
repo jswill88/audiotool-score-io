@@ -4,6 +4,7 @@ import path from 'path';
 import { test } from 'node:test';
 import {
   applyMusicXmlFinalBarline,
+  applyMusicXmlPartNames,
   applyMusicXmlTitle,
   assertAllowedQuantizationGrid,
   assertValidMidiFile,
@@ -66,14 +67,24 @@ test('preprocessMidi snaps note starts and durations to the requested grid', asy
   ]);
 });
 
-test('applyMusicXmlTitle writes work and movement titles', () => {
+test('applyMusicXmlTitle writes a work title and removes movement titles', () => {
   const xml = applyMusicXmlTitle(
-    '<?xml version="1.0"?><score-partwise version="3.1"><part-list /></score-partwise>',
+    '<?xml version="1.0"?><score-partwise version="3.1"><movement-title>Draft</movement-title><part-list /></score-partwise>',
     'Moon & Stars <Demo>'
   );
 
   assert.match(xml, /<work-title>Moon &amp; Stars &lt;Demo&gt;<\/work-title>/);
-  assert.match(xml, /<movement-title>Moon &amp; Stars &lt;Demo&gt;<\/movement-title>/);
+  assert.doesNotMatch(xml, /<movement-title>/);
+});
+
+test('applyMusicXmlTitle removes movement titles when no title is requested', () => {
+  const xml = applyMusicXmlTitle(
+    '<?xml version="1.0"?><score-partwise version="3.1"><movement-title>Draft</movement-title><part-list /></score-partwise>',
+    ''
+  );
+
+  assert.doesNotMatch(xml, /<movement-title>/);
+  assert.doesNotMatch(xml, /<work-title>/);
 });
 
 test('applyMusicXmlFinalBarline ends each part with a final barline', () => {
@@ -95,6 +106,49 @@ test('applyMusicXmlFinalBarline ends each part with a final barline', () => {
   assert.equal(xml.match(/<bar-style>light-heavy<\/bar-style>/g)?.length, 2);
   assert.match(xml, /<part id="P1">[\s\S]*<measure number="2">[\s\S]*<bar-style>light-heavy<\/bar-style>[\s\S]*<\/measure>/);
   assert.match(xml, /<part id="P2">[\s\S]*<measure number="1">[\s\S]*<bar-style>light-heavy<\/bar-style>[\s\S]*<\/measure>/);
+});
+
+test('applyMusicXmlPartNames removes MuseScore piano prefixes from multi-part Audiotool labels', () => {
+  const xml = applyMusicXmlPartNames(`
+    <score-partwise version="3.1">
+      <part-list>
+        <score-part id="P1">
+          <part-name>Piano, Track 1 - Lead</part-name>
+          <part-abbreviation>Pno.</part-abbreviation>
+        </score-part>
+        <score-part id="P2">
+          <part-name>Grand Piano</part-name>
+          <part-abbreviation>Pno.</part-abbreviation>
+        </score-part>
+      </part-list>
+    </score-partwise>
+  `);
+
+  assert.match(xml, /<part-name>Track 1 - Lead<\/part-name>/);
+  assert.doesNotMatch(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>[\s\S]*<\/score-part>\s*<score-part id="P2">/);
+  assert.match(xml, /<part-name>Grand Piano<\/part-name>/);
+  assert.doesNotMatch(xml, /<words font-size="14" font-weight="bold">Track 1 - Lead<\/words>/);
+});
+
+test('applyMusicXmlPartNames moves single-part Audiotool labels above the staff', () => {
+  const xml = applyMusicXmlPartNames(`
+    <score-partwise version="3.1">
+      <part-list>
+        <score-part id="P1">
+          <part-name>Piano, Track 1 - Lead</part-name>
+          <part-abbreviation>Pno.</part-abbreviation>
+        </score-part>
+      </part-list>
+      <part id="P1">
+        <measure number="1"></measure>
+      </part>
+    </score-partwise>
+  `);
+
+  assert.match(xml, /<part-name print-object="no">Track 1 - Lead<\/part-name>/);
+  assert.match(xml, /<words font-size="14" font-weight="bold">Track 1 - Lead<\/words>/);
+  assert.doesNotMatch(xml, /Piano, Track 1 - Lead/);
+  assert.doesNotMatch(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>/);
 });
 
 test('convertMidiToMusicXml can bypass quantization and send the original MIDI to MuseScore', async (t) => {
@@ -120,8 +174,13 @@ test('convertMidiToMusicXml can bypass quantization and send the original MIDI t
   assert.equal(result.quantized, false);
   assert.equal(result.preprocessedPath, undefined);
   assert.equal(await fs.readFile(logPath, 'utf8'), inputPath);
-  assert.match(await fs.readFile(outputPath, 'utf8'), /score-partwise/);
-  assert.match(await fs.readFile(outputPath, 'utf8'), /<bar-style>light-heavy<\/bar-style>/);
+  const xml = await fs.readFile(outputPath, 'utf8');
+  assert.match(xml, /score-partwise/);
+  assert.match(xml, /<part-name print-object="no">Track 1 - Lead<\/part-name>/);
+  assert.match(xml, /<words font-size="14" font-weight="bold">Track 1 - Lead<\/words>/);
+  assert.doesNotMatch(xml, /Piano, Track 1 - Lead/);
+  assert.doesNotMatch(xml, /<movement-title>/);
+  assert.match(xml, /<bar-style>light-heavy<\/bar-style>/);
 });
 
 test('convertMidiToMusicXml can write a requested MusicXML title', async (t) => {
@@ -147,7 +206,7 @@ test('convertMidiToMusicXml can write a requested MusicXML title', async (t) => 
 
   const xml = await fs.readFile(outputPath, 'utf8');
   assert.match(xml, /<work-title>Project Sonata<\/work-title>/);
-  assert.match(xml, /<movement-title>Project Sonata<\/movement-title>/);
+  assert.doesNotMatch(xml, /<movement-title>/);
 });
 
 test('convertMidiToMusicXml uses a provided preprocessed path when quantization is enabled', async (t) => {

@@ -17,8 +17,10 @@ export {
 } from './midi.js';
 export {
   applyMusicXmlFinalBarline,
+  applyMusicXmlPartNames,
   applyMusicXmlTitle,
   writeMusicXmlFinalBarline,
+  writeMusicXmlPartNames,
   writeMusicXmlTitle
 } from './musicxml.js';
 export {

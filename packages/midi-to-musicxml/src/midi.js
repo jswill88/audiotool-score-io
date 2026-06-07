@@ -9,6 +9,7 @@ import {
 import { MidiValidationError } from './errors.js';
 import {
   writeMusicXmlFinalBarline,
+  writeMusicXmlPartNames,
   writeMusicXmlTitle
 } from './musicxml.js';
 import { convertWithMuseScore } from './musescore.js';
@@ -127,6 +128,7 @@ export async function convertMidiToMusicXml({
 
     await convertWithMuseScore(convertPath, outputPath, museScore);
     await writeMusicXmlTitle(outputPath, title);
+    await writeMusicXmlPartNames(outputPath);
     await writeMusicXmlFinalBarline(outputPath);
 
     return {

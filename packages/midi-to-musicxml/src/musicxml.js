@@ -1,14 +1,8 @@
 import fs from 'fs/promises';
 
 export async function writeMusicXmlTitle(filePath, title) {
-  const resolvedTitle = normalizeTitle(title);
-
-  if (!resolvedTitle) {
-    return;
-  }
-
   const xml = await fs.readFile(filePath, 'utf8');
-  await fs.writeFile(filePath, applyMusicXmlTitle(xml, resolvedTitle));
+  await fs.writeFile(filePath, applyMusicXmlTitle(xml, title));
 }
 
 export async function writeMusicXmlFinalBarline(filePath) {
@@ -16,15 +10,43 @@ export async function writeMusicXmlFinalBarline(filePath) {
   await fs.writeFile(filePath, applyMusicXmlFinalBarline(xml));
 }
 
+export async function writeMusicXmlPartNames(filePath) {
+  const xml = await fs.readFile(filePath, 'utf8');
+  await fs.writeFile(filePath, applyMusicXmlPartNames(xml));
+}
+
 export function applyMusicXmlTitle(xml, title) {
   const resolvedTitle = normalizeTitle(title);
 
   if (!resolvedTitle) {
-    return xml;
+    return removeMovementTitle(xml);
   }
 
   const escapedTitle = escapeXmlText(resolvedTitle);
-  return setMovementTitle(setWorkTitle(xml, escapedTitle), escapedTitle);
+  return removeMovementTitle(setWorkTitle(xml, escapedTitle));
+}
+
+export function applyMusicXmlPartNames(xml) {
+  const scorePartCount = [...xml.matchAll(/<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi)].length;
+  let singlePartHeading = null;
+  const updatedXml = xml.replace(
+    /<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi,
+    (scorePartXml) => {
+      const result = normalizeScorePartName(scorePartXml, {
+        hidePartName: scorePartCount === 1
+      });
+
+      if (scorePartCount === 1 && result.headingName) {
+        singlePartHeading = result.headingName;
+      }
+
+      return result.xml;
+    }
+  );
+
+  return singlePartHeading
+    ? addSinglePartHeadingDirection(updatedXml, singlePartHeading)
+    : updatedXml;
 }
 
 export function applyMusicXmlFinalBarline(xml) {
@@ -38,6 +60,60 @@ export function applyMusicXmlFinalBarline(xml) {
   }
 
   return addFinalBarlineToPart(xml);
+}
+
+function normalizeScorePartName(scorePartXml, options = {}) {
+  const partNameMatch = scorePartXml.match(/<part-name\b[^>]*>([\s\S]*?)<\/part-name>/i);
+
+  if (!partNameMatch) {
+    return { xml: scorePartXml, headingName: null };
+  }
+
+  const partName = unescapeXmlText(partNameMatch[1]);
+  const normalizedName = normalizeMuseScoreMidiPartName(partName);
+  const shouldRemovePianoAbbreviation = normalizedName !== partName || isAudiotoolTrackName(normalizedName);
+
+  if (normalizedName === partName && !options.hidePartName && !shouldRemovePianoAbbreviation) {
+    return { xml: scorePartXml, headingName: null };
+  }
+
+  const escapedName = escapeXmlText(normalizedName);
+  const partNameXml = options.hidePartName && isAudiotoolTrackName(normalizedName)
+    ? `<part-name print-object="no">${escapedName}</part-name>`
+    : `<part-name>${escapedName}</part-name>`;
+  const xml = scorePartXml
+    .replace(/<part-name\b[^>]*>[\s\S]*?<\/part-name>/i, partNameXml)
+    .replace(/\s*<part-abbreviation>Pno\.<\/part-abbreviation>/i, '');
+
+  return {
+    xml,
+    headingName: options.hidePartName && isAudiotoolTrackName(normalizedName)
+      ? normalizedName
+      : null
+  };
+}
+
+function normalizeMuseScoreMidiPartName(name) {
+  return name.replace(/^Piano\s*,?\s*(Track\s+\d+\b[\s\S]*)$/i, '$1');
+}
+
+function isAudiotoolTrackName(name) {
+  return /^Track\s+\d+\b/.test(name);
+}
+
+function addSinglePartHeadingDirection(xml, headingName) {
+  const escapedName = escapeXmlText(headingName);
+
+  if (xml.includes(`<words font-size="14" font-weight="bold">${escapedName}</words>`)) {
+    return xml;
+  }
+
+  const direction = `\n      <direction placement="above">\n        <direction-type>\n          <words font-size="14" font-weight="bold">${escapedName}</words>\n        </direction-type>\n      </direction>`;
+
+  return xml.replace(
+    /(<part(?=[\s>])[^>]*>[\s\S]*?<measure(?=[\s>])[^>]*>)/i,
+    (match) => `${match}${direction}`
+  );
 }
 
 function addFinalBarlineToPart(xml) {
@@ -90,22 +166,8 @@ function setWorkTitle(xml, escapedTitle) {
   return insertAfterRootStart(xml, `\n  <work>\n    <work-title>${escapedTitle}</work-title>\n  </work>`);
 }
 
-function setMovementTitle(xml, escapedTitle) {
-  if (/<movement-title>[\s\S]*?<\/movement-title>/i.test(xml)) {
-    return xml.replace(
-      /<movement-title>[\s\S]*?<\/movement-title>/i,
-      `<movement-title>${escapedTitle}</movement-title>`
-    );
-  }
-
-  const workEnd = xml.match(/<\/work>/i);
-
-  if (workEnd?.index !== undefined) {
-    const insertAt = workEnd.index + workEnd[0].length;
-    return `${xml.slice(0, insertAt)}\n  <movement-title>${escapedTitle}</movement-title>${xml.slice(insertAt)}`;
-  }
-
-  return insertAfterRootStart(xml, `\n  <movement-title>${escapedTitle}</movement-title>`);
+function removeMovementTitle(xml) {
+  return xml.replace(/\s*<movement-title>[\s\S]*?<\/movement-title>/gi, '');
 }
 
 function insertAfterRootStart(xml, content) {
@@ -129,4 +191,13 @@ function escapeXmlText(value) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function unescapeXmlText(value) {
+  return value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
 }
