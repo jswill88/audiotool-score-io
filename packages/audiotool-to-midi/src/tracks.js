@@ -30,7 +30,7 @@ export function inspectAudiotoolEntities(entities, options = {}) {
     totals: {
       noteTracks: tracks.length,
       noteRegions: context.noteRegions.length,
-      notes: context.notes.length
+      hasNotes: tracks.some((track) => track.hasNotes)
     },
     warnings: context.warnings
   };
@@ -123,10 +123,10 @@ function buildTrackManifest(track, context, visualIndex = 0) {
   const playerName = player ? getPlayerName(player) : null;
   const notation = classifyTrackForNotation({ playerType, presetName });
   const regions = getRegionsForTrack(id, context);
-  const noteCount = regions.reduce((total, region) => {
+  const hasNotes = regions.some((region) => {
     const collectionId = locationKey(getField(region, 'collection'));
-    return total + getNotesForCollection(collectionId, context).length;
-  }, 0);
+    return hasNotesForCollection(collectionId, context);
+  });
 
   return {
     id,
@@ -140,9 +140,13 @@ function buildTrackManifest(track, context, visualIndex = 0) {
     notation,
     isEnabled,
     regionCount: regions.length,
-    noteCount,
+    hasNotes,
     regionIds: regions.map((region) => getEntityId(region)).filter(Boolean)
   };
+}
+
+function hasNotesForCollection(collectionId, context) {
+  return context.notes.some((note) => locationKey(getField(note, 'collection')) === collectionId);
 }
 
 function sortTracks(tracks) {

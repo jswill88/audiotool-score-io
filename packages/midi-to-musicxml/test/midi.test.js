@@ -9,6 +9,7 @@ import {
   assertAllowedQuantizationGrid,
   assertValidMidiFile,
   convertMidiToMusicXml,
+  defaultQuantizationGrid,
   MidiValidationError,
   preprocessMidi
 } from '../src/index.js';
@@ -27,6 +28,10 @@ test('assertAllowedQuantizationGrid accepts supported grids and rejects unsuppor
     () => assertAllowedQuantizationGrid(10),
     MidiValidationError
   );
+});
+
+test('defaultQuantizationGrid is 24', () => {
+  assert.equal(defaultQuantizationGrid, 24);
 });
 
 test('assertValidMidiFile accepts MIDI headers and rejects non-MIDI files', async (t) => {
@@ -108,7 +113,7 @@ test('applyMusicXmlFinalBarline ends each part with a final barline', () => {
   assert.match(xml, /<part id="P2">[\s\S]*<measure number="1">[\s\S]*<bar-style>light-heavy<\/bar-style>[\s\S]*<\/measure>/);
 });
 
-test('applyMusicXmlPartNames removes MuseScore piano prefixes from multi-part Audiotool labels', () => {
+test('applyMusicXmlPartNames formats multi-part Audiotool labels as names with track numbers', () => {
   const xml = applyMusicXmlPartNames(`
     <score-partwise version="3.1">
       <part-list>
@@ -124,13 +129,13 @@ test('applyMusicXmlPartNames removes MuseScore piano prefixes from multi-part Au
     </score-partwise>
   `);
 
-  assert.match(xml, /<part-name>Track 1 - Lead<\/part-name>/);
+  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
   assert.doesNotMatch(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>[\s\S]*<\/score-part>\s*<score-part id="P2">/);
   assert.match(xml, /<part-name>Grand Piano<\/part-name>/);
-  assert.doesNotMatch(xml, /<words font-size="14" font-weight="bold">Track 1 - Lead<\/words>/);
+  assert.doesNotMatch(xml, /<words\b[^>]*>Lead \(1\)<\/words>/);
 });
 
-test('applyMusicXmlPartNames moves single-part Audiotool labels above the staff', () => {
+test('applyMusicXmlPartNames keeps single-part Audiotool labels in the default part-name position', () => {
   const xml = applyMusicXmlPartNames(`
     <score-partwise version="3.1">
       <part-list>
@@ -145,10 +150,36 @@ test('applyMusicXmlPartNames moves single-part Audiotool labels above the staff'
     </score-partwise>
   `);
 
-  assert.match(xml, /<part-name print-object="no">Track 1 - Lead<\/part-name>/);
-  assert.match(xml, /<words font-size="14" font-weight="bold">Track 1 - Lead<\/words>/);
+  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
+  assert.doesNotMatch(xml, /<part-name\b[^>]*print-object="no"[^>]*>/);
+  assert.doesNotMatch(xml, /<words\b[^>]*>Lead \(1\)<\/words>/);
   assert.doesNotMatch(xml, /Piano, Track 1 - Lead/);
   assert.doesNotMatch(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>/);
+});
+
+test('applyMusicXmlPartNames removes old generated single-part headings', () => {
+  const xml = applyMusicXmlPartNames(`
+    <score-partwise version="3.1">
+      <part-list>
+        <score-part id="P1">
+          <part-name print-object="no">Track 1 - Lead</part-name>
+        </score-part>
+      </part-list>
+      <part id="P1">
+        <measure number="1">
+          <direction placement="above">
+            <direction-type>
+              <words font-size="14" font-weight="bold">Track 1 - Lead</words>
+            </direction-type>
+          </direction>
+        </measure>
+      </part>
+    </score-partwise>
+  `);
+
+  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
+  assert.doesNotMatch(xml, /<part-name\b[^>]*print-object="no"[^>]*>/);
+  assert.doesNotMatch(xml, /<words\b[^>]*>Track 1 - Lead<\/words>/);
 });
 
 test('convertMidiToMusicXml can bypass quantization and send the original MIDI to MuseScore', async (t) => {
@@ -176,8 +207,9 @@ test('convertMidiToMusicXml can bypass quantization and send the original MIDI t
   assert.equal(await fs.readFile(logPath, 'utf8'), inputPath);
   const xml = await fs.readFile(outputPath, 'utf8');
   assert.match(xml, /score-partwise/);
-  assert.match(xml, /<part-name print-object="no">Track 1 - Lead<\/part-name>/);
-  assert.match(xml, /<words font-size="14" font-weight="bold">Track 1 - Lead<\/words>/);
+  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
+  assert.doesNotMatch(xml, /<part-name\b[^>]*print-object="no"[^>]*>/);
+  assert.doesNotMatch(xml, /<words\b[^>]*>Lead \(1\)<\/words>/);
   assert.doesNotMatch(xml, /Piano, Track 1 - Lead/);
   assert.doesNotMatch(xml, /<movement-title>/);
   assert.match(xml, /<bar-style>light-heavy<\/bar-style>/);

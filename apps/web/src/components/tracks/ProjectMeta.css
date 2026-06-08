@@ -3,7 +3,7 @@
   justify-items: end;
   min-width: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .project-meta strong,
@@ -16,7 +16,7 @@
 
 .project-meta strong {
   color: var(--paper);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 @media (max-width: 760px) {

@@ -28,24 +28,22 @@ export function applyMusicXmlTitle(xml, title) {
 
 export function applyMusicXmlPartNames(xml) {
   const scorePartCount = [...xml.matchAll(/<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi)].length;
-  let singlePartHeading = null;
+  const singlePartHeadingNames = new Set();
   const updatedXml = xml.replace(
     /<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi,
     (scorePartXml) => {
-      const result = normalizeScorePartName(scorePartXml, {
-        hidePartName: scorePartCount === 1
-      });
+      const result = normalizeScorePartName(scorePartXml);
 
-      if (scorePartCount === 1 && result.headingName) {
-        singlePartHeading = result.headingName;
+      if (scorePartCount === 1) {
+        result.generatedHeadingNames.forEach((name) => singlePartHeadingNames.add(name));
       }
 
       return result.xml;
     }
   );
 
-  return singlePartHeading
-    ? addSinglePartHeadingDirection(updatedXml, singlePartHeading)
+  return scorePartCount === 1
+    ? removeGeneratedSinglePartHeadingDirections(updatedXml, singlePartHeadingNames)
     : updatedXml;
 }
 
@@ -62,58 +60,73 @@ export function applyMusicXmlFinalBarline(xml) {
   return addFinalBarlineToPart(xml);
 }
 
-function normalizeScorePartName(scorePartXml, options = {}) {
+function normalizeScorePartName(scorePartXml) {
   const partNameMatch = scorePartXml.match(/<part-name\b[^>]*>([\s\S]*?)<\/part-name>/i);
 
   if (!partNameMatch) {
-    return { xml: scorePartXml, headingName: null };
+    return { xml: scorePartXml, generatedHeadingNames: [] };
   }
 
   const partName = unescapeXmlText(partNameMatch[1]);
+  const midiPartName = removeMuseScoreMidiPianoPrefix(partName);
   const normalizedName = normalizeMuseScoreMidiPartName(partName);
-  const shouldRemovePianoAbbreviation = normalizedName !== partName || isAudiotoolTrackName(normalizedName);
+  const shouldRemovePianoAbbreviation = normalizedName !== partName || isAudiotoolTrackName(midiPartName);
 
-  if (normalizedName === partName && !options.hidePartName && !shouldRemovePianoAbbreviation) {
-    return { xml: scorePartXml, headingName: null };
+  if (normalizedName === partName && !shouldRemovePianoAbbreviation) {
+    return { xml: scorePartXml, generatedHeadingNames: [] };
   }
 
   const escapedName = escapeXmlText(normalizedName);
-  const partNameXml = options.hidePartName && isAudiotoolTrackName(normalizedName)
-    ? `<part-name print-object="no">${escapedName}</part-name>`
-    : `<part-name>${escapedName}</part-name>`;
+  const partNameXml = `<part-name>${escapedName}</part-name>`;
   const xml = scorePartXml
     .replace(/<part-name\b[^>]*>[\s\S]*?<\/part-name>/i, partNameXml)
     .replace(/\s*<part-abbreviation>Pno\.<\/part-abbreviation>/i, '');
 
   return {
     xml,
-    headingName: options.hidePartName && isAudiotoolTrackName(normalizedName)
-      ? normalizedName
-      : null
+    generatedHeadingNames: [
+      midiPartName,
+      normalizedName
+    ].filter((name) => isAudiotoolTrackName(name) || name !== partName)
   };
 }
 
 function normalizeMuseScoreMidiPartName(name) {
+  return formatAudiotoolTrackName(removeMuseScoreMidiPianoPrefix(name));
+}
+
+function removeMuseScoreMidiPianoPrefix(name) {
   return name.replace(/^Piano\s*,?\s*(Track\s+\d+\b[\s\S]*)$/i, '$1');
+}
+
+function formatAudiotoolTrackName(name) {
+  const match = name.match(/^Track\s+(\d+)\s*-\s*(.+)$/i);
+
+  if (!match) {
+    return name;
+  }
+
+  return `${match[2].trim()} (${match[1]})`;
 }
 
 function isAudiotoolTrackName(name) {
   return /^Track\s+\d+\b/.test(name);
 }
 
-function addSinglePartHeadingDirection(xml, headingName) {
-  const escapedName = escapeXmlText(headingName);
+function removeGeneratedSinglePartHeadingDirections(xml, headingNames) {
+  let updatedXml = xml;
 
-  if (xml.includes(`<words font-size="14" font-weight="bold">${escapedName}</words>`)) {
-    return xml;
+  for (const headingName of headingNames) {
+    const escapedName = escapeXmlText(headingName);
+    const generatedHeadingPattern = new RegExp(
+      `\\n?\\s*<direction\\b(?=[^>]*\\bplacement=["']above["'])[^>]*>\\s*<direction-type>\\s*<words\\b(?=[^>]*\\bfont-size=["']14["'])(?=[^>]*\\bfont-weight=["']bold["'])[^>]*>${escapeRegExp(escapedName)}<\\/words>\\s*<\\/direction-type>\\s*<\\/direction>`,
+      'gi'
+    );
+
+    updatedXml = updatedXml.replace(generatedHeadingPattern, '');
   }
 
-  const direction = `\n      <direction placement="above">\n        <direction-type>\n          <words font-size="14" font-weight="bold">${escapedName}</words>\n        </direction-type>\n      </direction>`;
-
-  return xml.replace(
-    /(<part(?=[\s>])[^>]*>[\s\S]*?<measure(?=[\s>])[^>]*>)/i,
-    (match) => `${match}${direction}`
-  );
+  return updatedXml;
 }
 
 function addFinalBarlineToPart(xml) {
@@ -191,6 +204,10 @@ function escapeXmlText(value) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function unescapeXmlText(value) {

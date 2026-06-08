@@ -44,10 +44,16 @@ Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that ar
 5. Start the web app:
 
    ```bash
-   npm run dev:web
+   npm run dev
    ```
 
    Open `http://127.0.0.1:5173/`. The Vite dev server proxies API requests to `http://127.0.0.1:3000`.
+   CSS changes hot reload through Vite. If the Docker web container is already using port `5173`,
+   stop it with `docker compose stop web` or run Vite on another port:
+
+   ```bash
+   npm run dev -- --port 5174
+   ```
 
 6. Send a `POST` request to `/convert` with a `multipart/form-data` field named `file`.
 
@@ -142,7 +148,7 @@ curl -X POST "http://localhost:3000/audiotool/convert?quantize=false" \
   --output audiotool.musicxml
 ```
 
-Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts. Add `"includeMidi":true` to include the intermediate MIDI files in the zip.
+Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts.
 
 ## MuseScore configuration
 
@@ -157,7 +163,7 @@ Useful environment variables:
 - `MAX_UPLOAD_BYTES=52428800` controls the upload limit. Default: 50 MB.
 - `JSON_BODY_LIMIT=1mb` controls JSON request size. Default: 1 MB.
 - `CONVERSION_TIMEOUT_MS=120000` controls the MuseScore timeout. Default: 120 seconds.
-- `DEFAULT_QUANTIZATION_GRID=48` controls quantization when `?grid=` is not supplied.
+- `DEFAULT_QUANTIZATION_GRID=24` controls quantization when `?grid=` is not supplied.
 - `VITE_AUDIOTOOL_CLIENT_ID` enables browser OAuth login for the web app.
 - `VITE_AUDIOTOOL_REDIRECT_URL` overrides the OAuth redirect URL. Leave blank to use the browser's current origin.
 - `VITE_AUDIOTOOL_SCOPE=project:write` controls requested Audiotool OAuth scopes. The browser app opens/syncs projects through Nexus, which currently requires `project:write`.
@@ -166,7 +172,30 @@ Useful environment variables:
 
 ## Docker
 
-Start the API and web app together:
+Start a local Docker dev environment with Vite hot reload:
+
+```bash
+npm run docker:dev
+```
+
+Open `http://127.0.0.1:5173/`. The web service runs Vite in a Node container,
+mounts the local source tree, and proxies API requests to the Compose `api`
+service. CSS changes should hot reload on save.
+
+Stop the Docker dev environment:
+
+```bash
+npm run docker:dev:down
+```
+
+If dependencies change, rebuild the dev image and recreate the dependency volume:
+
+```bash
+docker compose -f compose.dev.yml down -v
+npm run docker:dev
+```
+
+Start the production-style API and static web app together:
 
 ```bash
 docker compose up --build

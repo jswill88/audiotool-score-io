@@ -1,25 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
-import '../StaffPreview.css';
+import { useLayoutEffect, useRef, useState } from 'react';
 import './ScorePane.css';
 
-export function ScorePane({ xml }) {
+export function ScorePane({ selectedProject, xml }) {
   const containerRef = useRef(null);
   const [renderError, setRenderError] = useState('');
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
+    const target = containerRef.current;
 
     async function renderScore() {
       setRenderError('');
 
-      if (!containerRef.current) return;
-      containerRef.current.innerHTML = '';
+      if (!target) return;
+      target.innerHTML = '';
 
       if (!xml) return;
 
       try {
         const { OpenSheetMusicDisplay } = await import('opensheetmusicdisplay');
-        const osmd = new OpenSheetMusicDisplay(containerRef.current, {
+
+        if (cancelled || !target.isConnected) {
+          return;
+        }
+
+        const osmd = new OpenSheetMusicDisplay(target, {
           autoResize: true,
           backend: 'svg',
           drawTitle: true,
@@ -27,7 +32,11 @@ export function ScorePane({ xml }) {
         });
         await osmd.load(xml);
 
-        if (cancelled) return;
+        if (cancelled || !target.isConnected) {
+          target.innerHTML = '';
+          return;
+        }
+
         osmd.render();
       } catch (error) {
         if (!cancelled) {
@@ -40,21 +49,28 @@ export function ScorePane({ xml }) {
 
     return () => {
       cancelled = true;
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
+      if (target) {
+        target.innerHTML = '';
       }
     };
   }, [xml]);
 
   if (!xml) {
+    const emptyState = selectedProject?.details
+      ? {
+          title: 'No score yet',
+          description: 'Select tracks and convert to preview the score.'
+        }
+      : {
+          title: 'No project selected',
+          description: 'Select a project to preview the score here.'
+        };
+
     return (
       <div className="score-empty">
-        <div className="staff-preview large" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
+        <div className="score-empty-copy">
+          <strong>{emptyState.title}</strong>
+          <span>{emptyState.description}</span>
         </div>
       </div>
     );

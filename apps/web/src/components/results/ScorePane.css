@@ -34,6 +34,27 @@
     var(--paper);
 }
 
+.score-empty-copy {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  max-width: 320px;
+  padding: 28px;
+  color: rgba(22, 17, 13, 0.66);
+  text-align: center;
+}
+
+.score-empty-copy strong {
+  color: #16110d;
+  font-size: 22px;
+  font-weight: 780;
+}
+
+.score-empty-copy span {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
 .render-error {
   margin-bottom: 12px;
   padding: 10px;
@@ -44,7 +65,7 @@
   font-weight: 680;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1380px) {
   .score-surface,
   .score-empty {
     min-height: 520px;

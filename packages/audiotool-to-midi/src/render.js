@@ -136,7 +136,7 @@ function filterExportableTracks(tracks, { options, trackSelection, warnings }) {
   const hasExplicitSelection = isExplicitTrackSelection(trackSelection);
 
   return tracks.filter((track) => {
-    if (track.noteCount <= 0) {
+    if (!track.hasNotes) {
       if (hasExplicitSelection) {
         warnings.push({
           code: 'track-empty',

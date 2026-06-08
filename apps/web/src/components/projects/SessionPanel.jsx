@@ -38,11 +38,21 @@ export function SessionPanel({ auth }) {
 }
 
 function authTitle(auth) {
-  if (auth.phase === 'authenticated') return `Signed in as ${auth.userName || 'Audiotool user'}`;
+  if (auth.phase === 'authenticated') return `Signed in as ${formatUserName(auth.userName)}`;
   if (auth.phase === 'loading') return 'Checking Audiotool session';
   if (auth.phase === 'unconfigured') return 'Audiotool app not configured';
   if (auth.phase === 'error') return 'Audiotool login unavailable';
   return 'Sign in with Audiotool';
+}
+
+function formatUserName(userName) {
+  const normalized = String(userName ?? '').trim();
+
+  if (!normalized) {
+    return 'Audiotool user';
+  }
+
+  return normalized.replace(/^users\//i, '');
 }
 
 function authSubtitle(auth) {

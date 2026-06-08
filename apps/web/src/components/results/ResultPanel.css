@@ -42,12 +42,12 @@
 .file-strip button {
   flex: 0 0 auto;
   max-width: 220px;
-  height: 32px;
+  height: 34px;
   padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -56,8 +56,6 @@
   color: var(--teal);
 }
 
-@media (max-width: 1180px) {
-  .viewer-panel {
-    grid-column: 1 / -1;
-  }
+.viewer-panel {
+  grid-column: 1 / -1;
 }

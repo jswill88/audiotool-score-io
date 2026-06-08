@@ -22,14 +22,14 @@ export function App() {
   const [selectedTrackIds, setSelectedTrackIds] = useState([]);
   const [mode, setMode] = useState('score');
   const [quantize, setQuantize] = useState(true);
-  const [grid, setGrid] = useState(48);
-  const [includeMidi, setIncludeMidi] = useState(false);
+  const [grid, setGrid] = useState(24);
   const [activeResult, setActiveResult] = useState(null);
   const [activeFileName, setActiveFileName] = useState('');
   const [viewerTab, setViewerTab] = useState('score');
   const [status, setStatus] = useState({
     phase: 'idle',
-    message: 'Ready'
+    message: '',
+    area: null
   });
 
   const selectedProjectReference = selectedProject?.reference ?? '';
@@ -68,18 +68,18 @@ export function App() {
     const auth = readRequestAuth(audiotoolAuth);
 
     if (!canUseApi || auth === false) {
-      setStatus({ phase: 'error', message: 'Audiotool sign-in required' });
+      setStatus({ phase: 'error', message: 'Audiotool sign-in required', area: 'projects' });
       return;
     }
 
-    setStatus({ phase: 'loading', message: 'Loading projects' });
+    setStatus({ phase: 'loading', message: 'Loading projects', area: 'projects' });
 
     try {
       const data = await loadAudiotoolProjects({ pageSize: 25 }, auth);
       setProjects(data.projects ?? []);
-      setStatus({ phase: 'success', message: `${data.projects?.length ?? 0} projects loaded` });
+      setStatus({ phase: 'success', message: `${data.projects?.length ?? 0} projects loaded`, area: 'projects' });
     } catch (error) {
-      setStatus({ phase: 'error', message: error.message });
+      setStatus({ phase: 'error', message: error.message, area: 'projects' });
     }
   }, [audiotoolAuth, canUseApi]);
 
@@ -87,18 +87,18 @@ export function App() {
     const auth = readRequestAuth(audiotoolAuth);
 
     if (!canUseApi || auth === false) {
-      setStatus({ phase: 'error', message: 'Audiotool sign-in required' });
+      setStatus({ phase: 'error', message: 'Audiotool sign-in required', area: 'projects' });
       return;
     }
 
     const reference = projectReference?.trim?.() || projectReference;
 
     if (!reference) {
-      setStatus({ phase: 'error', message: 'Project reference required' });
+      setStatus({ phase: 'error', message: 'Project reference required', area: 'projects' });
       return;
     }
 
-    setStatus({ phase: 'loading', message: 'Inspecting tracks' });
+    setStatus({ phase: 'loading', message: 'Inspecting tracks', area: 'projects' });
     const requestId = inspectRequestId.current + 1;
     inspectRequestId.current = requestId;
     conversionRequestId.current += 1;
@@ -117,11 +117,11 @@ export function App() {
 
       const tracks = data.manifest?.tracks ?? [];
       const defaultTracks = tracks.filter((track) => (
-        track.noteCount > 0 &&
+        hasTrackNotes(track) &&
         track.notation?.shouldExportByDefault !== false
       ));
       const skippedTracks = tracks.filter((track) => (
-        track.noteCount > 0 &&
+        hasTrackNotes(track) &&
         track.notation?.shouldExportByDefault === false
       ));
 
@@ -133,7 +133,8 @@ export function App() {
       setSelectedTrackIds(defaultTracks.map((track) => track.id));
       setStatus({
         phase: 'success',
-        message: `${tracks.length} tracks inspected${skippedTracks.length > 0 ? `, ${skippedTracks.length} skipped by default` : ''}`
+        message: `${tracks.length} tracks inspected${skippedTracks.length > 0 ? `, ${skippedTracks.length} skipped by default` : ''}`,
+        area: 'projects'
       });
     } catch (error) {
       if (requestId !== inspectRequestId.current) {
@@ -141,7 +142,7 @@ export function App() {
       }
 
       setSelectedProject(null);
-      setStatus({ phase: 'error', message: error.message });
+      setStatus({ phase: 'error', message: error.message, area: 'projects' });
     }
   }, [audiotoolAuth, canUseApi]);
 
@@ -149,16 +150,16 @@ export function App() {
     const auth = readRequestAuth(audiotoolAuth);
 
     if (!canConvert) {
-      setStatus({ phase: 'error', message: 'Select at least one track' });
+      setStatus({ phase: 'error', message: 'Select at least one track', area: 'tracks' });
       return;
     }
 
     if (auth === false) {
-      setStatus({ phase: 'error', message: 'Audiotool sign-in required' });
+      setStatus({ phase: 'error', message: 'Audiotool sign-in required', area: 'tracks' });
       return;
     }
 
-    setStatus({ phase: 'loading', message: 'Converting to MusicXML' });
+    setStatus({ phase: 'loading', message: 'Converting to MusicXML', area: 'tracks' });
     const requestId = conversionRequestId.current + 1;
     conversionRequestId.current = requestId;
     const projectReference = selectedProject.reference;
@@ -172,8 +173,7 @@ export function App() {
         tracks: selectedTrackIds,
         mode,
         quantize,
-        grid,
-        includeMidi
+        grid
       });
 
       if (requestId !== conversionRequestId.current) {
@@ -186,19 +186,19 @@ export function App() {
       setActiveResult({ ...result, projectReference });
       setActiveFileName(result.files[0]?.name ?? '');
       setViewerTab('score');
-      setStatus({ phase: 'success', message: `${result.files.length} MusicXML file${result.files.length === 1 ? '' : 's'} ready` });
+      setStatus({ phase: 'success', message: `${result.files.length} MusicXML file${result.files.length === 1 ? '' : 's'} ready`, area: 'tracks' });
     } catch (error) {
       if (requestId !== conversionRequestId.current) {
         return;
       }
 
-      setStatus({ phase: 'error', message: error.message });
+      setStatus({ phase: 'error', message: error.message, area: 'tracks' });
     }
-  }, [audiotoolAuth, canConvert, grid, includeMidi, mode, quantize, selectedProject, selectedTrackIds]);
+  }, [audiotoolAuth, canConvert, grid, mode, quantize, selectedProject, selectedTrackIds]);
 
   return (
     <main className="app-shell">
-      <AppHeader status={status} />
+      <AppHeader />
       <section className="workspace">
         <SidebarPanel
           audiotoolAuth={audiotoolAuth}
@@ -208,11 +208,11 @@ export function App() {
           projects={projects}
           selectedProject={selectedProject}
           setProjectInput={setProjectInput}
+          status={status}
         />
         <TracksPanel
           canConvert={canConvert}
           grid={grid}
-          includeMidi={includeMidi}
           manifest={manifest}
           mode={mode}
           onConvert={convertProject}
@@ -231,7 +231,6 @@ export function App() {
           selectedProject={selectedProject}
           selectedTrackIds={selectedTrackIds}
           setGrid={setGrid}
-          setIncludeMidi={setIncludeMidi}
           setMode={setMode}
           setQuantize={setQuantize}
           status={status}
@@ -240,6 +239,7 @@ export function App() {
           activeFile={activeFile}
           activeFileName={activeFileName}
           activeResult={visibleResult}
+          selectedProject={selectedProject}
           setActiveFileName={setActiveFileName}
           setViewerTab={setViewerTab}
           viewerTab={viewerTab}
@@ -254,5 +254,9 @@ function readRequestAuth(audiotoolAuth) {
 }
 
 function isSelectableTrack(track) {
-  return track.noteCount > 0;
+  return hasTrackNotes(track);
+}
+
+function hasTrackNotes(track) {
+  return track.hasNotes === true;
 }

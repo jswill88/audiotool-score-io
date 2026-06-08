@@ -20,7 +20,7 @@ import {
 } from './helpers.js';
 
 describe('audiotool-to-midi project inspection', () => {
-  it('lists note tracks in visual order with player labels and note counts', () => {
+  it('lists note tracks in visual order with player labels and note availability', () => {
     const manifest = inspectAudiotoolProject(basicProject());
 
     assert.equal(manifest.tracks.length, 2);
@@ -28,7 +28,8 @@ describe('audiotool-to-midi project inspection', () => {
     assert.equal(manifest.tracks[0].label, 'Track 1 - Lead Synth');
     assert.equal(manifest.tracks[0].playerId, 'player-1');
     assert.equal(manifest.tracks[0].regionCount, 1);
-    assert.equal(manifest.tracks[0].noteCount, 1);
+    assert.equal(manifest.tracks[0].hasNotes, true);
+    assert.equal(manifest.totals.hasNotes, true);
     assert.deepEqual(manifest.tempo, { bpm: 132 });
     assert.deepEqual(manifest.timeSignature, { numerator: 3, denominator: 4 });
   });
@@ -57,7 +58,7 @@ describe('audiotool-to-midi project inspection', () => {
     ]);
 
     assert.equal(manifest.tracks[0].label, 'Track 1 - Wrapped Synth');
-    assert.equal(manifest.tracks[0].noteCount, 1);
+    assert.equal(manifest.tracks[0].hasNotes, true);
   });
 
   it('uses clean visual track numbers instead of raw ids when no player name exists', () => {
@@ -76,6 +77,8 @@ describe('audiotool-to-midi project inspection', () => {
     assert.equal(manifest.tracks[0].order, 1);
     assert.equal(manifest.tracks[0].rawOrder, 7);
     assert.equal(manifest.tracks[0].label, 'Track 1');
+    assert.equal(manifest.tracks[0].hasNotes, false);
+    assert.equal(manifest.totals.hasNotes, false);
   });
 
   it('normalizes floating Audiotool sort keys into clean track numbers', () => {
@@ -257,6 +260,21 @@ describe('audiotool-to-midi export', () => {
 
     assert.equal(result.files[0].title, 'Project Sonata');
     assert.equal(midi.header.name, 'Project Sonata');
+  });
+
+  it('writes the Audiotool project BPM into exported MIDI files', () => {
+    const project = basicProject().map((item) => (
+      item.type === 'config' ? { ...item, bpm: 96 } : item
+    ));
+    const result = exportAudiotoolEntitiesToMidi(project, {
+      mode: 'both'
+    });
+
+    assert.deepEqual(result.tempo, { bpm: 96 });
+    assert.deepEqual(
+      result.files.map((file) => readMidi(file.bytes).header.tempos[0].bpm),
+      [96, 96, 96]
+    );
   });
 
   it('can return one MIDI file per selected track', () => {

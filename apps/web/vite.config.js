@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 
 const webDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(webDir, '../..');
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000';
 
 export default defineConfig({
   envDir: repoRoot,
@@ -13,9 +14,10 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     proxy: {
-      '/audiotool': 'http://127.0.0.1:3000',
-      '/health': 'http://127.0.0.1:3000',
-      '/ready': 'http://127.0.0.1:3000'
+      '/audiotool': apiProxyTarget,
+      '/convert': apiProxyTarget,
+      '/health': apiProxyTarget,
+      '/ready': apiProxyTarget
     }
   }
 });

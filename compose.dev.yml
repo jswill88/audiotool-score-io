@@ -26,13 +26,23 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        VITE_AUDIOTOOL_CLIENT_ID: ${VITE_AUDIOTOOL_CLIENT_ID:-}
-        VITE_AUDIOTOOL_REDIRECT_URL: ${VITE_AUDIOTOOL_REDIRECT_URL:-}
-        VITE_AUDIOTOOL_SCOPE: ${VITE_AUDIOTOOL_SCOPE:-project:write}
+      dockerfile: apps/web/Dockerfile.dev
+    command: npm run dev --workspace @midi-to-xml/web -- --host 0.0.0.0
+    environment:
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+      VITE_API_PROXY_TARGET: http://api:3000
+      VITE_AUDIOTOOL_CLIENT_ID: ${VITE_AUDIOTOOL_CLIENT_ID:-}
+      VITE_AUDIOTOOL_REDIRECT_URL: ${VITE_AUDIOTOOL_REDIRECT_URL:-}
+      VITE_AUDIOTOOL_SCOPE: ${VITE_AUDIOTOOL_SCOPE:-project:write}
     depends_on:
       api:
         condition: service_healthy
     ports:
-      - "${WEB_PORT:-5173}:8080"
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - .:/usr/src/app
+      - web_node_modules:/usr/src/app/node_modules
+
+volumes:
+  web_node_modules:

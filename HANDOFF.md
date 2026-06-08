@@ -13,6 +13,12 @@ The code is intentionally split so the conversion pieces can also be reused outs
 - `apps/api`: Express API that composes both packages.
 - `apps/web`: React/Vite browser app for sign-in, project picking, track selection, conversion, and score viewing.
 
+## Repo Process Notes
+
+Read `AGENTS.md` for standing agent instructions. The handoff is useful for current-session context; durable workflow rules belong in `AGENTS.md`.
+
+Keep this handoff current when changes affect behavior, setup/run commands, verification steps, known tradeoffs, or useful next-session context.
+
 ## Important Current State
 
 As of this handoff, the latest MusicXML display cleanup is part of the intended committed baseline.
@@ -29,8 +35,8 @@ What the latest cleanup does:
 
 - Remove MusicXML `<movement-title>` so it does not display as an extra score title.
 - Keep `<work-title>` for project/title metadata.
-- Clean MuseScore-generated labels like `Piano, Track 1 - Lead` to `Track 1 - Lead`.
-- For single-part exports, hide the left-side part label with `print-object="no"` and insert a bold `<direction><words>Track ...</words></direction>` above the first measure.
+- Clean MuseScore-generated part labels like `Piano, Track 1 - Lead` to `Lead (1)`.
+- Keep single-part labels in MusicXML's default `<part-name>` position instead of inserting a bold above-staff `<direction><words>...`.
 - Remove MuseScore `Pno.` part abbreviations from Audiotool track exports.
 - Keep the ending double bar behavior.
 
@@ -49,9 +55,11 @@ The real Docker MuseScore conversion was also checked manually. It produced:
 
 - `<work-title>Project Sonata</work-title>`
 - no `<movement-title>`
-- `<part-name print-object="no">Track 1 - Lead</part-name>`
-- a visible `<words font-size="14" font-weight="bold">Track 1 - Lead</words>` direction above the first measure
+- `<part-name>Lead (1)</part-name>`
+- no generated above-staff `<words>` direction for the part name
 - final `light-heavy` barline
+
+The score preview is intentionally reset when the selected project, active result, or active file changes. This prevents stale OpenSheetMusicDisplay output from overlapping the empty-state copy while a new project is being inspected or a new conversion is running.
 
 ## How To Run
 
@@ -71,7 +79,7 @@ Run local API and Vite dev app:
 
 ```bash
 npm run start:api
-npm run dev:web
+npm run dev
 ```
 
 Open:
@@ -80,7 +88,19 @@ Open:
 http://127.0.0.1:5173/
 ```
 
-Run both services with Docker:
+Run Docker dev with Vite hot reload:
+
+```bash
+npm run docker:dev
+```
+
+Stop Docker dev:
+
+```bash
+npm run docker:dev:down
+```
+
+Run the production-style static web/API stack with Docker:
 
 ```bash
 docker compose up --build
@@ -109,6 +129,7 @@ Local dev:
 
 Docker:
 
+- `compose.dev.yml` runs the web service with Vite on container port `5173` and bind-mounts local source for hot reload.
 - `web` container serves built React app through nginx on container port `8080`.
 - Host exposes web at `WEB_PORT`, default `5173`.
 - `api` container runs Express on container port `3000`.
@@ -161,11 +182,9 @@ Output modes:
 - `parts`: separate MusicXML files per selected track.
 - `both`: zip containing combined score plus parts.
 
-`includeMidi: true` includes intermediate MIDI files in the zip.
-
 Quantization:
 
-- Default grid is `48`.
+- Default grid is `24`.
 - Supported grids are `4`, `8`, `12`, `16`, `24`, `32`, `48`, `64`.
 - Quantization can be bypassed with `quantize=false`.
 
@@ -174,8 +193,10 @@ Quantization:
 Current behavior:
 
 - Track IDs remain the stable Audiotool entity IDs internally.
-- UI and score labels use normalized visual order numbers like `Track 1 - Lead`.
+- UI track labels use normalized visual order numbers like `Track 1 - Lead`.
+- MusicXML part labels use player names with visual order suffixes like `Lead (1)`.
 - Empty tracks are disabled/not selectable for conversion.
+- Track manifests/UI only track whether a track has notes; exact note counts are not exposed.
 - Drum-machine tracks, especially Beatbox 8/9, are skipped by default.
 - Sampler, plugin, and unknown note tracks remain selectable with warnings.
 - Unknown types are not automatically excluded because title/preset hints are weaker than explicit player data.
@@ -209,31 +230,27 @@ MUSESCORE_BIN=
 MUSESCORE_USE_XVFB=auto
 XVFB_RUN_BIN=xvfb-run
 CONVERSION_TIMEOUT_MS=120000
-DEFAULT_QUANTIZATION_GRID=48
+DEFAULT_QUANTIZATION_GRID=24
 ```
 
 ## Current TODO Focus
 
 From `TODO.md`, the most relevant remaining items are:
 
-- Add space between tempo and part name, and part name and staff.
 - Add a favicon.
-- Decide whether default quantization should stay `48` or change to `24`.
 - Find confusing code and refactor, especially long files.
 - Add a loading indicator while the score display is being prepared.
-- Future: score playback/follow-along, browser play controls, drum notation mapping, TypeScript.
-
-The latest MusicXML display change may partly address the part-name spacing issue, but it should still be visually checked in the browser with a real project.
+- Future: score playback/follow-along, browser play controls, drum notation mapping, TypeScript, accessibility.
 
 ## Good Next-Session Checklist
 
 1. Run `git status --short` and confirm the working tree state before making changes.
-2. Open the app at `http://127.0.0.1:5173/` with Docker or local dev.
-3. Test a real Audiotool project with one selected track and then multiple selected tracks.
-4. Check whether OpenSheetMusicDisplay still draws any unwanted title from `<work-title>`.
-5. Check visual spacing around tempo, the inserted track heading, and the first staff.
-6. Adjust or commit follow-up changes based on that visual check.
-7. Update `TODO.md` as items are confirmed.
+2. Read `TODO.md` and `AGENTS.md`.
+3. Open the app at `http://127.0.0.1:5173/` with Docker or local dev.
+4. Test a real Audiotool project with one selected track and then multiple selected tracks.
+5. Check whether OpenSheetMusicDisplay still draws any unwanted title from `<work-title>`.
+6. Check visual spacing around tempo, part names, and the first staff.
+7. Adjust or commit follow-up changes based on that visual check.
 
 ## Useful Commands
 
@@ -241,6 +258,8 @@ The latest MusicXML display change may partly address the part-name spacing issu
 git status --short
 npm test
 npm run check
+npm run docker:dev
+npm run docker:dev:down
 docker compose up -d --build
 docker compose ps
 curl -sS http://127.0.0.1:5173/health
@@ -253,5 +272,5 @@ docker compose down
 ## Suggested Prompt For A New Session
 
 ```text
-Please read HANDOFF.md, README.md, TODO.md, and git status. Continue from the current committed state. First verify the app in Docker with a real Audiotool project if possible, then help decide whether the MusicXML part-heading approach needs any visual spacing adjustment.
+Please read AGENTS.md, HANDOFF.md, README.md, TODO.md, and git status. Continue from the current committed state. First verify the app in Docker or Docker dev with a real Audiotool project if possible, then keep TODO.md updated as tasks are completed.
 ```

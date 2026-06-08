@@ -26,13 +26,13 @@
 
 .auth-copy strong {
   color: var(--paper);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 760;
 }
 
 .auth-copy span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .auth-button {

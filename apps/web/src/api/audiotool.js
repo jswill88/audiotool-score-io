@@ -14,8 +14,7 @@ export async function convertAudiotoolProject({
   tracks,
   mode,
   quantize,
-  grid,
-  includeMidi
+  grid
 }) {
   const response = await fetch(`${apiBaseUrl}/audiotool/convert`, {
     method: 'POST',
@@ -28,8 +27,7 @@ export async function convertAudiotoolProject({
       tracks,
       mode,
       quantize,
-      grid,
-      includeMidi
+      grid
     })
   });
 

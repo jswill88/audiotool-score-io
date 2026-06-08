@@ -9,10 +9,11 @@
 
 .project-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 32px;
   align-items: center;
-  min-height: 44px;
-  padding: 8px 10px;
+  gap: 6px;
+  min-height: 48px;
+  padding: 4px;
   text-align: left;
 }
 
@@ -28,18 +29,80 @@
   box-shadow: inset 3px 0 0 var(--brass-strong);
 }
 
-.project-row span,
-.project-row small {
+.project-row.is-loading {
+  border-color: rgba(35, 199, 183, 0.42);
+  background:
+    linear-gradient(180deg, rgba(30, 54, 50, 0.78), rgba(28, 25, 23, 0.98)),
+    var(--console-3);
+}
+
+.project-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.project-select:disabled {
+  cursor: wait;
+  opacity: 1;
+}
+
+.project-link {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.project-link:hover {
+  border-color: rgba(35, 199, 183, 0.38);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.project-select span,
+.project-select small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.project-row span {
+.project-select span {
   font-weight: 720;
 }
 
-.project-row small {
+.project-select-meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: 6px;
   color: var(--muted);
-  font-size: 12px;
+}
+
+.project-select-meta small {
+  min-width: 0;
+}
+
+.project-spinner {
+  flex: 0 0 auto;
+  color: var(--teal);
+}
+
+.project-select small {
+  color: var(--muted);
+  font-size: 14px;
 }

@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 68px;
+  min-height: 78px;
   padding: 11px 14px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
@@ -43,20 +43,10 @@
 }
 
 h1 {
-  font-family: var(--serif);
-  font-size: 20px;
-  line-height: 1.12;
-  font-weight: 700;
-}
-
-.brand-lockup p {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: min(56vw, 720px);
+  font-family: var(--display-script);
+  font-size: 44px;
+  line-height: 1;
+  font-weight: 400;
 }
 
 @media (max-width: 760px) {
@@ -64,10 +54,5 @@ h1 {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
-  }
-
-  .brand-lockup p {
-    max-width: 100%;
-    white-space: normal;
   }
 }

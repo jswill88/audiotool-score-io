@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ChevronDown,
   FileCode,
   ListMusic,
@@ -17,7 +18,6 @@ const gridOptions = [4, 8, 12, 16, 24, 32, 48, 64];
 export function TracksPanel({
   canConvert,
   grid,
-  includeMidi,
   manifest,
   mode,
   onConvert,
@@ -26,11 +26,14 @@ export function TracksPanel({
   selectedProject,
   selectedTrackIds,
   setGrid,
-  setIncludeMidi,
   setMode,
   setQuantize,
   status
 }) {
+  const trackError = status?.phase === 'error' && status?.area === 'tracks'
+    ? status.message
+    : '';
+
   return (
     <section className="panel tracks-panel">
       <div className="panel-header">
@@ -39,10 +42,19 @@ export function TracksPanel({
       </div>
 
       <TrackList
+        selectedProject={selectedProject}
+        status={status}
         tracks={manifest?.tracks ?? []}
         selectedTrackIds={selectedTrackIds}
         onToggle={onTrackToggle}
       />
+
+      {trackError ? (
+        <div className="panel-error" role="alert">
+          <AlertTriangle size={15} aria-hidden="true" />
+          <span>{trackError}</span>
+        </div>
+      ) : null}
 
       <div className="options-bar">
         <SectionTitle icon={<SlidersHorizontal size={17} />} title="Options" />
@@ -71,14 +83,6 @@ export function TracksPanel({
             ))}
           </select>
           <ChevronDown size={14} aria-hidden="true" />
-        </label>
-        <label className="check-row compact">
-          <input
-            type="checkbox"
-            checked={includeMidi}
-            onChange={(event) => setIncludeMidi(event.target.checked)}
-          />
-          <span>MIDI</span>
         </label>
         <button
           className="primary-button"

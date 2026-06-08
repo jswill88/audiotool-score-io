@@ -27,7 +27,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 36px;
+  height: 38px;
   gap: 6px;
   color: var(--muted);
 }

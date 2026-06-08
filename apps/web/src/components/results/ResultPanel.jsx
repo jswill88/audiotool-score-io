@@ -9,10 +9,17 @@ export function ResultPanel({
   activeFile,
   activeFileName,
   activeResult,
+  selectedProject,
   setActiveFileName,
   setViewerTab,
   viewerTab
 }) {
+  const scorePaneKey = [
+    selectedProject?.reference ?? 'no-project',
+    activeResult?.downloadUrl ?? 'no-result',
+    activeFile?.name ?? 'no-file'
+  ].join(':');
+
   return (
     <section className="panel viewer-panel">
       <div className="viewer-header">
@@ -47,7 +54,7 @@ export function ResultPanel({
       ) : null}
 
       {viewerTab === 'score' ? (
-        <ScorePane xml={activeFile?.xml ?? ''} />
+        <ScorePane key={scorePaneKey} selectedProject={selectedProject} xml={activeFile?.xml ?? ''} />
       ) : (
         <XmlPane xml={activeFile?.xml ?? ''} />
       )}

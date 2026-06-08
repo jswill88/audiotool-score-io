@@ -1,8 +1,7 @@
 import { Music } from 'lucide-react';
-import { StatusBadge } from '../StatusBadge.jsx';
 import './AppHeader.css';
 
-export function AppHeader({ status }) {
+export function AppHeader() {
   return (
     <header className="topbar">
       <div className="brand-lockup">
@@ -11,10 +10,8 @@ export function AppHeader({ status }) {
         </div>
         <div>
           <h1>Audiotool Score Export</h1>
-          <p>{status.message}</p>
         </div>
       </div>
-      <StatusBadge status={status} />
     </header>
   );
 }

@@ -9,7 +9,8 @@ export function SidebarPanel({
   projectInput,
   projects,
   selectedProject,
-  setProjectInput
+  setProjectInput,
+  status
 }) {
   return (
     <aside className="panel sidebar-panel">
@@ -23,6 +24,7 @@ export function SidebarPanel({
         projects={projects}
         selectedProject={selectedProject}
         setProjectInput={setProjectInput}
+        status={status}
       />
     </aside>
   );
