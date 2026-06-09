@@ -262,6 +262,22 @@ describe('audiotool-to-midi export', () => {
     assert.equal(midi.header.name, 'Project Sonata');
   });
 
+  it('marks combined score tracks as separate single-staff MIDI instruments', () => {
+    const result = exportAudiotoolEntitiesToMidi(basicProject());
+    const midi = readMidi(result.files[0].bytes);
+
+    assert.deepEqual(midi.tracks.map((track) => track.name), [
+      'Track 1 - Lead Synth',
+      'Track 2 - Arp Box'
+    ]);
+    assert.deepEqual(midi.tracks.map((track) => track.channel), [0, 1]);
+    assert.deepEqual(midi.tracks.map((track) => track.instrument.number), [80, 80]);
+    assert.deepEqual(midi.tracks.map((track) => track.instrument.family), [
+      'synth lead',
+      'synth lead'
+    ]);
+  });
+
   it('writes the Audiotool project BPM into exported MIDI files', () => {
     const project = basicProject().map((item) => (
       item.type === 'config' ? { ...item, bpm: 96 } : item

@@ -25,6 +25,15 @@ As of this handoff, the latest MusicXML display cleanup is part of the intended 
 
 The main files involved are:
 
+- `CODEMAP.md`
+- `README.md`
+- `apps/web/src/auth/audiotoolAuth.js`
+- `apps/web/src/hooks/useAudiotoolBrowserAuth.js`
+- `apps/api/src/routes/audiotool.js`
+- `apps/api/src/audiotool/request.js`
+- `apps/api/src/audiotool/output.js`
+- `packages/audiotool-to-midi/src/render.js`
+- `packages/audiotool-to-midi/test/export.test.js`
 - `packages/midi-to-musicxml/src/musicxml.js`
 - `packages/midi-to-musicxml/src/midi.js`
 - `packages/midi-to-musicxml/src/index.js`
@@ -36,17 +45,25 @@ What the latest cleanup does:
 - Remove MusicXML `<movement-title>` so it does not display as an extra score title.
 - Keep `<work-title>` for project/title metadata.
 - Clean MuseScore-generated part labels like `Piano, Track 1 - Lead` to `Lead (1)`.
+- Clean MuseScore-generated part labels with non-piano MIDI instrument prefixes like `Lead 1 (square), Track 1 - Lead` to `Lead (1)`.
 - Keep single-part labels in MusicXML's default `<part-name>` position instead of inserting a bold above-staff `<direction><words>...`.
-- Remove MuseScore `Pno.` part abbreviations from Audiotool track exports.
+- Remove generated MuseScore part abbreviations from Audiotool track exports.
+- Stamp Audiotool-generated MIDI tracks with separate non-percussion channels and single-staff synth/pad programs before MuseScore import, so selected tracks stay independent parts instead of collapsing into a piano grand staff.
 - Keep the ending double bar behavior.
+- Add `CODEMAP.md` as a human-oriented navigation guide and link it from `README.md`.
+- Keep `apps/api/src/routes/audiotool.js` focused on route flow; Audiotool request/auth parsing now lives in `apps/api/src/audiotool/request.js`, and conversion output/archive helpers live in `apps/api/src/audiotool/output.js`.
+- Guard Audiotool browser sign-in for missing `crypto.subtle.digest`; unsupported/insecure origins now show an in-app auth error instead of an uncaught login promise rejection.
 
 Last verified commands:
 
 ```bash
+npm test --workspace @midi-to-xml/audiotool-to-midi
+npm run check --workspace @midi-to-xml/audiotool-to-midi
 npm test --workspace @midi-to-xml/midi-to-musicxml
 npm run check --workspace @midi-to-xml/midi-to-musicxml
 npm test
 npm run check
+node --input-type=module -e "await import('./apps/api/src/app.js'); console.log('api import ok');"
 docker compose up -d --build
 curl -sS http://127.0.0.1:5173/health
 ```
@@ -152,6 +169,8 @@ http://127.0.0.1:5173/
 
 `VITE_AUDIOTOOL_REDIRECT_URL` can stay blank so the app uses the current origin.
 
+Audiotool browser sign-in uses Web Crypto for OAuth. Open the app through `http://127.0.0.1:5173/`, `http://localhost:5173/`, or HTTPS. Insecure LAN or `0.0.0.0` origins may hide `crypto.subtle.digest`; the app now detects that and shows an auth-panel error.
+
 The current scope default is:
 
 ```text
@@ -195,6 +214,7 @@ Current behavior:
 - Track IDs remain the stable Audiotool entity IDs internally.
 - UI track labels use normalized visual order numbers like `Track 1 - Lead`.
 - MusicXML part labels use player names with visual order suffixes like `Lead (1)`.
+- Audiotool-generated MIDI assigns each selected track a distinct non-percussion channel and a single-staff synth/pad program; MIDI quantization preserves those import hints.
 - Empty tracks are disabled/not selectable for conversion.
 - Track manifests/UI only track whether a track has notes; exact note counts are not exposed.
 - Drum-machine tracks, especially Beatbox 8/9, are skipped by default.
@@ -238,8 +258,6 @@ DEFAULT_QUANTIZATION_GRID=24
 From `TODO.md`, the most relevant remaining items are:
 
 - Add a favicon.
-- Find confusing code and refactor, especially long files.
-- Add a loading indicator while the score display is being prepared.
 - Future: score playback/follow-along, browser play controls, drum notation mapping, TypeScript, accessibility.
 
 ## Good Next-Session Checklist

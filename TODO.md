@@ -23,11 +23,11 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 - [x] Update the color scheme toward a modern DAW look with classical/Mozart hints.
 - [x] Use visual track order numbers in labels instead of raw Audiotool entity ids.
-- [ ] Find confusing code and refactor. Look especially for very long files
+- [x] Find confusing code and refactor. Look especially for very long files
 - [x] There should be a loading indicator when the score is being prepared to be displayed
 - [x] Create link to project
 - [x] Loading spinners for opening/inspecting projects
-- [ ] Sometimes parts appear to be merged into one double staff when they should be separate parts
+- [x] Sometimes parts appear to be merged into one double staff when they should be separate parts
 
 ## Documentation
 

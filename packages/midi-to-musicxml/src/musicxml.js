@@ -68,11 +68,11 @@ function normalizeScorePartName(scorePartXml) {
   }
 
   const partName = unescapeXmlText(partNameMatch[1]);
-  const midiPartName = removeMuseScoreMidiPianoPrefix(partName);
+  const midiPartName = removeMuseScoreMidiInstrumentPrefix(partName);
   const normalizedName = normalizeMuseScoreMidiPartName(partName);
-  const shouldRemovePianoAbbreviation = normalizedName !== partName || isAudiotoolTrackName(midiPartName);
+  const shouldRemoveGeneratedAbbreviation = normalizedName !== partName || isAudiotoolTrackName(midiPartName);
 
-  if (normalizedName === partName && !shouldRemovePianoAbbreviation) {
+  if (normalizedName === partName && !shouldRemoveGeneratedAbbreviation) {
     return { xml: scorePartXml, generatedHeadingNames: [] };
   }
 
@@ -80,23 +80,24 @@ function normalizeScorePartName(scorePartXml) {
   const partNameXml = `<part-name>${escapedName}</part-name>`;
   const xml = scorePartXml
     .replace(/<part-name\b[^>]*>[\s\S]*?<\/part-name>/i, partNameXml)
-    .replace(/\s*<part-abbreviation>Pno\.<\/part-abbreviation>/i, '');
+    .replace(/\s*<part-abbreviation\b[^>]*>[\s\S]*?<\/part-abbreviation>/i, '');
 
   return {
     xml,
-    generatedHeadingNames: [
+    generatedHeadingNames: uniqueNames([
+      partName,
       midiPartName,
       normalizedName
-    ].filter((name) => isAudiotoolTrackName(name) || name !== partName)
+    ].filter(Boolean))
   };
 }
 
 function normalizeMuseScoreMidiPartName(name) {
-  return formatAudiotoolTrackName(removeMuseScoreMidiPianoPrefix(name));
+  return formatAudiotoolTrackName(removeMuseScoreMidiInstrumentPrefix(name));
 }
 
-function removeMuseScoreMidiPianoPrefix(name) {
-  return name.replace(/^Piano\s*,?\s*(Track\s+\d+\b[\s\S]*)$/i, '$1');
+function removeMuseScoreMidiInstrumentPrefix(name) {
+  return name.replace(/^[\s\S]*,\s*(Track\s+\d+\b[\s\S]*)$/i, '$1');
 }
 
 function formatAudiotoolTrackName(name) {
@@ -208,6 +209,10 @@ function escapeXmlText(value) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function uniqueNames(names) {
+  return [...new Set(names)];
 }
 
 function unescapeXmlText(value) {

@@ -135,6 +135,29 @@ test('applyMusicXmlPartNames formats multi-part Audiotool labels as names with t
   assert.doesNotMatch(xml, /<words\b[^>]*>Lead \(1\)<\/words>/);
 });
 
+test('applyMusicXmlPartNames strips non-piano MuseScore MIDI prefixes from Audiotool labels', () => {
+  const xml = applyMusicXmlPartNames(`
+    <score-partwise version="3.1">
+      <part-list>
+        <score-part id="P1">
+          <part-name>Lead 1 (square), Track 1 - Lead</part-name>
+          <part-abbreviation>Ld.</part-abbreviation>
+        </score-part>
+        <score-part id="P2">
+          <part-name>Grand Piano</part-name>
+          <part-abbreviation>Pno.</part-abbreviation>
+        </score-part>
+      </part-list>
+    </score-partwise>
+  `);
+
+  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
+  assert.doesNotMatch(xml, /Lead 1 \(square\), Track 1 - Lead/);
+  assert.doesNotMatch(xml, /<part-abbreviation>Ld\.<\/part-abbreviation>/);
+  assert.match(xml, /<part-name>Grand Piano<\/part-name>/);
+  assert.match(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>/);
+});
+
 test('applyMusicXmlPartNames keeps single-part Audiotool labels in the default part-name position', () => {
   const xml = applyMusicXmlPartNames(`
     <score-partwise version="3.1">
@@ -180,6 +203,32 @@ test('applyMusicXmlPartNames removes old generated single-part headings', () => 
   assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
   assert.doesNotMatch(xml, /<part-name\b[^>]*print-object="no"[^>]*>/);
   assert.doesNotMatch(xml, /<words\b[^>]*>Track 1 - Lead<\/words>/);
+});
+
+test('applyMusicXmlPartNames removes generated single-part headings with instrument prefixes', () => {
+  const xml = applyMusicXmlPartNames(`
+    <score-partwise version="3.1">
+      <part-list>
+        <score-part id="P1">
+          <part-name>Lead 1 (square), Track 1 - Lead</part-name>
+          <part-abbreviation>Ld.</part-abbreviation>
+        </score-part>
+      </part-list>
+      <part id="P1">
+        <measure number="1">
+          <direction placement="above">
+            <direction-type>
+              <words font-size="14" font-weight="bold">Lead 1 (square), Track 1 - Lead</words>
+            </direction-type>
+          </direction>
+        </measure>
+      </part>
+    </score-partwise>
+  `);
+
+  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
+  assert.doesNotMatch(xml, /Lead 1 \(square\), Track 1 - Lead/);
+  assert.doesNotMatch(xml, /<part-abbreviation>Ld\.<\/part-abbreviation>/);
 });
 
 test('convertMidiToMusicXml can bypass quantization and send the original MIDI to MuseScore', async (t) => {

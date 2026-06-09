@@ -22,6 +22,20 @@ import { audiotoolTicksToMidiTicks } from './ticks.js';
 
 const { Midi } = tonejsMidi;
 
+const notationMidiChannels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
+const singleStaffMidiPrograms = [
+  80, // lead 1 (square)
+  81, // lead 2 (sawtooth)
+  88, // pad 1 (new age)
+  89, // pad 2 (warm)
+  90, // pad 3 (polysynth)
+  91, // pad 4 (choir)
+  92, // pad 5 (bowed)
+  93, // pad 6 (metallic)
+  94, // pad 7 (halo)
+  95 // pad 8 (sweep)
+];
+
 export const OutputModes = Object.freeze({
   Combined: 'combined',
   Separate: 'separate',
@@ -212,14 +226,22 @@ function buildMidi({ context, tracks, options, warnings }) {
   ];
   midi.header.update();
 
-  for (const trackManifest of tracks) {
+  for (const [trackIndex, trackManifest] of tracks.entries()) {
     const track = midi.addTrack();
     track.name = trackManifest.label;
+    applyNotationMidiIdentity(track, trackIndex);
 
     addNotesForTrack(track, trackManifest, context, options, warnings);
   }
 
   return midi;
+}
+
+function applyNotationMidiIdentity(track, trackIndex) {
+  track.channel = notationMidiChannels[trackIndex % notationMidiChannels.length];
+  track.instrument.number = singleStaffMidiPrograms[
+    Math.floor(trackIndex / notationMidiChannels.length) % singleStaffMidiPrograms.length
+  ];
 }
 
 function addNotesForTrack(midiTrack, trackManifest, context, options, warnings) {

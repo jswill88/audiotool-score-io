@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   audiotoolAuthConfig,
+  formatAudiotoolBrowserAuthError,
+  readAudiotoolBrowserAuthSupportError,
   isAudiotoolAuthConfigured
 } from '../auth/audiotoolAuth.js';
 
-const initialState = {
-  phase: isAudiotoolAuthConfigured() ? 'loading' : 'unconfigured',
-  client: null,
-  error: ''
-};
-
 export function useAudiotoolBrowserAuth() {
-  const [state, setState] = useState(initialState);
+  const [state, setState] = useState(createInitialState);
 
   useEffect(() => {
     let cancelled = false;
@@ -22,6 +18,17 @@ export function useAudiotoolBrowserAuth() {
           phase: 'unconfigured',
           client: null,
           error: 'Set VITE_AUDIOTOOL_CLIENT_ID to enable Audiotool login.'
+        });
+        return;
+      }
+
+      const supportError = readAudiotoolBrowserAuthSupportError();
+
+      if (supportError) {
+        setState({
+          phase: 'error',
+          client: null,
+          error: supportError
         });
         return;
       }
@@ -51,7 +58,7 @@ export function useAudiotoolBrowserAuth() {
           setState({
             phase: 'error',
             client: null,
-            error: error.message
+            error: formatAudiotoolBrowserAuthError(error)
           });
         }
       }
@@ -64,9 +71,28 @@ export function useAudiotoolBrowserAuth() {
     };
   }, []);
 
-  const login = useCallback(() => {
+  const login = useCallback(async () => {
+    const supportError = readAudiotoolBrowserAuthSupportError();
+
+    if (supportError) {
+      setState({
+        phase: 'error',
+        client: null,
+        error: supportError
+      });
+      return;
+    }
+
     if (state.client?.status === 'unauthenticated') {
-      state.client.login();
+      try {
+        await state.client.login();
+      } catch (error) {
+        setState({
+          phase: 'error',
+          client: null,
+          error: formatAudiotoolBrowserAuthError(error)
+        });
+      }
     }
   }, [state.client]);
 
@@ -95,5 +121,23 @@ export function useAudiotoolBrowserAuth() {
     login,
     logout,
     exportServerAuth
+  };
+}
+
+function createInitialState() {
+  if (!isAudiotoolAuthConfigured()) {
+    return {
+      phase: 'unconfigured',
+      client: null,
+      error: ''
+    };
+  }
+
+  const supportError = readAudiotoolBrowserAuthSupportError();
+
+  return {
+    phase: supportError ? 'error' : 'loading',
+    client: null,
+    error: supportError
   };
 }

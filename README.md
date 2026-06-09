@@ -9,6 +9,8 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 - `apps/api`: Express API that wraps the packages for upload/conversion workflows.
 - `apps/web`: React browser app for Audiotool sign-in, project/track selection, conversion, and MusicXML viewing.
 
+For a file-by-file navigation guide, see [`CODEMAP.md`](CODEMAP.md).
+
 ## Run locally
 
 Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that are not available in Node 20.
@@ -34,6 +36,8 @@ Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that ar
    ```
 
    Then set `VITE_AUDIOTOOL_CLIENT_ID` in `.env`. The client ID is safe to expose in the browser.
+   Audiotool browser sign-in uses Web Crypto for OAuth. Open the app through `http://127.0.0.1:5173/`,
+   `http://localhost:5173/`, or HTTPS; browser sign-in can fail on insecure LAN or `0.0.0.0` origins.
 
 4. Start the server:
 
