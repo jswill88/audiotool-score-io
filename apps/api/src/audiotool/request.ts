@@ -1,4 +1,5 @@
 import { createAudiotoolSession } from '@midi-to-xml/audiotool-to-midi';
+import type { Request } from 'express';
 import {
   audiotoolClientId,
   audiotoolPat
@@ -9,12 +10,22 @@ import {
   parseQuantizationGrid,
   queryValue
 } from '../utils/query.js';
+import type {
+  AudiotoolAuth,
+  AudiotoolBrowserAuth,
+  AudiotoolClient,
+  AudiotoolOutputMode,
+  AudiotoolProjectListResult,
+  ConversionRequestOptions,
+  InspectOptions,
+  ProjectListOptions
+} from '../types.js';
 
-export async function createRequestAudiotoolSession(req) {
+export async function createRequestAudiotoolSession(req: Request): Promise<AudiotoolClient> {
   return createAudiotoolSession(readAudiotoolAuth(req));
 }
 
-export function readProjectReference(req) {
+export function readProjectReference(req: Request): string {
   const project = req.body?.projectUrl ??
     req.body?.projectReference ??
     req.body?.project ??
@@ -27,7 +38,7 @@ export function readProjectReference(req) {
   return project;
 }
 
-export function readInspectOptions(req) {
+export function readInspectOptions(req: Request): InspectOptions {
   return {
     includeDetails: readBooleanBody(req.body?.includeDetails, true, 'includeDetails'),
     start: readBooleanBody(req.body?.start, true, 'start'),
@@ -35,7 +46,7 @@ export function readInspectOptions(req) {
   };
 }
 
-export function readProjectListOptions(req) {
+export function readProjectListOptions(req: Request): ProjectListOptions {
   return {
     pageSize: readPositiveInteger(req.body?.pageSize, 25, 'pageSize'),
     pageToken: stringifyOptional(req.body?.pageToken) ?? '',
@@ -44,7 +55,7 @@ export function readProjectListOptions(req) {
   };
 }
 
-export function readConversionRequestOptions(req) {
+export function readConversionRequestOptions(req: Request): ConversionRequestOptions {
   return {
     mode: readAudiotoolOutputMode(req.body?.mode ?? req.body?.outputMode ?? req.query.mode),
     tracks: readTrackSelection(req.body?.tracks ?? req.body?.trackIds),
@@ -77,17 +88,21 @@ export function readConversionRequestOptions(req) {
   };
 }
 
-export function throwIfAudiotoolServiceError(result) {
+export function throwIfAudiotoolServiceError(
+  result: AudiotoolProjectListResult
+): asserts result is Exclude<AudiotoolProjectListResult, Error> {
   if (!(result instanceof Error)) {
     return;
   }
 
-  const message = result.cause?.message ?? result.message;
+  const cause = result.cause;
+  const causeMessage = cause instanceof Error ? cause.message : undefined;
+  const message = causeMessage ?? result.message;
   const statusCode = message.includes('unauthenticated') ? 401 : 502;
   throw new ClientError(message, statusCode);
 }
 
-function readAudiotoolAuth(req) {
+function readAudiotoolAuth(req: Request): AudiotoolAuth {
   const tokenData = req.body?.audiotoolAuth ?? req.body?.authTokens ?? req.body?.tokens;
 
   if (tokenData !== undefined && tokenData !== null) {
@@ -96,7 +111,7 @@ function readAudiotoolAuth(req) {
 
   const headerValue = req.get('authorization') ?? '';
   const bearerToken = headerValue.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-  const bodyToken = req.body?.authToken ?? req.body?.pat;
+  const bodyToken = stringifyOptional(req.body?.authToken ?? req.body?.pat);
   const token = bearerToken || bodyToken || audiotoolPat;
 
   if (!token) {
@@ -109,15 +124,16 @@ function readAudiotoolAuth(req) {
   return { pat: token };
 }
 
-function readAudiotoolBrowserAuth(tokenData) {
-  if (typeof tokenData !== 'object') {
+function readAudiotoolBrowserAuth(tokenData: unknown): AudiotoolBrowserAuth {
+  if (!tokenData || typeof tokenData !== 'object') {
     throw new ClientError('"audiotoolAuth" must be an object with accessToken, refreshToken, expiresAt, and clientId.');
   }
 
-  const accessToken = stringifyOptional(tokenData.accessToken)?.trim();
-  const refreshToken = stringifyOptional(tokenData.refreshToken)?.trim();
-  const expiresAt = Number(tokenData.expiresAt);
-  const clientId = stringifyOptional(tokenData.clientId ?? audiotoolClientId)?.trim();
+  const data = tokenData as Record<string, unknown>;
+  const accessToken = stringifyOptional(data.accessToken)?.trim();
+  const refreshToken = stringifyOptional(data.refreshToken)?.trim();
+  const expiresAt = Number(data.expiresAt);
+  const clientId = stringifyOptional(data.clientId ?? audiotoolClientId)?.trim();
 
   if (!accessToken || !refreshToken || !Number.isFinite(expiresAt) || !clientId) {
     throw new ClientError('"audiotoolAuth" must include accessToken, refreshToken, expiresAt, and clientId.');
@@ -131,7 +147,7 @@ function readAudiotoolBrowserAuth(tokenData) {
   };
 }
 
-function readPositiveInteger(value, fallback, name) {
+function readPositiveInteger(value: unknown, fallback: number, name: string): number {
   if (value === undefined) return fallback;
 
   const number = Number(value);
@@ -143,10 +159,10 @@ function readPositiveInteger(value, fallback, name) {
   return number;
 }
 
-function readAudiotoolOutputMode(value = 'combined') {
+function readAudiotoolOutputMode(value: unknown = 'combined'): AudiotoolOutputMode {
   const mode = stringifyOptional(value) ?? 'combined';
   const normalized = mode.toLowerCase();
-  const aliases = new Map([
+  const aliases = new Map<string, AudiotoolOutputMode>([
     ['score', 'combined'],
     ['combined', 'combined'],
     ['parts', 'separate'],
@@ -154,14 +170,16 @@ function readAudiotoolOutputMode(value = 'combined') {
     ['both', 'both']
   ]);
 
-  if (!aliases.has(normalized)) {
+  const outputMode = aliases.get(normalized);
+
+  if (!outputMode) {
     throw new ClientError('Audiotool output mode must be "score", "combined", "parts", "separate", or "both".');
   }
 
-  return aliases.get(normalized);
+  return outputMode;
 }
 
-function readTrackSelection(value) {
+function readTrackSelection(value: unknown): string[] | undefined {
   if (value === undefined || value === null || value === 'all') {
     return undefined;
   }
@@ -180,7 +198,7 @@ function readTrackSelection(value) {
   throw new ClientError('"tracks" must be an array, a comma-separated string, or omitted.');
 }
 
-function readBooleanBody(value, fallback, name) {
+function readBooleanBody(value: unknown, fallback: boolean, name: string): boolean {
   if (value === undefined) return fallback;
   if (typeof value === 'boolean') return value;
   if (value === 'true') return true;
@@ -188,7 +206,7 @@ function readBooleanBody(value, fallback, name) {
   throw new ClientError(`"${name}" must be true or false.`);
 }
 
-function stringifyOptional(value) {
+function stringifyOptional(value: unknown): string | undefined {
   if (value === undefined) return undefined;
   return String(value);
 }

@@ -13,6 +13,7 @@ statusRouter.get('/ready', async (_req, res) => {
     const status = await readMuseScoreStatus(conversionOptions);
     res.json({ status: 'ready', ...status });
   } catch (error) {
-    res.status(503).json({ status: 'not_ready', error: error.message });
+    const message = error instanceof Error ? error.message : 'Unexpected readiness error';
+    res.status(503).json({ status: 'not_ready', error: message });
   }
 });

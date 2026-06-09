@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 
-export async function cleanupFiles(files) {
+export async function cleanupFiles(files: Array<string | undefined>) {
   await Promise.all(files.map(async (filePath) => {
     if (!filePath) return;
     try {

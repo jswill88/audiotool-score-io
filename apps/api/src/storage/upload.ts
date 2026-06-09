@@ -19,7 +19,12 @@ export const upload = multer({
   },
   fileFilter(_req, file, cb) {
     const isMidi = /\.mid$|\.midi$/i.test(file.originalname);
-    cb(isMidi ? null : new Error('Only MIDI files are accepted'), isMidi);
+    if (isMidi) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error('Only MIDI files are accepted'));
   }
 });
 

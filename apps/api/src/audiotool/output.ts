@@ -7,6 +7,13 @@ import {
   conversionOptions,
   uploadDir
 } from '../config/env.js';
+import type {
+  AudiotoolMidiFile,
+  AudiotoolMidiResult,
+  AudiotoolProjectDetails,
+  MusicXmlFile,
+  ProjectLike
+} from '../types.js';
 
 export async function createAudiotoolWorkDir() {
   const workDir = path.join(uploadDir, `audiotool-${Date.now()}-${randomUUID()}`);
@@ -20,15 +27,21 @@ export async function convertMidiFilesToMusicXml({
   quantize,
   grid,
   title
-}) {
-  const outputs = [];
+}: {
+  midiFiles: AudiotoolMidiFile[];
+  workDir: string;
+  quantize: boolean;
+  grid: Parameters<typeof convertMidiToMusicXml>[0]['grid'];
+  title: string;
+}): Promise<MusicXmlFile[]> {
+  const outputs: MusicXmlFile[] = [];
 
   for (const midiFile of midiFiles) {
     const baseName = sanitizeFileBase(path.parse(midiFile.name).name || midiFile.kind);
     const inputPath = path.join(workDir, `${baseName}.mid`);
     const outputPath = path.join(workDir, `${baseName}.musicxml`);
 
-    await fs.writeFile(inputPath, Buffer.from(midiFile.bytes));
+    await fs.writeFile(inputPath, bytesToBuffer(midiFile.bytes));
     await convertMidiToMusicXml({
       inputPath,
       outputPath,
@@ -54,6 +67,11 @@ export async function createAudiotoolArchive({
   midiResult,
   musicXmlFiles,
   includeMidi
+}: {
+  details: AudiotoolProjectDetails;
+  midiResult: AudiotoolMidiResult;
+  musicXmlFiles: MusicXmlFile[];
+  includeMidi: boolean;
 }) {
   const zip = new AdmZip();
   const manifest = {
@@ -64,7 +82,7 @@ export async function createAudiotoolArchive({
     tracks: midiResult.tracks,
     exportedTracks: midiResult.exportedTracks,
     warnings: midiResult.warnings,
-    files: musicXmlFiles.map((file) => ({
+    files: musicXmlFiles.map((file: MusicXmlFile) => ({
       kind: file.kind,
       name: file.name,
       trackIds: file.trackIds
@@ -79,14 +97,14 @@ export async function createAudiotoolArchive({
 
   if (includeMidi) {
     for (const file of midiResult.files) {
-      zip.addFile(`midi/${sanitizeFileName(file.name)}`, Buffer.from(file.bytes));
+      zip.addFile(`midi/${sanitizeFileName(file.name)}`, bytesToBuffer(file.bytes));
     }
   }
 
   return zip.toBuffer();
 }
 
-export function serializeProject(project) {
+export function serializeProject(project: ProjectLike | null | undefined) {
   if (!project) {
     return null;
   }
@@ -95,31 +113,33 @@ export function serializeProject(project) {
     return project.toJson();
   }
 
-  return JSON.parse(JSON.stringify(project, (_key, value) => {
+  return JSON.parse(JSON.stringify(project, (_key: string, value: unknown) => {
     return typeof value === 'bigint' ? value.toString() : value;
   }));
 }
 
-export function buildArchiveName(project) {
+export function buildArchiveName(project: ProjectLike | null | undefined) {
   const projectName = sanitizeFileBase(readProjectTitle(project));
   return `${projectName}.zip`;
 }
 
-export function readProjectTitle(project) {
-  return (
+export function readProjectTitle(project: ProjectLike | null | undefined) {
+  const title = (
     project?.displayName ||
     project?.title ||
-    project?.name?.split('/').pop() ||
+    (typeof project?.name === 'string' ? project.name.split('/').pop() : undefined) ||
     'Audiotool Export'
   );
+
+  return String(title);
 }
 
-export async function cleanupWorkDir(workDir) {
+export async function cleanupWorkDir(workDir: string | undefined) {
   if (!workDir) return;
   await fs.rm(workDir, { recursive: true, force: true });
 }
 
-function sanitizeFileBase(value) {
+function sanitizeFileBase(value: unknown) {
   const sanitized = String(value)
     .replace(/\.[^.]+$/, '')
     .replace(/[^a-zA-Z0-9._-]/g, '-')
@@ -129,7 +149,11 @@ function sanitizeFileBase(value) {
   return sanitized || 'audiotool-export';
 }
 
-function sanitizeFileName(value) {
+function bytesToBuffer(bytes: AudiotoolMidiFile['bytes']) {
+  return bytes instanceof ArrayBuffer ? Buffer.from(bytes) : Buffer.from(bytes);
+}
+
+function sanitizeFileName(value: unknown) {
   const parsed = path.parse(String(value));
   return `${sanitizeFileBase(parsed.name)}${parsed.ext.replace(/[^a-zA-Z0-9.]/g, '')}`;
 }

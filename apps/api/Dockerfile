@@ -21,6 +21,7 @@ COPY packages packages
 COPY apps/api apps/api
 
 RUN npm run build --workspace @midi-to-xml/midi-to-musicxml \
+  && npm run build --workspace @midi-to-xml/api \
   && npm prune --omit=dev
 
 ENV NODE_ENV=production

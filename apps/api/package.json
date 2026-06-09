@@ -4,10 +4,12 @@
   "private": true,
   "description": "HTTP API for MIDI, MusicXML, and Audiotool conversion workflows.",
   "type": "module",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "check": "find src -name '*.js' -print0 | xargs -0 -n1 node --check",
-    "start": "node src/server.js"
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm run build && find dist -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@midi-to-xml/audiotool-to-midi": "0.1.0",

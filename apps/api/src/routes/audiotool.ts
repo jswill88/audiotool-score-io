@@ -23,6 +23,7 @@ import {
   throwIfAudiotoolServiceError
 } from '../audiotool/request.js';
 import { ClientError } from '../errors/client-error.js';
+import type { AudiotoolMidiResult } from '../types.js';
 import { sendError } from '../utils/responses.js';
 
 export const audiotoolRouter = Router();
@@ -95,7 +96,7 @@ audiotoolRouter.post('/audiotool/inspect', async (req, res) => {
 });
 
 audiotoolRouter.post('/audiotool/convert', async (req, res) => {
-  let workDir;
+  let workDir: string | undefined;
 
   try {
     workDir = await createAudiotoolWorkDir();
@@ -105,10 +106,10 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
     const options = readConversionRequestOptions(req);
     const details = await getAudiotoolProjectDetails(client, projectReference);
     const projectTitle = readProjectTitle(details.project);
-    const midiResult = await withAudiotoolProject(
+    const midiResult = await withAudiotoolProject<AudiotoolMidiResult>(
       client,
       projectReference,
-      (document) => exportAudiotoolProjectToMidi(document, {
+      (document: unknown) => exportAudiotoolProjectToMidi(document, {
         mode: options.mode,
         tracks: options.tracks,
         title: projectTitle,

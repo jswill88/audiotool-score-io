@@ -39,7 +39,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] Show the score following along during playback.
 - [ ] Allow pressing play from the browser.
 - [ ] Allow mapping drum notation
-- [ ] Upgrade remaining API and Audiotool package to TypeScript; shared TS config, `apps/web`, and `packages/midi-to-musicxml` are done.
+- [ ] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and `packages/midi-to-musicxml` are done.
 - [ ] Check accessibility
 
 ## Notes

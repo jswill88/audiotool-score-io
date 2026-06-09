@@ -15,6 +15,7 @@ COPY apps/web/package.json apps/web/package.json
 RUN npm ci
 COPY . .
 RUN npm run build --workspace @midi-to-xml/midi-to-musicxml \
+  && npm run build --workspace @midi-to-xml/api \
   && npm prune --omit=dev
 
 ENV MUSESCORE_USE_XVFB=auto
