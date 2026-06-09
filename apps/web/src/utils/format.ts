@@ -1,4 +1,4 @@
-export function formatProjectDate(value) {
+export function formatProjectDate(value: string | undefined) {
   if (!value) return '';
 
   const date = new Date(value);
@@ -13,7 +13,7 @@ export function formatProjectDate(value) {
   }).format(date);
 }
 
-export function formatDeviceType(value) {
+export function formatDeviceType(value: string | null | undefined) {
   if (!value) return 'Note track';
 
   return String(value)

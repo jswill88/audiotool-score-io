@@ -1,21 +1,26 @@
 import fs from 'fs/promises';
 
-export async function writeMusicXmlTitle(filePath, title) {
+type ScorePartNameResult = {
+  xml: string;
+  generatedHeadingNames: string[];
+};
+
+export async function writeMusicXmlTitle(filePath: string, title?: string | null) {
   const xml = await fs.readFile(filePath, 'utf8');
   await fs.writeFile(filePath, applyMusicXmlTitle(xml, title));
 }
 
-export async function writeMusicXmlFinalBarline(filePath) {
+export async function writeMusicXmlFinalBarline(filePath: string) {
   const xml = await fs.readFile(filePath, 'utf8');
   await fs.writeFile(filePath, applyMusicXmlFinalBarline(xml));
 }
 
-export async function writeMusicXmlPartNames(filePath) {
+export async function writeMusicXmlPartNames(filePath: string) {
   const xml = await fs.readFile(filePath, 'utf8');
   await fs.writeFile(filePath, applyMusicXmlPartNames(xml));
 }
 
-export function applyMusicXmlTitle(xml, title) {
+export function applyMusicXmlTitle(xml: string, title?: string | null) {
   const resolvedTitle = normalizeTitle(title);
 
   if (!resolvedTitle) {
@@ -26,12 +31,12 @@ export function applyMusicXmlTitle(xml, title) {
   return removeMovementTitle(setWorkTitle(xml, escapedTitle));
 }
 
-export function applyMusicXmlPartNames(xml) {
+export function applyMusicXmlPartNames(xml: string) {
   const scorePartCount = [...xml.matchAll(/<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi)].length;
-  const singlePartHeadingNames = new Set();
+  const singlePartHeadingNames = new Set<string>();
   const updatedXml = xml.replace(
     /<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi,
-    (scorePartXml) => {
+    (scorePartXml: string) => {
       const result = normalizeScorePartName(scorePartXml);
 
       if (scorePartCount === 1) {
@@ -47,10 +52,10 @@ export function applyMusicXmlPartNames(xml) {
     : updatedXml;
 }
 
-export function applyMusicXmlFinalBarline(xml) {
+export function applyMusicXmlFinalBarline(xml: string) {
   const updatedXml = xml.replace(
     /<part(?=[\s>])[^>]*>[\s\S]*?<\/part>/gi,
-    (partXml) => addFinalBarlineToPart(partXml)
+    (partXml: string) => addFinalBarlineToPart(partXml)
   );
 
   if (updatedXml !== xml) {
@@ -60,14 +65,14 @@ export function applyMusicXmlFinalBarline(xml) {
   return addFinalBarlineToPart(xml);
 }
 
-function normalizeScorePartName(scorePartXml) {
+function normalizeScorePartName(scorePartXml: string): ScorePartNameResult {
   const partNameMatch = scorePartXml.match(/<part-name\b[^>]*>([\s\S]*?)<\/part-name>/i);
 
   if (!partNameMatch) {
     return { xml: scorePartXml, generatedHeadingNames: [] };
   }
 
-  const partName = unescapeXmlText(partNameMatch[1]);
+  const partName = unescapeXmlText(partNameMatch[1] ?? '');
   const midiPartName = removeMuseScoreMidiInstrumentPrefix(partName);
   const normalizedName = normalizeMuseScoreMidiPartName(partName);
   const shouldRemoveGeneratedAbbreviation = normalizedName !== partName || isAudiotoolTrackName(midiPartName);
@@ -92,15 +97,15 @@ function normalizeScorePartName(scorePartXml) {
   };
 }
 
-function normalizeMuseScoreMidiPartName(name) {
+function normalizeMuseScoreMidiPartName(name: string) {
   return formatAudiotoolTrackName(removeMuseScoreMidiInstrumentPrefix(name));
 }
 
-function removeMuseScoreMidiInstrumentPrefix(name) {
+function removeMuseScoreMidiInstrumentPrefix(name: string) {
   return name.replace(/^[\s\S]*,\s*(Track\s+\d+\b[\s\S]*)$/i, '$1');
 }
 
-function formatAudiotoolTrackName(name) {
+function formatAudiotoolTrackName(name: string) {
   const match = name.match(/^Track\s+(\d+)\s*-\s*(.+)$/i);
 
   if (!match) {
@@ -110,11 +115,11 @@ function formatAudiotoolTrackName(name) {
   return `${match[2].trim()} (${match[1]})`;
 }
 
-function isAudiotoolTrackName(name) {
+function isAudiotoolTrackName(name: string) {
   return /^Track\s+\d+\b/.test(name);
 }
 
-function removeGeneratedSinglePartHeadingDirections(xml, headingNames) {
+function removeGeneratedSinglePartHeadingDirections(xml: string, headingNames: Set<string>) {
   let updatedXml = xml;
 
   for (const headingName of headingNames) {
@@ -130,7 +135,7 @@ function removeGeneratedSinglePartHeadingDirections(xml, headingNames) {
   return updatedXml;
 }
 
-function addFinalBarlineToPart(xml) {
+function addFinalBarlineToPart(xml: string) {
   const measures = [...xml.matchAll(/<measure(?=[\s>])[^>]*>[\s\S]*?<\/measure>/gi)];
 
   if (measures.length === 0) {
@@ -141,16 +146,17 @@ function addFinalBarlineToPart(xml) {
   const measureXml = lastMeasure[0];
   const updatedMeasure = setFinalBarlineOnMeasure(measureXml);
 
-  return `${xml.slice(0, lastMeasure.index)}${updatedMeasure}${xml.slice(lastMeasure.index + measureXml.length)}`;
+  const measureIndex = lastMeasure.index ?? 0;
+  return `${xml.slice(0, measureIndex)}${updatedMeasure}${xml.slice(measureIndex + measureXml.length)}`;
 }
 
-function setFinalBarlineOnMeasure(measureXml) {
+function setFinalBarlineOnMeasure(measureXml: string) {
   const rightBarlinePattern = /<barline\b(?=[^>]*\blocation=["']right["'])[^>]*>[\s\S]*?<\/barline>/i;
   const rightSelfClosingBarlinePattern = /<barline\b(?=[^>]*\blocation=["']right["'])[^>]*\/>/i;
   const finalBarline = '\n      <barline location="right">\n        <bar-style>light-heavy</bar-style>\n      </barline>';
 
   if (rightBarlinePattern.test(measureXml)) {
-    return measureXml.replace(rightBarlinePattern, (barlineXml) => setBarlineStyle(barlineXml, 'light-heavy'));
+    return measureXml.replace(rightBarlinePattern, (barlineXml: string) => setBarlineStyle(barlineXml, 'light-heavy'));
   }
 
   if (rightSelfClosingBarlinePattern.test(measureXml)) {
@@ -160,62 +166,62 @@ function setFinalBarlineOnMeasure(measureXml) {
   return measureXml.replace(/<\/measure>/i, `${finalBarline}\n    </measure>`);
 }
 
-function setBarlineStyle(barlineXml, style) {
+function setBarlineStyle(barlineXml: string, style: string) {
   if (/<bar-style>[\s\S]*?<\/bar-style>/i.test(barlineXml)) {
     return barlineXml.replace(/<bar-style>[\s\S]*?<\/bar-style>/i, `<bar-style>${style}</bar-style>`);
   }
 
-  return barlineXml.replace(/<barline\b[^>]*>/i, (match) => `${match}\n        <bar-style>${style}</bar-style>`);
+  return barlineXml.replace(/<barline\b[^>]*>/i, (match: string) => `${match}\n        <bar-style>${style}</bar-style>`);
 }
 
-function setWorkTitle(xml, escapedTitle) {
+function setWorkTitle(xml: string, escapedTitle: string) {
   if (/<work-title>[\s\S]*?<\/work-title>/i.test(xml)) {
     return xml.replace(/<work-title>[\s\S]*?<\/work-title>/i, `<work-title>${escapedTitle}</work-title>`);
   }
 
   if (/<work\b[^>]*>/i.test(xml)) {
-    return xml.replace(/<work\b[^>]*>/i, (match) => `${match}\n    <work-title>${escapedTitle}</work-title>`);
+    return xml.replace(/<work\b[^>]*>/i, (match: string) => `${match}\n    <work-title>${escapedTitle}</work-title>`);
   }
 
   return insertAfterRootStart(xml, `\n  <work>\n    <work-title>${escapedTitle}</work-title>\n  </work>`);
 }
 
-function removeMovementTitle(xml) {
+function removeMovementTitle(xml: string) {
   return xml.replace(/\s*<movement-title>[\s\S]*?<\/movement-title>/gi, '');
 }
 
-function insertAfterRootStart(xml, content) {
+function insertAfterRootStart(xml: string, content: string) {
   const rootStart = xml.match(/<score-(?:partwise|timewise)\b[^>]*>/i);
 
   if (!rootStart) {
     return xml;
   }
 
-  const insertAt = rootStart.index + rootStart[0].length;
+  const insertAt = (rootStart.index ?? 0) + rootStart[0].length;
   return `${xml.slice(0, insertAt)}${content}${xml.slice(insertAt)}`;
 }
 
-function normalizeTitle(title) {
+function normalizeTitle(title?: string | null) {
   const resolvedTitle = title === undefined || title === null ? '' : String(title).trim();
   return resolvedTitle || null;
 }
 
-function escapeXmlText(value) {
+function escapeXmlText(value: string) {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
 
-function escapeRegExp(value) {
+function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function uniqueNames(names) {
+function uniqueNames(names: string[]) {
   return [...new Set(names)];
 }
 
-function unescapeXmlText(value) {
+function unescapeXmlText(value: string) {
   return value
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')

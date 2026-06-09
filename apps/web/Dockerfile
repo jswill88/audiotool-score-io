@@ -10,6 +10,7 @@ COPY apps/web/package.json apps/web/package.json
 
 RUN npm ci
 
+COPY tsconfig.base.json tsconfig.base.json
 COPY apps/web apps/web
 
 ARG VITE_API_BASE_URL=

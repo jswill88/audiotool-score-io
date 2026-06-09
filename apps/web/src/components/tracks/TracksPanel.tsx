@@ -7,13 +7,41 @@ import {
   Settings2,
   SlidersHorizontal
 } from 'lucide-react';
-import { SectionTitle } from '../SectionTitle.jsx';
-import { SegmentedControl } from '../SegmentedControl.jsx';
-import { ProjectMeta } from './ProjectMeta.jsx';
-import { TrackList } from './TrackList.jsx';
+import { SectionTitle } from '../SectionTitle';
+import { SegmentedControl } from '../SegmentedControl';
+import { ProjectMeta } from './ProjectMeta';
+import { TrackList } from './TrackList';
+import type {
+  AppStatus,
+  OutputMode,
+  ProjectManifest,
+  QuantizationGrid,
+  SelectedProject
+} from '../../types';
 import './TracksPanel.css';
 
-const gridOptions = [4, 8, 12, 16, 24, 32, 48, 64];
+const gridOptions = [4, 8, 12, 16, 24, 32, 48, 64] as const satisfies readonly QuantizationGrid[];
+const modeOptions = [
+  ['score', 'Score'],
+  ['parts', 'Parts'],
+  ['both', 'Both']
+] as const satisfies ReadonlyArray<readonly [OutputMode, string]>;
+
+type TracksPanelProps = {
+  canConvert: boolean;
+  grid: QuantizationGrid;
+  manifest: ProjectManifest | null;
+  mode: OutputMode;
+  onConvert: () => void | Promise<void>;
+  onTrackToggle: (trackId: string) => void;
+  quantize: boolean;
+  selectedProject: SelectedProject | null;
+  selectedTrackIds: string[];
+  setGrid: (grid: QuantizationGrid) => void;
+  setMode: (mode: OutputMode) => void;
+  setQuantize: (quantize: boolean) => void;
+  status: AppStatus;
+};
 
 export function TracksPanel({
   canConvert,
@@ -29,7 +57,7 @@ export function TracksPanel({
   setMode,
   setQuantize,
   status
-}) {
+}: TracksPanelProps) {
   const trackError = status?.phase === 'error' && status?.area === 'tracks'
     ? status.message
     : '';
@@ -60,11 +88,7 @@ export function TracksPanel({
         <SectionTitle icon={<SlidersHorizontal size={17} />} title="Options" />
         <SegmentedControl
           value={mode}
-          options={[
-            ['score', 'Score'],
-            ['parts', 'Parts'],
-            ['both', 'Both']
-          ]}
+          options={modeOptions}
           onChange={setMode}
         />
         <label className="check-row compact">
@@ -77,7 +101,7 @@ export function TracksPanel({
         </label>
         <label className="select-label">
           <Settings2 size={15} aria-hidden="true" />
-          <select value={grid} disabled={!quantize} onChange={(event) => setGrid(Number(event.target.value))}>
+          <select value={grid} disabled={!quantize} onChange={(event) => setGrid(Number(event.target.value) as QuantizationGrid)}>
             {gridOptions.map((value) => (
               <option key={value} value={value}>{value}</option>
             ))}

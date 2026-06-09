@@ -1,8 +1,14 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import type { SelectedProject } from '../../types';
 import './ScorePane.css';
 
-export function ScorePane({ selectedProject, xml }) {
-  const containerRef = useRef(null);
+type ScorePaneProps = {
+  selectedProject: SelectedProject | null;
+  xml: string;
+};
+
+export function ScorePane({ selectedProject, xml }: ScorePaneProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [renderError, setRenderError] = useState('');
 
   useLayoutEffect(() => {
@@ -40,7 +46,7 @@ export function ScorePane({ selectedProject, xml }) {
         osmd.render();
       } catch (error) {
         if (!cancelled) {
-          setRenderError(error.message);
+          setRenderError(error instanceof Error ? error.message : String(error));
         }
       }
     }

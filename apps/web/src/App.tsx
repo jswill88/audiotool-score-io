@@ -3,12 +3,24 @@ import {
   convertAudiotoolProject,
   inspectAudiotoolProject,
   loadAudiotoolProjects
-} from './api/audiotool.js';
-import { AppHeader } from './components/layout/AppHeader.jsx';
-import { SidebarPanel } from './components/layout/SidebarPanel.jsx';
-import { ResultPanel } from './components/results/ResultPanel.jsx';
-import { TracksPanel } from './components/tracks/TracksPanel.jsx';
-import { useAudiotoolBrowserAuth } from './hooks/useAudiotoolBrowserAuth.js';
+} from './api/audiotool';
+import { AppHeader } from './components/layout/AppHeader';
+import { SidebarPanel } from './components/layout/SidebarPanel';
+import { ResultPanel } from './components/results/ResultPanel';
+import { TracksPanel } from './components/tracks/TracksPanel';
+import { useAudiotoolBrowserAuth, type AudiotoolBrowserAuth } from './hooks/useAudiotoolBrowserAuth';
+import type {
+  ActiveConversionResult,
+  AppStatus,
+  AudiotoolProject,
+  OutputMode,
+  ProjectManifest,
+  QuantizationGrid,
+  ServerAuth,
+  TrackManifest,
+  ViewerTab,
+  SelectedProject
+} from './types';
 import './App.css';
 
 export function App() {
@@ -16,17 +28,17 @@ export function App() {
   const inspectRequestId = useRef(0);
   const conversionRequestId = useRef(0);
   const [projectInput, setProjectInput] = useState('');
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [manifest, setManifest] = useState(null);
-  const [selectedTrackIds, setSelectedTrackIds] = useState([]);
-  const [mode, setMode] = useState('score');
+  const [projects, setProjects] = useState<AudiotoolProject[]>([]);
+  const [selectedProject, setSelectedProject] = useState<SelectedProject | null>(null);
+  const [manifest, setManifest] = useState<ProjectManifest | null>(null);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
+  const [mode, setMode] = useState<OutputMode>('score');
   const [quantize, setQuantize] = useState(true);
-  const [grid, setGrid] = useState(24);
-  const [activeResult, setActiveResult] = useState(null);
+  const [grid, setGrid] = useState<QuantizationGrid>(24);
+  const [activeResult, setActiveResult] = useState<ActiveConversionResult | null>(null);
   const [activeFileName, setActiveFileName] = useState('');
-  const [viewerTab, setViewerTab] = useState('score');
-  const [status, setStatus] = useState({
+  const [viewerTab, setViewerTab] = useState<ViewerTab>('score');
+  const [status, setStatus] = useState<AppStatus>({
     phase: 'idle',
     message: '',
     area: null
@@ -79,11 +91,11 @@ export function App() {
       setProjects(data.projects ?? []);
       setStatus({ phase: 'success', message: `${data.projects?.length ?? 0} projects loaded`, area: 'projects' });
     } catch (error) {
-      setStatus({ phase: 'error', message: error.message, area: 'projects' });
+      setStatus({ phase: 'error', message: errorMessage(error), area: 'projects' });
     }
   }, [audiotoolAuth, canUseApi]);
 
-  const inspectProject = useCallback(async (projectReference) => {
+  const inspectProject = useCallback(async (projectReference: string) => {
     const auth = readRequestAuth(audiotoolAuth);
 
     if (!canUseApi || auth === false) {
@@ -142,14 +154,14 @@ export function App() {
       }
 
       setSelectedProject(null);
-      setStatus({ phase: 'error', message: error.message, area: 'projects' });
+      setStatus({ phase: 'error', message: errorMessage(error), area: 'projects' });
     }
   }, [audiotoolAuth, canUseApi]);
 
   const convertProject = useCallback(async () => {
     const auth = readRequestAuth(audiotoolAuth);
 
-    if (!canConvert) {
+    if (!selectedProject || !canConvert) {
       setStatus({ phase: 'error', message: 'Select at least one track', area: 'tracks' });
       return;
     }
@@ -177,9 +189,7 @@ export function App() {
       });
 
       if (requestId !== conversionRequestId.current) {
-        if (result.downloadUrl) {
-          URL.revokeObjectURL(result.downloadUrl);
-        }
+        URL.revokeObjectURL(result.downloadUrl);
         return;
       }
 
@@ -192,7 +202,7 @@ export function App() {
         return;
       }
 
-      setStatus({ phase: 'error', message: error.message, area: 'tracks' });
+      setStatus({ phase: 'error', message: errorMessage(error), area: 'tracks' });
     }
   }, [audiotoolAuth, canConvert, grid, mode, quantize, selectedProject, selectedTrackIds]);
 
@@ -216,7 +226,7 @@ export function App() {
           manifest={manifest}
           mode={mode}
           onConvert={convertProject}
-          onTrackToggle={(trackId) => {
+          onTrackToggle={(trackId: string) => {
             if (!selectableTrackIds.has(trackId)) {
               return;
             }
@@ -249,14 +259,18 @@ export function App() {
   );
 }
 
-function readRequestAuth(audiotoolAuth) {
+function readRequestAuth(audiotoolAuth: AudiotoolBrowserAuth): ServerAuth | false {
   return audiotoolAuth.exportServerAuth() ?? false;
 }
 
-function isSelectableTrack(track) {
+function isSelectableTrack(track: TrackManifest) {
   return hasTrackNotes(track);
 }
 
-function hasTrackNotes(track) {
+function hasTrackNotes(track: TrackManifest) {
   return track.hasNotes === true;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

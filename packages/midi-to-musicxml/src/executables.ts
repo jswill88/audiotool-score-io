@@ -2,11 +2,11 @@ import { constants } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 
-function isPathLike(command) {
+function isPathLike(command: string) {
   return path.isAbsolute(command) || command.includes('/') || command.includes('\\');
 }
 
-export async function resolveExecutable(command) {
+export async function resolveExecutable(command: string): Promise<string> {
   if (isPathLike(command)) {
     await fs.access(command, constants.X_OK);
     return command;

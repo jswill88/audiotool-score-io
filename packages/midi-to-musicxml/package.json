@@ -3,13 +3,19 @@
   "version": "0.1.0",
   "description": "Convert MIDI files to MusicXML with optional quantization via MuseScore.",
   "type": "module",
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "scripts": {
-    "check": "find src test -name '*.js' -print0 | xargs -0 -n1 node --check",
-    "test": "node --test \"test/**/*.test.js\""
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm run build && find dist test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test": "npm run build && node --test \"test/**/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@tonejs/midi": "^2.0.28"

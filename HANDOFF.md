@@ -9,9 +9,9 @@ The product goal is a standalone web app where someone can sign in with Audiotoo
 The code is intentionally split so the conversion pieces can also be reused outside the web app:
 
 - `packages/audiotool-to-midi`: Audiotool project/track inspection and MIDI rendering.
-- `packages/midi-to-musicxml`: MIDI preprocessing plus MuseScore-based MusicXML conversion.
+- `packages/midi-to-musicxml`: TypeScript MIDI preprocessing plus MuseScore-based MusicXML conversion.
 - `apps/api`: Express API that composes both packages.
-- `apps/web`: React/Vite browser app for sign-in, project picking, track selection, conversion, and score viewing.
+- `apps/web`: React/Vite TypeScript browser app for sign-in, project picking, track selection, conversion, and score viewing.
 
 ## Repo Process Notes
 
@@ -27,16 +27,22 @@ The main files involved are:
 
 - `CODEMAP.md`
 - `README.md`
-- `apps/web/src/auth/audiotoolAuth.js`
-- `apps/web/src/hooks/useAudiotoolBrowserAuth.js`
+- `tsconfig.base.json`
+- `apps/web/tsconfig.json`
+- `apps/web/src/types.ts`
+- `apps/web/src/auth/audiotoolAuth.ts`
+- `apps/web/src/hooks/useAudiotoolBrowserAuth.ts`
 - `apps/api/src/routes/audiotool.js`
 - `apps/api/src/audiotool/request.js`
 - `apps/api/src/audiotool/output.js`
 - `packages/audiotool-to-midi/src/render.js`
 - `packages/audiotool-to-midi/test/export.test.js`
-- `packages/midi-to-musicxml/src/musicxml.js`
-- `packages/midi-to-musicxml/src/midi.js`
-- `packages/midi-to-musicxml/src/index.js`
+- `packages/midi-to-musicxml/tsconfig.json`
+- `packages/midi-to-musicxml/src/musicxml.ts`
+- `packages/midi-to-musicxml/src/midi.ts`
+- `packages/midi-to-musicxml/src/musescore.ts`
+- `packages/midi-to-musicxml/src/index.ts`
+- `packages/midi-to-musicxml/src/types.ts`
 - `packages/midi-to-musicxml/test/helpers.js`
 - `packages/midi-to-musicxml/test/midi.test.js`
 
@@ -53,6 +59,10 @@ What the latest cleanup does:
 - Add `CODEMAP.md` as a human-oriented navigation guide and link it from `README.md`.
 - Keep `apps/api/src/routes/audiotool.js` focused on route flow; Audiotool request/auth parsing now lives in `apps/api/src/audiotool/request.js`, and conversion output/archive helpers live in `apps/api/src/audiotool/output.js`.
 - Guard Audiotool browser sign-in for missing `crypto.subtle.digest`; unsupported/insecure origins now show an in-app auth error instead of an uncaught login promise rejection.
+- Continue the TypeScript migration: the root shared TS config exists, `apps/web` has its own `tsconfig.json`, web source files are now `.ts`/`.tsx`, and `apps/web` `check` runs `tsc --noEmit` before `vite build`.
+- `packages/midi-to-musicxml` is now TypeScript source compiled to ignored `dist/` output. Its package entry points at `dist/index.js`, publishes `dist/index.d.ts`, and exports option/result types from `src/types.ts`.
+- Root `start:api` and `dev:api` build `@midi-to-xml/midi-to-musicxml` before launching the API. Docker API images build the package during image creation, prune dev dependencies, and run the API workspace directly.
+- Remaining JavaScript migration targets are `apps/api` and `packages/audiotool-to-midi`.
 
 Last verified commands:
 
@@ -61,11 +71,16 @@ npm test --workspace @midi-to-xml/audiotool-to-midi
 npm run check --workspace @midi-to-xml/audiotool-to-midi
 npm test --workspace @midi-to-xml/midi-to-musicxml
 npm run check --workspace @midi-to-xml/midi-to-musicxml
+npm run build --workspace @midi-to-xml/midi-to-musicxml
 npm test
+npm run typecheck
 npm run check
 node --input-type=module -e "await import('./apps/api/src/app.js'); console.log('api import ok');"
-docker compose up -d --build
-curl -sS http://127.0.0.1:5173/health
+docker build -f apps/api/Dockerfile -t midi-to-xml-api-ts-check .
+docker build -f Dockerfile -t midi-to-xml-root-ts-check .
+docker build -f apps/web/Dockerfile -t midi-to-xml-web-ts-check .
+docker run --rm midi-to-xml-api-ts-check node --input-type=module -e "await import('./apps/api/src/app.js'); console.log('api image import ok');"
+docker run --rm midi-to-xml-root-ts-check node --input-type=module -e "await import('./apps/api/src/app.js'); console.log('root image import ok');"
 ```
 
 The real Docker MuseScore conversion was also checked manually. It produced:
@@ -98,6 +113,8 @@ Run local API and Vite dev app:
 npm run start:api
 npm run dev
 ```
+
+`npm run start:api` builds `@midi-to-xml/midi-to-musicxml` first because that package now runs from ignored `dist/` output.
 
 Open:
 
@@ -258,7 +275,8 @@ DEFAULT_QUANTIZATION_GRID=24
 From `TODO.md`, the most relevant remaining items are:
 
 - Add a favicon.
-- Future: score playback/follow-along, browser play controls, drum notation mapping, TypeScript, accessibility.
+- Continue TypeScript migration for `apps/api` and `packages/audiotool-to-midi`.
+- Future: score playback/follow-along, browser play controls, drum notation mapping, accessibility.
 
 ## Good Next-Session Checklist
 

@@ -1,8 +1,13 @@
 import { KeyRound, LogIn, LogOut } from 'lucide-react';
-import { SectionTitle } from '../SectionTitle.jsx';
+import { SectionTitle } from '../SectionTitle';
+import type { AudiotoolBrowserAuth } from '../../hooks/useAudiotoolBrowserAuth';
 import './SessionPanel.css';
 
-export function SessionPanel({ auth }) {
+type SessionPanelProps = {
+  auth: AudiotoolBrowserAuth;
+};
+
+export function SessionPanel({ auth }: SessionPanelProps) {
   const isLoading = auth.phase === 'loading';
   const isBrowserAuthenticated = auth.phase === 'authenticated';
   const browserAuthUnavailable = auth.phase === 'unconfigured' || auth.phase === 'error';
@@ -37,7 +42,7 @@ export function SessionPanel({ auth }) {
   );
 }
 
-function authTitle(auth) {
+function authTitle(auth: AudiotoolBrowserAuth) {
   if (auth.phase === 'authenticated') return `Signed in as ${formatUserName(auth.userName)}`;
   if (auth.phase === 'loading') return 'Checking Audiotool session';
   if (auth.phase === 'unconfigured') return 'Audiotool app not configured';
@@ -45,7 +50,7 @@ function authTitle(auth) {
   return 'Sign in with Audiotool';
 }
 
-function formatUserName(userName) {
+function formatUserName(userName: string) {
   const normalized = String(userName ?? '').trim();
 
   if (!normalized) {
@@ -55,7 +60,7 @@ function formatUserName(userName) {
   return normalized.replace(/^users\//i, '');
 }
 
-function authSubtitle(auth) {
+function authSubtitle(auth: AudiotoolBrowserAuth) {
   if (auth.phase === 'authenticated') return 'Browser tokens are exported to the server for conversion.';
   if (auth.phase === 'loading') return 'Looking for an existing browser session.';
   if (auth.phase === 'unconfigured') return auth.error;

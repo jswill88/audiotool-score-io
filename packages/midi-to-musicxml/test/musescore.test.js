@@ -7,7 +7,7 @@ import {
   convertWithMuseScore,
   readMuseScoreStatus,
   resolveMuseScoreBinary
-} from '../src/index.js';
+} from '@midi-to-xml/midi-to-musicxml';
 import {
   createTempDir,
   writeExecutable,

@@ -43,8 +43,10 @@ export function readAudiotoolBrowserAuthSupportError() {
   return 'Audiotool sign-in needs browser Web Crypto, but crypto.subtle.digest is unavailable in this browser.';
 }
 
-export function formatAudiotoolBrowserAuthError(error) {
-  const message = error?.message ?? String(error ?? 'Audiotool sign-in failed.');
+export function formatAudiotoolBrowserAuthError(error: unknown) {
+  const message = error instanceof Error
+    ? error.message
+    : String(error ?? 'Audiotool sign-in failed.');
 
   if (/\bcrypto\b|\bsubtle\b|\bdigest\b/i.test(message)) {
     return readAudiotoolBrowserAuthSupportError() ||
@@ -54,6 +56,6 @@ export function formatAudiotoolBrowserAuthError(error) {
   return message;
 }
 
-function readEnv(name) {
+function readEnv(name: string) {
   return String(import.meta.env[name] ?? '').trim();
 }

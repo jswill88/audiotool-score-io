@@ -1,6 +1,16 @@
 import './SegmentedControl.css';
 
-export function SegmentedControl({ value, options, onChange }) {
+type SegmentedControlProps<T extends string> = {
+  value: T;
+  options: ReadonlyArray<readonly [T, string]>;
+  onChange: (value: T) => void;
+};
+
+export function SegmentedControl<T extends string>({
+  value,
+  options,
+  onChange
+}: SegmentedControlProps<T>) {
   return (
     <div className="segmented-control">
       {options.map(([optionValue, label]) => (

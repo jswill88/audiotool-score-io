@@ -1,11 +1,26 @@
+import type {
+  ConversionResult,
+  InspectProjectResponse,
+  OutputMode,
+  ProjectListResponse,
+  QuantizationGrid,
+  ServerAuth
+} from '../types';
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
 
-export async function loadAudiotoolProjects(options, auth) {
-  return requestJson('/audiotool/projects', options, auth);
+export async function loadAudiotoolProjects(
+  options: { pageSize: number },
+  auth: ServerAuth
+): Promise<ProjectListResponse> {
+  return requestJson<ProjectListResponse>('/audiotool/projects', options, auth);
 }
 
-export async function inspectAudiotoolProject(project, auth) {
-  return requestJson('/audiotool/inspect', { project }, auth);
+export async function inspectAudiotoolProject(
+  project: string,
+  auth: ServerAuth
+): Promise<InspectProjectResponse> {
+  return requestJson<InspectProjectResponse>('/audiotool/inspect', { project }, auth);
 }
 
 export async function convertAudiotoolProject({
@@ -15,7 +30,14 @@ export async function convertAudiotoolProject({
   mode,
   quantize,
   grid
-}) {
+}: {
+  auth: ServerAuth;
+  project: string;
+  tracks: string[];
+  mode: OutputMode;
+  quantize: boolean;
+  grid: QuantizationGrid;
+}): Promise<ConversionResult> {
   const response = await fetch(`${apiBaseUrl}/audiotool/convert`, {
     method: 'POST',
     headers: {
@@ -38,7 +60,11 @@ export async function convertAudiotoolProject({
   return readConversionResponse(response);
 }
 
-async function requestJson(path, body, auth) {
+async function requestJson<T>(
+  path: string,
+  body: Record<string, unknown>,
+  auth: ServerAuth
+): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: 'POST',
     headers: {
@@ -54,23 +80,23 @@ async function requestJson(path, body, auth) {
     throw new Error(await readErrorResponse(response));
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
-function authBody(auth) {
+function authBody(auth: ServerAuth | null) {
   return auth ? { audiotoolAuth: auth } : {};
 }
 
-async function readErrorResponse(response) {
+async function readErrorResponse(response: Response): Promise<string> {
   try {
-    const data = await response.json();
-    return data.error ?? response.statusText;
+    const data = await response.json() as { error?: unknown };
+    return typeof data.error === 'string' ? data.error : response.statusText;
   } catch {
     return response.statusText;
   }
 }
 
-async function readConversionResponse(response) {
+async function readConversionResponse(response: Response): Promise<ConversionResult> {
   const blob = await response.blob();
   const contentType = response.headers.get('content-type') ?? '';
   const downloadName = filenameFromHeaders(response.headers) ?? (
@@ -111,7 +137,7 @@ async function readConversionResponse(response) {
   };
 }
 
-function filenameFromHeaders(headers) {
+function filenameFromHeaders(headers: Headers) {
   const disposition = headers.get('content-disposition') ?? '';
   return disposition.match(/filename="?([^"]+)"?/i)?.[1] ?? null;
 }

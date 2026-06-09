@@ -12,7 +12,7 @@ import {
   defaultQuantizationGrid,
   MidiValidationError,
   preprocessMidi
-} from '../src/index.js';
+} from '@midi-to-xml/midi-to-musicxml';
 import {
   createTempDir,
   readMidiNotes,

@@ -30,3 +30,12 @@ export {
   resolveMuseScoreBinary,
   resolveVirtualDisplayWrapper
 } from './musescore.js';
+export type {
+  ConvertMidiToMusicXmlOptions,
+  ConvertMidiToMusicXmlResult,
+  MuseScoreCommand,
+  MuseScoreOptions,
+  MuseScoreStatus,
+  QuantizationGrid,
+  VirtualDisplayMode
+} from './types.js';

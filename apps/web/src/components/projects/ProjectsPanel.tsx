@@ -1,7 +1,18 @@
 import { AlertTriangle, Loader2, RefreshCw, Search } from 'lucide-react';
-import { SectionTitle } from '../SectionTitle.jsx';
-import { ProjectList } from './ProjectList.jsx';
+import { SectionTitle } from '../SectionTitle';
+import { ProjectList } from './ProjectList';
+import type { AppStatus, AudiotoolProject, SelectedProject } from '../../types';
 import './ProjectsPanel.css';
+
+type ProjectsPanelProps = {
+  inspectProject: (projectReference: string) => void | Promise<void>;
+  loadProjects: () => void | Promise<void>;
+  projectInput: string;
+  projects: AudiotoolProject[];
+  selectedProject: SelectedProject | null;
+  setProjectInput: (value: string) => void;
+  status: AppStatus;
+};
 
 export function ProjectsPanel({
   inspectProject,
@@ -11,7 +22,7 @@ export function ProjectsPanel({
   selectedProject,
   setProjectInput,
   status
-}) {
+}: ProjectsPanelProps) {
   const isInspectingProject = status?.phase === 'loading' && status?.message === 'Inspecting tracks';
   const projectError = status?.phase === 'error' && status?.area === 'projects'
     ? status.message

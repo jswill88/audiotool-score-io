@@ -1,6 +1,10 @@
 import './XmlPane.css';
 
-export function XmlPane({ xml }) {
+type XmlPaneProps = {
+  xml: string;
+};
+
+export function XmlPane({ xml }: XmlPaneProps) {
   return (
     <pre className="xml-pane">{xml || '<score-partwise />'}</pre>
   );

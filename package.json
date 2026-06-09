@@ -11,17 +11,25 @@
     "apps/*"
   ],
   "scripts": {
+    "build": "npm run build --workspaces --if-present",
     "check": "npm run check --workspaces --if-present",
     "dev": "npm run dev --workspace @midi-to-xml/web",
     "docker:down": "docker compose down",
     "docker:dev": "docker compose -f compose.dev.yml up --build",
     "docker:dev:down": "docker compose -f compose.dev.yml down",
     "docker:up": "docker compose up --build",
-    "dev:api": "npm run start --workspace @midi-to-xml/api",
+    "dev:api": "npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run start --workspace @midi-to-xml/api",
     "dev:web": "npm run dev --workspace @midi-to-xml/web",
     "test": "npm run test --workspaces --if-present",
-    "start": "npm run start --workspace @midi-to-xml/api",
-    "start:api": "npm run start --workspace @midi-to-xml/api",
-    "start:web": "npm run preview --workspace @midi-to-xml/web"
+    "start": "npm run start:api",
+    "start:api": "npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run start --workspace @midi-to-xml/api",
+    "start:web": "npm run preview --workspace @midi-to-xml/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
   }
 }

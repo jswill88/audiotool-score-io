@@ -4,10 +4,10 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 
 ## Workspace layout
 
-- `packages/midi-to-musicxml`: standalone MIDI to MusicXML conversion package with optional quantization and MuseScore support.
+- `packages/midi-to-musicxml`: standalone TypeScript MIDI to MusicXML conversion package with optional quantization and MuseScore support.
 - `packages/audiotool-to-midi`: standalone Audiotool note-track to MIDI package. Audiotool extraction is intentionally separate from MIDI to MusicXML conversion.
 - `apps/api`: Express API that wraps the packages for upload/conversion workflows.
-- `apps/web`: React browser app for Audiotool sign-in, project/track selection, conversion, and MusicXML viewing.
+- `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, conversion, and MusicXML viewing.
 
 For a file-by-file navigation guide, see [`CODEMAP.md`](CODEMAP.md).
 
@@ -39,7 +39,7 @@ Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that ar
    Audiotool browser sign-in uses Web Crypto for OAuth. Open the app through `http://127.0.0.1:5173/`,
    `http://localhost:5173/`, or HTTPS; browser sign-in can fail on insecure LAN or `0.0.0.0` origins.
 
-4. Start the server:
+4. Start the server. This builds the TypeScript MIDI-to-MusicXML package before launching the API:
 
    ```bash
    npm run start:api

@@ -1,8 +1,23 @@
 import { AlertTriangle, Ban, Check } from 'lucide-react';
 import './TrackList.css';
-import { formatDeviceType } from '../../utils/format.js';
+import { formatDeviceType } from '../../utils/format';
+import type { AppStatus, SelectedProject, TrackManifest } from '../../types';
 
-export function TrackList({ selectedProject, status, tracks, selectedTrackIds, onToggle }) {
+type TrackListProps = {
+  selectedProject: SelectedProject | null;
+  status: AppStatus;
+  tracks: TrackManifest[];
+  selectedTrackIds: string[];
+  onToggle: (trackId: string) => void;
+};
+
+export function TrackList({
+  selectedProject,
+  status,
+  tracks,
+  selectedTrackIds,
+  onToggle
+}: TrackListProps) {
   if (tracks.length === 0) {
     const emptyState = getEmptyState(selectedProject, status);
 
@@ -63,11 +78,11 @@ export function TrackList({ selectedProject, status, tracks, selectedTrackIds, o
   );
 }
 
-function hasTrackNotes(track) {
+function hasTrackNotes(track: TrackManifest) {
   return track.hasNotes === true;
 }
 
-function getEmptyState(selectedProject, status) {
+function getEmptyState(selectedProject: SelectedProject | null, status: AppStatus) {
   const isInspecting = status?.phase === 'loading' && status?.message === 'Inspecting tracks';
 
   if (isInspecting) {

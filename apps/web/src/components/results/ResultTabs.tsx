@@ -1,6 +1,12 @@
 import './ResultTabs.css';
+import type { ViewerTab } from '../../types';
 
-export function ResultTabs({ activeTab, onChange }) {
+type ResultTabsProps = {
+  activeTab: ViewerTab;
+  onChange: (tab: ViewerTab) => void;
+};
+
+export function ResultTabs({ activeTab, onChange }: ResultTabsProps) {
   return (
     <div className="result-tabs">
       <button className={activeTab === 'score' ? 'is-active' : ''} type="button" onClick={() => onChange('score')}>

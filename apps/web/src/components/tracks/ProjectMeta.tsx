@@ -1,6 +1,12 @@
 import './ProjectMeta.css';
+import type { ProjectManifest, SelectedProject } from '../../types';
 
-export function ProjectMeta({ selectedProject, manifest }) {
+type ProjectMetaProps = {
+  selectedProject: SelectedProject | null;
+  manifest: ProjectManifest | null;
+};
+
+export function ProjectMeta({ selectedProject, manifest }: ProjectMetaProps) {
   const project = selectedProject?.details?.project;
   const summary = manifest
     ? manifest.totals?.hasNotes

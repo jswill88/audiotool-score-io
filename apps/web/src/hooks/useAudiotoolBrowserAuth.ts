@@ -1,13 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { BrowserAuthResult } from '@audiotool/nexus';
 import {
   audiotoolAuthConfig,
   formatAudiotoolBrowserAuthError,
   readAudiotoolBrowserAuthSupportError,
   isAudiotoolAuthConfigured
-} from '../auth/audiotoolAuth.js';
+} from '../auth/audiotoolAuth';
+import type { ServerAuth } from '../types';
 
-export function useAudiotoolBrowserAuth() {
-  const [state, setState] = useState(createInitialState);
+type AuthPhase = 'loading' | 'unconfigured' | 'authenticated' | 'unauthenticated' | 'error';
+
+type AuthState = {
+  phase: AuthPhase;
+  client: BrowserAuthResult | null;
+  error: string;
+};
+
+export type AudiotoolBrowserAuth = AuthState & {
+  config: typeof audiotoolAuthConfig;
+  isAuthenticated: boolean;
+  userName: string;
+  login: () => Promise<void>;
+  logout: () => void;
+  exportServerAuth: () => ServerAuth | null;
+};
+
+export function useAudiotoolBrowserAuth(): AudiotoolBrowserAuth {
+  const [state, setState] = useState<AuthState>(createInitialState);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,7 +143,7 @@ export function useAudiotoolBrowserAuth() {
   };
 }
 
-function createInitialState() {
+function createInitialState(): AuthState {
   if (!isAudiotoolAuthConfigured()) {
     return {
       phase: 'unconfigured',

@@ -13,20 +13,25 @@ import {
   writeMusicXmlTitle
 } from './musicxml.js';
 import { convertWithMuseScore } from './musescore.js';
+import type {
+  ConvertMidiToMusicXmlOptions,
+  ConvertMidiToMusicXmlResult,
+  QuantizationGrid
+} from './types.js';
 
 const { Midi } = tonejsMidi;
 
-function quantizeTick(value, grid, minimum = 0) {
+function quantizeTick(value: number, grid: number, minimum = 0) {
   return Math.max(minimum, Math.round(value / grid) * grid);
 }
 
-export function assertAllowedQuantizationGrid(grid) {
-  if (!Number.isInteger(grid) || !allowedQuantizationGrids.has(grid)) {
+export function assertAllowedQuantizationGrid(grid: number): asserts grid is QuantizationGrid {
+  if (!Number.isInteger(grid) || !allowedQuantizationGrids.has(grid as QuantizationGrid)) {
     throw new MidiValidationError('Quantization grid must be one of 4, 8, 12, 16, 24, 32, 48, or 64.');
   }
 }
 
-export async function assertValidMidiFile(filePath) {
+export async function assertValidMidiFile(filePath: string) {
   const handle = await fs.open(filePath, 'r');
 
   try {
@@ -41,7 +46,11 @@ export async function assertValidMidiFile(filePath) {
   }
 }
 
-export async function preprocessMidi(inputPath, outputPath, quantizationGrid = defaultQuantizationGrid) {
+export async function preprocessMidi(
+  inputPath: string,
+  outputPath: string,
+  quantizationGrid: QuantizationGrid = defaultQuantizationGrid
+) {
   assertAllowedQuantizationGrid(quantizationGrid);
 
   const buffer = await fs.readFile(inputPath);
@@ -68,7 +77,7 @@ export async function preprocessMidi(inputPath, outputPath, quantizationGrid = d
   await fs.writeFile(outputPath, Buffer.from(outputBytes));
 }
 
-async function cleanupGeneratedFile(filePath) {
+async function cleanupGeneratedFile(filePath: string | undefined) {
   if (!filePath) return;
 
   try {
@@ -78,7 +87,7 @@ async function cleanupGeneratedFile(filePath) {
   }
 }
 
-async function cleanupGeneratedDir(dirPath) {
+async function cleanupGeneratedDir(dirPath: string | undefined) {
   if (!dirPath) return;
 
   try {
@@ -96,7 +105,7 @@ export async function convertMidiToMusicXml({
   preprocessedPath,
   museScore = {},
   title
-}) {
+}: ConvertMidiToMusicXmlOptions): Promise<ConvertMidiToMusicXmlResult> {
   if (!inputPath) {
     throw new MidiValidationError('inputPath is required.');
   }
@@ -107,9 +116,9 @@ export async function convertMidiToMusicXml({
 
   await assertValidMidiFile(inputPath);
 
-  let generatedPreprocessedPath;
-  let generatedPreprocessedDir;
-  let resolvedPreprocessedPath;
+  let generatedPreprocessedPath: string | undefined;
+  let generatedPreprocessedDir: string | undefined;
+  let resolvedPreprocessedPath: string | undefined;
   let convertPath = inputPath;
 
   try {

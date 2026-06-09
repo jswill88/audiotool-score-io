@@ -1,5 +1,7 @@
 export class MidiToMusicXmlError extends Error {
-  constructor(message, statusCode = 500) {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 500) {
     super(message);
     this.name = 'MidiToMusicXmlError';
     this.statusCode = statusCode;
@@ -7,7 +9,7 @@ export class MidiToMusicXmlError extends Error {
 }
 
 export class MidiValidationError extends MidiToMusicXmlError {
-  constructor(message) {
+  constructor(message: string) {
     super(message, 400);
     this.name = 'MidiValidationError';
   }

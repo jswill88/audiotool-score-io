@@ -1,8 +1,21 @@
 import { ExternalLink, Loader2 } from 'lucide-react';
-import { formatProjectDate } from '../../utils/format.js';
+import { formatProjectDate } from '../../utils/format';
+import type { AppStatus, AudiotoolProject, SelectedProject } from '../../types';
 import './ProjectList.css';
 
-export function ProjectList({ inspectProject, projects, selectedProject, status }) {
+type ProjectListProps = {
+  inspectProject: (projectReference: string) => void | Promise<void>;
+  projects: AudiotoolProject[];
+  selectedProject: SelectedProject | null;
+  status: AppStatus;
+};
+
+export function ProjectList({
+  inspectProject,
+  projects,
+  selectedProject,
+  status
+}: ProjectListProps) {
   const isInspectingProject = status?.phase === 'loading' && status?.message === 'Inspecting tracks';
 
   return (
@@ -48,7 +61,7 @@ export function ProjectList({ inspectProject, projects, selectedProject, status 
   );
 }
 
-function getAudiotoolProjectUrl(project) {
+function getAudiotoolProjectUrl(project: AudiotoolProject) {
   const directUrl = [
     project.projectUrl,
     project.studioUrl,
@@ -69,11 +82,11 @@ function getAudiotoolProjectUrl(project) {
     : '';
 }
 
-function isHttpUrl(value) {
+function isHttpUrl(value: unknown): value is string {
   return typeof value === 'string' && /^https?:\/\//i.test(value);
 }
 
-function extractProjectId(value) {
+function extractProjectId(value: unknown) {
   if (typeof value !== 'string') {
     return '';
   }
