@@ -42,6 +42,20 @@
     var(--console-3);
 }
 
+.track-row:focus-within {
+  border-color: rgba(231, 189, 103, 0.62);
+  background:
+    var(--surface-hover),
+    var(--console-3);
+}
+
+.track-row.is-selected {
+  border-color: rgba(32, 199, 189, 0.58);
+  background:
+    linear-gradient(90deg, rgba(32, 199, 189, 0.2) 0, rgba(32, 199, 189, 0.07) 6px, transparent 6px),
+    var(--surface-gradient);
+}
+
 .track-row::after {
   content: "";
   position: absolute;
@@ -71,6 +85,22 @@
   border-radius: 6px;
   background: #0b0d0f;
   color: var(--brass-strong);
+}
+
+.track-row:focus-within .track-check {
+  border-color: var(--focus-ring);
+  outline: 3px solid var(--focus-ring-soft);
+  outline-offset: 2px;
+}
+
+.track-row.is-selected .track-check {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.track-row.is-selected::after {
+  opacity: 0.88;
 }
 
 .track-main {

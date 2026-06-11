@@ -38,9 +38,10 @@ export function TrackList({
         const isEmpty = !hasTrackNotes(track);
         const checked = !isEmpty && selectedTrackIds.includes(track.id);
         const statusClass = notationStatus === 'ready' ? '' : `is-${notationStatus}`;
+        const selectedClass = checked ? 'is-selected' : '';
 
         return (
-          <label className={`track-row ${isEmpty ? 'is-empty' : ''} ${statusClass}`} key={track.id}>
+          <label className={`track-row ${selectedClass} ${isEmpty ? 'is-empty' : ''} ${statusClass}`} key={track.id}>
             <input
               type="checkbox"
               checked={checked}

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import {
   AlertTriangle,
   ChevronDown,
@@ -58,6 +59,8 @@ export function TracksPanel({
   setQuantize,
   status
 }: TracksPanelProps) {
+  const gridLabelId = useId();
+  const gridHelpId = useId();
   const trackError = status?.phase === 'error' && status?.area === 'tracks'
     ? status.message
     : '';
@@ -87,6 +90,7 @@ export function TracksPanel({
       <div className="options-bar">
         <SectionTitle icon={<SlidersHorizontal size={17} />} title="Options" />
         <SegmentedControl
+          ariaLabel="Output mode"
           value={mode}
           options={modeOptions}
           onChange={setMode}
@@ -101,11 +105,21 @@ export function TracksPanel({
         </label>
         <label className="select-label">
           <Settings2 size={15} aria-hidden="true" />
-          <select value={grid} disabled={!quantize} onChange={(event) => setGrid(Number(event.target.value) as QuantizationGrid)}>
+          <span className="visually-hidden" id={gridLabelId}>Quantization grid</span>
+          <select
+            value={grid}
+            aria-describedby={gridHelpId}
+            aria-labelledby={gridLabelId}
+            disabled={!quantize}
+            onChange={(event) => setGrid(Number(event.target.value) as QuantizationGrid)}
+          >
             {gridOptions.map((value) => (
               <option key={value} value={value}>{value}</option>
             ))}
           </select>
+          <span className="visually-hidden" id={gridHelpId}>
+            Select the rhythmic grid used when quantize is enabled.
+          </span>
           <ChevronDown size={14} aria-hidden="true" />
         </label>
         <button

@@ -19,20 +19,24 @@ export function ProjectList({
   const isInspectingProject = status?.phase === 'loading' && status?.message === 'Inspecting tracks';
 
   return (
-    <div className="project-list">
+    <div className="project-list" role="list" aria-label="Audiotool projects">
       {projects.map((project) => {
         const projectUrl = getAudiotoolProjectUrl(project);
         const projectTitle = project.displayName || project.name;
+        const isSelectedProject = selectedProject?.details?.project?.name === project.name ||
+          selectedProject?.reference === project.name;
         const isOpeningProject = isInspectingProject && selectedProject?.reference === project.name;
 
         return (
           <div
-            className={`project-row ${selectedProject?.details?.project?.name === project.name ? 'is-active' : ''} ${isOpeningProject ? 'is-loading' : ''}`}
+            className={`project-row ${isSelectedProject ? 'is-active' : ''} ${isOpeningProject ? 'is-loading' : ''}`}
             key={project.name}
+            role="listitem"
           >
             <button
               className="project-select"
               type="button"
+              aria-current={isSelectedProject ? 'true' : undefined}
               onClick={() => inspectProject(project.name)}
               disabled={isOpeningProject}
             >

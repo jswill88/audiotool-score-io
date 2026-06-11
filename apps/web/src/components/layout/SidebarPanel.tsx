@@ -26,7 +26,7 @@ export function SidebarPanel({
   status
 }: SidebarPanelProps) {
   return (
-    <aside className="panel sidebar-panel">
+    <section className="panel sidebar-panel" aria-label="Project browser">
       <SessionPanel
         auth={audiotoolAuth}
       />
@@ -39,6 +39,6 @@ export function SidebarPanel({
         setProjectInput={setProjectInput}
         status={status}
       />
-    </aside>
+    </section>
   );
 }

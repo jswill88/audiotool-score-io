@@ -3,11 +3,13 @@ import type { SelectedProject } from '../../types';
 import './ScorePane.css';
 
 type ScorePaneProps = {
+  id: string;
+  labelledBy: string;
   selectedProject: SelectedProject | null;
   xml: string;
 };
 
-export function ScorePane({ selectedProject, xml }: ScorePaneProps) {
+export function ScorePane({ id, labelledBy, selectedProject, xml }: ScorePaneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [renderError, setRenderError] = useState('');
 
@@ -73,7 +75,13 @@ export function ScorePane({ selectedProject, xml }: ScorePaneProps) {
         };
 
     return (
-      <div className="score-empty">
+      <div
+        className="score-empty"
+        id={id}
+        role="tabpanel"
+        aria-labelledby={labelledBy}
+        tabIndex={0}
+      >
         <div className="score-empty-copy">
           <strong>{emptyState.title}</strong>
           <span>{emptyState.description}</span>
@@ -83,8 +91,17 @@ export function ScorePane({ selectedProject, xml }: ScorePaneProps) {
   }
 
   return (
-    <div className="score-surface">
-      {renderError ? <div className="render-error">{renderError}</div> : null}
+    <div
+      className="score-surface"
+      id={id}
+      role="tabpanel"
+      aria-labelledby={labelledBy}
+      tabIndex={0}
+    >
+      {renderError ? <div className="render-error" role="alert">{renderError}</div> : null}
+      <p className="visually-hidden">
+        Score preview rendered from MusicXML. Use the XML tab to review the source text if the rendered notation is not available to your assistive technology.
+      </p>
       <div ref={containerRef} />
     </div>
   );

@@ -67,6 +67,9 @@ export function App() {
     selectedProject &&
     selectedTrackIds.some((trackId) => selectableTrackIds.has(trackId))
   );
+  const statusAnnouncement = status.message
+    ? status.message
+    : '';
 
   useEffect(() => {
     return () => {
@@ -209,6 +212,9 @@ export function App() {
   return (
     <main className="app-shell">
       <AppHeader />
+      <div className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+        {statusAnnouncement}
+      </div>
       <section className="workspace">
         <SidebarPanel
           audiotoolAuth={audiotoolAuth}

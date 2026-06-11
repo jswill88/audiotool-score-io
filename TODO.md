@@ -29,6 +29,20 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [x] Loading spinners for opening/inspecting projects
 - [x] Sometimes parts appear to be merged into one double staff when they should be separate parts
 
+## Accessibility
+
+- [x] Finish accessibility pass; labels, selected-state semantics, result tabs, live announcements, pane roles, contrast, reduced motion, and axe checks are done. Manual keyboard/screen-reader smoke tests remain below.
+- [x] Add explicit accessible labels/help text for the project URL/ID input and quantization grid select; do not rely on placeholder text or icons alone.
+- [x] Give active project and active result-file choices semantic selected state, such as `aria-pressed`, `aria-current`, or a native radio/listbox pattern.
+- [x] Convert the Score/XML result switcher to an accessible tab pattern or native radio group, including selected state and panel labeling.
+- [x] Add live status announcements for loading projects, inspecting tracks, conversion progress/completion, score render errors, and contextual errors.
+- [ ] Verify keyboard-only tab order through sign-in, project loading, project selection, track selection, options, conversion, result switching, file switching, and download.
+- [x] Check WCAG AA color contrast for muted metadata text, inactive/active controls, warning/error chips, disabled controls, and focus states.
+- [x] Review score preview and XML panes for clear names/roles, keyboard-scroll behavior, and a screen-reader-friendly fallback for rendered notation.
+- [x] Respect reduced-motion preferences for loading spinners and any future animated score/playback states.
+- [x] Run an automated axe audit after the above fixes; `npx --yes @axe-core/cli http://127.0.0.1:5174/ --exit` reports 0 violations.
+- [ ] Run a manual screen-reader smoke test after the above fixes.
+
 ## Documentation
 
 - [x] Add Docker start/stop instructions to the README.
@@ -36,10 +50,10 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ## Future Features
 
+- [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
 - [ ] Show the score following along during playback.
 - [ ] Allow pressing play from the browser.
 - [ ] Allow mapping drum notation
 - [x] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and both reusable packages are done.
-- [ ] Check accessibility
 
 ## Notes

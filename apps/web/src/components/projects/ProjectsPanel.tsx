@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { AlertTriangle, Loader2, RefreshCw, Search } from 'lucide-react';
 import { SectionTitle } from '../SectionTitle';
 import { ProjectList } from './ProjectList';
@@ -23,6 +24,8 @@ export function ProjectsPanel({
   setProjectInput,
   status
 }: ProjectsPanelProps) {
+  const projectInputId = useId();
+  const projectHelpId = useId();
   const isInspectingProject = status?.phase === 'loading' && status?.message === 'Inspecting tracks';
   const projectError = status?.phase === 'error' && status?.area === 'projects'
     ? status.message
@@ -37,11 +40,19 @@ export function ProjectsPanel({
           <span>Load projects</span>
         </button>
         <div className="input-row">
+          <label className="visually-hidden" htmlFor={projectInputId}>
+            Project URL or ID
+          </label>
           <input
+            id={projectInputId}
             value={projectInput}
+            aria-describedby={projectHelpId}
             placeholder="Project URL or ID"
             onChange={(event) => setProjectInput(event.target.value)}
           />
+          <span className="visually-hidden" id={projectHelpId}>
+            Enter an Audiotool project URL, project ID, or projects resource name.
+          </span>
           <button
             className="icon-button"
             type="button"

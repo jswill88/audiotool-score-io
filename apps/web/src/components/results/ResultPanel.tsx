@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Download, Eye, FileArchive } from 'lucide-react';
 import { SectionTitle } from '../SectionTitle';
 import { ResultTabs } from './ResultTabs';
@@ -30,6 +31,11 @@ export function ResultPanel({
   setViewerTab,
   viewerTab
 }: ResultPanelProps) {
+  const resultTabsId = useId();
+  const scoreTabId = `${resultTabsId}-score-tab`;
+  const scorePanelId = `${resultTabsId}-score-panel`;
+  const xmlTabId = `${resultTabsId}-xml-tab`;
+  const xmlPanelId = `${resultTabsId}-xml-panel`;
   const scorePaneKey = [
     selectedProject?.reference ?? 'no-project',
     activeResult?.downloadUrl ?? 'no-result',
@@ -53,27 +59,45 @@ export function ResultPanel({
         </div>
       </div>
 
-      <ResultTabs activeTab={viewerTab} onChange={setViewerTab} />
+      <ResultTabs
+        activeTab={viewerTab}
+        scorePanelId={scorePanelId}
+        scoreTabId={scoreTabId}
+        onChange={setViewerTab}
+        xmlPanelId={xmlPanelId}
+        xmlTabId={xmlTabId}
+      />
 
       {files.length > 1 ? (
-        <div className="file-strip">
-          {files.map((file) => (
-            <button
-              className={file.name === activeFile?.name ? 'is-active' : ''}
-              key={file.name}
-              type="button"
-              onClick={() => setActiveFileName(file.name)}
-            >
-              {file.name}
-            </button>
-          ))}
+        <div className="file-strip" role="group" aria-label="Converted MusicXML files">
+          {files.map((file) => {
+            const isActiveFile = file.name === activeFile?.name;
+
+            return (
+              <button
+                aria-pressed={isActiveFile}
+                className={isActiveFile ? 'is-active' : ''}
+                key={file.name}
+                type="button"
+                onClick={() => setActiveFileName(file.name)}
+              >
+                {file.name}
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
       {viewerTab === 'score' ? (
-        <ScorePane key={scorePaneKey} selectedProject={selectedProject} xml={activeFile?.xml ?? ''} />
+        <ScorePane
+          key={scorePaneKey}
+          id={scorePanelId}
+          labelledBy={scoreTabId}
+          selectedProject={selectedProject}
+          xml={activeFile?.xml ?? ''}
+        />
       ) : (
-        <XmlPane xml={activeFile?.xml ?? ''} />
+        <XmlPane id={xmlPanelId} labelledBy={xmlTabId} xml={activeFile?.xml ?? ''} />
       )}
     </section>
   );

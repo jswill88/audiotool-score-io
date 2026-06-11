@@ -70,10 +70,16 @@ What the latest cleanup does:
 - Docker API images build `@midi-to-xml/audiotool-to-midi`, `@midi-to-xml/midi-to-musicxml`, and `@midi-to-xml/api` during image creation, prune dev dependencies, and run the API workspace directly.
 - The web app uses `apps/web/public/logo.svg` as both favicon and header brand mark. The mark combines a brass treble-clef shape with a compact DAW-style MIDI piano-roll grid. `apps/web/index.html` now points at `/src/main.tsx`.
 - The visual theme now uses black/dark graphite as the dominant app chrome color. Brass and teal remain accents, and the notation preview keeps its paper-like score surface.
+- Keyboard focus now uses a stronger teal ring. Track rows show selected state on the full row while keyboard focus is indicated on the checkbox affordance to avoid clipped row outlines. The output mode segmented control is implemented as a native radio group with an accessible label.
+- Active project choices now expose `aria-current`, and active converted-file buttons expose `aria-pressed`, so visual active states have matching semantics for assistive technology.
+- The accessibility pass added explicit labels/help text for project and quantization inputs, ARIA tabs for the Score/XML switcher, polite live status announcements, named tab panels for score/XML panes, a screen-reader fallback note for rendered notation, reduced-motion handling for spinners, and an axe fix for the sidebar landmark.
+- For future web UI work, treat accessibility as part of done: prefer native semantic controls, ensure every interactive element has an accessible name and state, verify keyboard order/focus, avoid color-only status signals, and update the `TODO.md` Accessibility checklist when new concerns appear.
 
 Last verified commands:
 
 ```bash
+npx --yes @axe-core/cli http://127.0.0.1:5174/ --exit
+npm run check --workspace @midi-to-xml/web
 npm run build --workspace @midi-to-xml/audiotool-to-midi
 npm test --workspace @midi-to-xml/audiotool-to-midi
 npm run check --workspace @midi-to-xml/audiotool-to-midi
