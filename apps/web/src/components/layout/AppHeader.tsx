@@ -1,4 +1,3 @@
-import { Music } from 'lucide-react';
 import './AppHeader.css';
 
 export function AppHeader() {
@@ -6,7 +5,7 @@ export function AppHeader() {
     <header className="topbar">
       <div className="brand-lockup">
         <div className="brand-mark">
-          <Music size={20} aria-hidden="true" />
+          <img className="brand-logo" src="/logo.svg" alt="Audiotool Score Export logo" />
         </div>
         <div>
           <h1>Audiotool Score Export</h1>

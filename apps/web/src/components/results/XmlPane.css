@@ -3,7 +3,7 @@
   min-height: calc(100vh - 188px);
   overflow: auto;
   padding: 14px;
-  border: 1px solid rgba(201, 151, 62, 0.42);
+  border: 1px solid rgba(202, 164, 90, 0.38);
   border-radius: 8px;
   background:
     repeating-linear-gradient(
@@ -13,8 +13,8 @@
       transparent 1px,
       transparent 24px
     ),
-    #151311;
-  color: #f4e6c8;
+    #0b0d0f;
+  color: #e8edf1;
   font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   white-space: pre-wrap;
   word-break: break-word;

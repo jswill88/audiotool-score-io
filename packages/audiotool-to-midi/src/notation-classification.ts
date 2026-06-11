@@ -1,16 +1,23 @@
+import type {
+  AudiotoolTrackManifest,
+  NotationClassification,
+  NotationKind,
+  NotationStatus
+} from './types.js';
+
 export const NotationKinds = Object.freeze({
   DrumMachine: 'drumMachine',
   Melodic: 'melodic',
   Plugin: 'plugin',
   Sampler: 'sampler',
   Unknown: 'unknown'
-});
+} as const);
 
 export const NotationStatuses = Object.freeze({
   Ready: 'ready',
   Skipped: 'skipped',
   Warning: 'warning'
-});
+} as const);
 
 const drumMachinePlayerTypes = new Set([
   'beatbox8',
@@ -37,7 +44,9 @@ const samplerPlayerTypes = new Set([
   'machiniste'
 ]);
 
-export function classifyTrackForNotation({ playerType } = {}) {
+export function classifyTrackForNotation({
+  playerType
+}: { playerType?: unknown; presetName?: unknown } = {}): NotationClassification {
   const normalizedType = normalizePlayerType(playerType);
 
   if (drumMachinePlayerTypes.has(normalizedType)) {
@@ -89,7 +98,7 @@ export function classifyTrackForNotation({ playerType } = {}) {
   });
 }
 
-export function shouldExportTrackByDefault(track) {
+export function shouldExportTrackByDefault(track: Pick<AudiotoolTrackManifest, 'notation'> | null | undefined) {
   return track?.notation?.shouldExportByDefault !== false;
 }
 
@@ -99,7 +108,13 @@ function buildClassification({
   shouldExportByDefault,
   label,
   reason
-}) {
+}: {
+  kind: NotationKind;
+  status: NotationStatus;
+  shouldExportByDefault: boolean;
+  label: string;
+  reason: string;
+}): NotationClassification {
   return {
     kind,
     status,
@@ -110,7 +125,7 @@ function buildClassification({
   };
 }
 
-function normalizePlayerType(value) {
+function normalizePlayerType(value: unknown) {
   if (!value) return '';
 
   return String(value).replace(/[^a-z0-9]/gi, '').toLowerCase();

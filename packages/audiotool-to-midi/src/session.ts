@@ -8,8 +8,41 @@ import {
   parseAudiotoolProjectReference
 } from './project-reference.js';
 import { inspectAudiotoolProject } from './tracks.js';
+import type {
+  AudiotoolAuthOptions,
+  AudiotoolClient,
+  AudiotoolClientLike,
+  AudiotoolDocument,
+  AudiotoolProjectDetails,
+  AudiotoolProjectListResult,
+  AudiotoolProjectReference,
+  InspectOptions,
+  OpenProjectOptions,
+  ProjectLike,
+  ProjectListOptions
+} from './types.js';
 
-export async function createAudiotoolSession(options = {}) {
+type NexusModule = {
+  createAudiotoolClient: (options: {
+    auth: unknown;
+    transport?: unknown;
+    wasm?: unknown;
+  }) => Promise<AudiotoolClient>;
+  createServerAuth?: (options: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    clientId: string;
+    onTokenRefresh?: (tokenData: unknown) => unknown;
+  }) => unknown;
+};
+
+type NexusNodeModule = {
+  createNodeTransport: () => unknown;
+  createDiskWasmLoader: () => unknown;
+};
+
+export async function createAudiotoolSession(options: AudiotoolAuthOptions = {}): Promise<AudiotoolClient> {
   const {
     auth,
     authToken,
@@ -41,17 +74,26 @@ export async function createAudiotoolSession(options = {}) {
   });
 }
 
-export async function listAudiotoolProjects(client, params = {}) {
+export async function listAudiotoolProjects(
+  client: AudiotoolClientLike,
+  params: ProjectListOptions = {}
+): Promise<Exclude<AudiotoolProjectListResult, Error>> {
   if (!client?.projects?.listProjects) {
     throw new AudiotoolProjectError('Audiotool client does not expose projects.listProjects.');
   }
 
   const result = await client.projects.listProjects(params);
   throwIfAudiotoolServiceError(result);
-  return result.projects ?? result;
+  const response = result as Exclude<AudiotoolProjectListResult, Error> & {
+    projects?: ProjectLike[];
+  };
+  return response.projects ?? response;
 }
 
-export async function getAudiotoolProjectDetails(client, projectReference) {
+export async function getAudiotoolProjectDetails(
+  client: AudiotoolClientLike,
+  projectReference: string
+): Promise<AudiotoolProjectDetails> {
   if (!client?.projects?.getProject) {
     throw new AudiotoolProjectError('Audiotool client does not expose projects.getProject.');
   }
@@ -61,19 +103,24 @@ export async function getAudiotoolProjectDetails(client, projectReference) {
     name: audiotoolProjectReferenceToName(reference)
   });
   throwIfAudiotoolServiceError(result);
+  const response = result as ProjectLike & { project?: ProjectLike | null };
 
   return {
     reference,
-    project: result.project ?? result
+    project: response.project ?? response
   };
 }
 
-export async function openAudiotoolProject(client, project, options = {}) {
+export async function openAudiotoolProject(
+  client: AudiotoolClientLike,
+  project: string | AudiotoolProjectReference,
+  options: OpenProjectOptions = {}
+): Promise<AudiotoolDocument> {
   if (!client?.open) {
     throw new AudiotoolProjectError('Audiotool client does not expose open(project).');
   }
 
-  const reference = parseAudiotoolProjectReference(project);
+  const reference = typeof project === 'string' ? parseAudiotoolProjectReference(project) : project;
   const document = await openProjectDocument(client, reference);
   throwIfAudiotoolServiceError(document);
 
@@ -84,15 +131,18 @@ export async function openAudiotoolProject(client, project, options = {}) {
   return document;
 }
 
-async function openProjectDocument(client, reference) {
+async function openProjectDocument(
+  client: AudiotoolClientLike,
+  reference: AudiotoolProjectReference
+): Promise<AudiotoolDocument> {
   try {
-    return await client.open(audiotoolProjectReferenceToOpenReference(reference));
+    return await client.open!(audiotoolProjectReferenceToOpenReference(reference));
   } catch (error) {
     throwAudiotoolProjectError(error);
   }
 }
 
-function throwIfAudiotoolServiceError(result) {
+function throwIfAudiotoolServiceError(result: unknown): asserts result is Exclude<typeof result, Error> {
   if (!(result instanceof Error)) {
     return;
   }
@@ -100,12 +150,15 @@ function throwIfAudiotoolServiceError(result) {
   throwAudiotoolProjectError(result);
 }
 
-function throwAudiotoolProjectError(error) {
-  const message = error?.cause?.message ?? error?.message ?? 'Audiotool project request failed.';
+function throwAudiotoolProjectError(error: unknown): never {
+  const candidate = error as { cause?: { message?: unknown }; message?: unknown };
+  const message = String(
+    candidate?.cause?.message ?? candidate?.message ?? 'Audiotool project request failed.'
+  );
   throw new AudiotoolProjectError(message, statusCodeForAudiotoolError(message));
 }
 
-function statusCodeForAudiotoolError(message) {
+function statusCodeForAudiotoolError(message: unknown) {
   const normalized = String(message).toLowerCase();
 
   if (normalized.includes('unauthenticated') || normalized.includes('unauthorized')) {
@@ -123,7 +176,14 @@ function statusCodeForAudiotoolError(message) {
   return 502;
 }
 
-export async function inspectAudiotoolProjectReference(client, projectReference, options = {}) {
+export async function inspectAudiotoolProjectReference(
+  client: AudiotoolClientLike,
+  projectReference: string,
+  options: InspectOptions & OpenProjectOptions = {}
+): Promise<{
+  details: AudiotoolProjectDetails | null;
+  manifest: ReturnType<typeof inspectAudiotoolProject>;
+}> {
   const details = options.includeDetails === false
     ? null
     : await getAudiotoolProjectDetails(client, projectReference);
@@ -134,7 +194,12 @@ export async function inspectAudiotoolProjectReference(client, projectReference,
   }), options);
 }
 
-export async function withAudiotoolProject(client, project, callback, options = {}) {
+export async function withAudiotoolProject<T>(
+  client: AudiotoolClientLike,
+  project: string | AudiotoolProjectReference,
+  callback: (document: AudiotoolDocument) => T | Promise<T>,
+  options: OpenProjectOptions = {}
+): Promise<Awaited<T>> {
   const document = await openAudiotoolProject(client, project, options);
 
   try {
@@ -146,7 +211,7 @@ export async function withAudiotoolProject(client, project, callback, options = 
   }
 }
 
-function resolveAuth(nexus, options) {
+function resolveAuth(nexus: NexusModule, options: AudiotoolAuthOptions) {
   if (options.authToken || options.pat) {
     return options.authToken ?? options.pat;
   }
@@ -165,10 +230,10 @@ function resolveAuth(nexus, options) {
     }
 
     return nexus.createServerAuth({
-      accessToken: options.accessToken,
-      refreshToken: options.refreshToken,
-      expiresAt: options.expiresAt,
-      clientId: options.clientId,
+      accessToken: options.accessToken!,
+      refreshToken: options.refreshToken!,
+      expiresAt: options.expiresAt!,
+      clientId: options.clientId!,
       onTokenRefresh: options.onTokenRefresh
     });
   }
@@ -178,22 +243,24 @@ function resolveAuth(nexus, options) {
   );
 }
 
-async function importAudiotoolNexus() {
+async function importAudiotoolNexus(): Promise<NexusModule> {
   try {
-    return await import('@audiotool/nexus');
+    return await import('@audiotool/nexus') as unknown as NexusModule;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     throw new AudiotoolSdkUnavailableError(
-      `Unable to import @audiotool/nexus: ${error.message}`
+      `Unable to import @audiotool/nexus: ${message}`
     );
   }
 }
 
-async function importAudiotoolNexusNode() {
+async function importAudiotoolNexusNode(): Promise<NexusNodeModule> {
   try {
-    return await import('@audiotool/nexus/node');
+    return await import('@audiotool/nexus/node') as unknown as NexusNodeModule;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     throw new AudiotoolSdkUnavailableError(
-      `Unable to import @audiotool/nexus/node: ${error.message}`
+      `Unable to import @audiotool/nexus/node: ${message}`
     );
   }
 }

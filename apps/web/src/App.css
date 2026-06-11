@@ -21,15 +21,9 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(46, 40, 35, 0.96), rgba(28, 25, 23, 0.98)),
+    var(--surface-gradient),
     var(--console);
   box-shadow: var(--shadow), var(--inner-glow);
-}
-
-@media (max-width: 1180px) {
-  /* .workspace {
-    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
-  } */
 }
 
 @media (max-width: 760px) {

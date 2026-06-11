@@ -7,7 +7,7 @@ import {
   inspectAudiotoolProjectReference,
   openAudiotoolProject,
   parseAudiotoolProjectReference
-} from '../src/index.js';
+} from '../dist/index.js';
 
 const projectId = '12345678-1234-1234-1234-123456789abc';
 

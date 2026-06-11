@@ -5,7 +5,7 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 ## Workspace layout
 
 - `packages/midi-to-musicxml`: standalone TypeScript MIDI to MusicXML conversion package with optional quantization and MuseScore support.
-- `packages/audiotool-to-midi`: standalone Audiotool note-track to MIDI package. Audiotool extraction is intentionally separate from MIDI to MusicXML conversion.
+- `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track to MIDI package. Audiotool extraction is intentionally separate from MIDI to MusicXML conversion.
 - `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
 - `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, conversion, and MusicXML viewing.
 

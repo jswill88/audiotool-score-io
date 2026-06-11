@@ -21,7 +21,7 @@
 .project-row.is-active {
   border-color: rgba(231, 189, 103, 0.62);
   background:
-    linear-gradient(180deg, rgba(74, 61, 43, 0.92), rgba(38, 32, 28, 0.98)),
+    var(--surface-hover),
     var(--console-3);
 }
 
@@ -32,7 +32,7 @@
 .project-row.is-loading {
   border-color: rgba(35, 199, 183, 0.42);
   background:
-    linear-gradient(180deg, rgba(30, 54, 50, 0.78), rgba(28, 25, 23, 0.98)),
+    linear-gradient(180deg, rgba(18, 54, 55, 0.78), rgba(13, 17, 20, 0.98)),
     var(--console-3);
 }
 

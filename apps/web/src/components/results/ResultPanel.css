@@ -17,12 +17,12 @@
   background:
     repeating-linear-gradient(
       90deg,
-      rgba(255, 248, 234, 0.04) 0,
-      rgba(255, 248, 234, 0.04) 1px,
+      rgba(239, 243, 246, 0.035) 0,
+      rgba(239, 243, 246, 0.035) 1px,
       transparent 1px,
       transparent 28px
     ),
-    rgba(25, 22, 20, 0.82);
+    rgba(12, 15, 18, 0.84);
 }
 
 .viewer-actions {

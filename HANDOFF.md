@@ -8,7 +8,7 @@ The product goal is a standalone web app where someone can sign in with Audiotoo
 
 The code is intentionally split so the conversion pieces can also be reused outside the web app:
 
-- `packages/audiotool-to-midi`: Audiotool project/track inspection and MIDI rendering.
+- `packages/audiotool-to-midi`: TypeScript Audiotool project/track inspection and MIDI rendering.
 - `packages/midi-to-musicxml`: TypeScript MIDI preprocessing plus MuseScore-based MusicXML conversion.
 - `apps/api`: Express TypeScript API that composes both packages.
 - `apps/web`: React/Vite TypeScript browser app for sign-in, project picking, track selection, conversion, and score viewing.
@@ -37,7 +37,9 @@ The main files involved are:
 - `apps/api/src/routes/audiotool.ts`
 - `apps/api/src/audiotool/request.ts`
 - `apps/api/src/audiotool/output.ts`
-- `packages/audiotool-to-midi/src/render.js`
+- `packages/audiotool-to-midi/tsconfig.json`
+- `packages/audiotool-to-midi/src/render.ts`
+- `packages/audiotool-to-midi/src/types.ts`
 - `packages/audiotool-to-midi/test/export.test.js`
 - `packages/midi-to-musicxml/tsconfig.json`
 - `packages/midi-to-musicxml/src/musicxml.ts`
@@ -61,29 +63,30 @@ What the latest cleanup does:
 - Add `CODEMAP.md` as a human-oriented navigation guide and link it from `README.md`.
 - Keep `apps/api/src/routes/audiotool.ts` focused on route flow; Audiotool request/auth parsing now lives in `apps/api/src/audiotool/request.ts`, and conversion output/archive helpers live in `apps/api/src/audiotool/output.ts`.
 - Guard Audiotool browser sign-in for missing `crypto.subtle.digest`; unsupported/insecure origins now show an in-app auth error instead of an uncaught login promise rejection.
-- Continue the TypeScript migration: the root shared TS config exists, `apps/web` has its own `tsconfig.json`, web source files are now `.ts`/`.tsx`, and `apps/web` `check` runs `tsc --noEmit` before `vite build`.
-- `apps/api` is now TypeScript source compiled to ignored `dist/` output. Its `start` script runs `dist/server.js`, while root `start:api` and `dev:api` build the MIDI-to-MusicXML package and API before launch.
+- Complete the TypeScript migration across the app workspaces and reusable packages: the root shared TS config exists, `apps/web` has its own `tsconfig.json`, web source files are `.ts`/`.tsx`, and `apps/web` `check` runs `tsc --noEmit` before `vite build`.
+- `apps/api` is TypeScript source compiled to ignored `dist/` output. Its `start` script runs `dist/server.js`, while root `start:api` and `dev:api` build the Audiotool-to-MIDI package, MIDI-to-MusicXML package, and API before launch.
+- `packages/audiotool-to-midi` is now TypeScript source compiled to ignored `dist/` output. Its package entry points at `dist/index.js`, publishes `dist/index.d.ts`, and exports option/result/session/manifest types from `src/types.ts`.
 - `packages/midi-to-musicxml` is now TypeScript source compiled to ignored `dist/` output. Its package entry points at `dist/index.js`, publishes `dist/index.d.ts`, and exports option/result types from `src/types.ts`.
-- Docker API images build `@midi-to-xml/midi-to-musicxml` and `@midi-to-xml/api` during image creation, prune dev dependencies, and run the API workspace directly.
-- The remaining JavaScript migration target is `packages/audiotool-to-midi`.
+- Docker API images build `@midi-to-xml/audiotool-to-midi`, `@midi-to-xml/midi-to-musicxml`, and `@midi-to-xml/api` during image creation, prune dev dependencies, and run the API workspace directly.
+- The web app uses `apps/web/public/logo.svg` as both favicon and header brand mark. The mark combines a brass treble-clef shape with a compact DAW-style MIDI piano-roll grid. `apps/web/index.html` now points at `/src/main.tsx`.
+- The visual theme now uses black/dark graphite as the dominant app chrome color. Brass and teal remain accents, and the notation preview keeps its paper-like score surface.
 
 Last verified commands:
 
 ```bash
+npm run build --workspace @midi-to-xml/audiotool-to-midi
 npm test --workspace @midi-to-xml/audiotool-to-midi
 npm run check --workspace @midi-to-xml/audiotool-to-midi
-npm test --workspace @midi-to-xml/midi-to-musicxml
-npm run check --workspace @midi-to-xml/midi-to-musicxml
-npm run build --workspace @midi-to-xml/midi-to-musicxml
+npm run typecheck --workspace @midi-to-xml/api
 npm test
 npm run typecheck
 npm run check
+node --input-type=module -e "const pkg = await import('@midi-to-xml/audiotool-to-midi'); console.log(typeof pkg.exportAudiotoolProjectToMidi, typeof pkg.inspectAudiotoolProject);"
 node --input-type=module -e "await import('./apps/api/dist/app.js'); console.log('api dist import ok');"
-docker build -f apps/api/Dockerfile -t midi-to-xml-api-ts-check .
-docker build -f Dockerfile -t midi-to-xml-root-ts-check .
-docker build -f apps/web/Dockerfile -t midi-to-xml-web-ts-check .
-docker run --rm midi-to-xml-api-ts-check node --input-type=module -e "await import('./apps/api/dist/app.js'); console.log('api image import ok');"
-docker run --rm midi-to-xml-root-ts-check node --input-type=module -e "await import('./apps/api/dist/app.js'); console.log('root image import ok');"
+docker build -f apps/api/Dockerfile -t midi-to-xml-api-audiotool-ts-check .
+docker run --rm midi-to-xml-api-audiotool-ts-check node --input-type=module -e "await import('./apps/api/dist/app.js'); console.log('api image import ok');"
+docker build -f Dockerfile -t midi-to-xml-root-audiotool-ts-check .
+docker run --rm midi-to-xml-root-audiotool-ts-check node --input-type=module -e "await import('./apps/api/dist/app.js'); console.log('root image import ok');"
 ```
 
 The real Docker MuseScore conversion was also checked manually. It produced:
@@ -117,7 +120,7 @@ npm run start:api
 npm run dev
 ```
 
-`npm run start:api` builds `@midi-to-xml/midi-to-musicxml` and `@midi-to-xml/api` first because both now run from ignored `dist/` output.
+`npm run start:api` builds `@midi-to-xml/audiotool-to-midi`, `@midi-to-xml/midi-to-musicxml`, and `@midi-to-xml/api` first because the reusable packages and API now run from ignored `dist/` output.
 
 Open:
 
@@ -236,6 +239,7 @@ Current behavior:
 - MusicXML part labels use player names with visual order suffixes like `Lead (1)`.
 - Audiotool-generated MIDI assigns each selected track a distinct non-percussion channel and a single-staff synth/pad program; MIDI quantization preserves those import hints.
 - Empty tracks are disabled/not selectable for conversion.
+- Selectable track rows use the pointer cursor on hover; empty rows keep the not-allowed cursor.
 - Track manifests/UI only track whether a track has notes; exact note counts are not exposed.
 - Drum-machine tracks, especially Beatbox 8/9, are skipped by default.
 - Sampler, plugin, and unknown note tracks remain selectable with warnings.
@@ -277,8 +281,6 @@ DEFAULT_QUANTIZATION_GRID=24
 
 From `TODO.md`, the most relevant remaining items are:
 
-- Add a favicon.
-- Continue TypeScript migration for `packages/audiotool-to-midi`.
 - Future: score playback/follow-along, browser play controls, drum notation mapping, accessibility.
 
 ## Good Next-Session Checklist

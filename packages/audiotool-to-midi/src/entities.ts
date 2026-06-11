@@ -1,4 +1,9 @@
 import { AudiotoolProjectError } from './errors.js';
+import type {
+  AudiotoolEntity,
+  AudiotoolEntityIndex,
+  AudiotoolProjectSource
+} from './types.js';
 
 export const EntityTypes = Object.freeze({
   Config: 'config',
@@ -7,7 +12,7 @@ export const EntityTypes = Object.freeze({
   NoteRegion: 'noteRegion',
   NoteTrack: 'noteTrack',
   TempoAutomationTrack: 'tempoAutomationTrack'
-});
+} as const);
 
 export const noteEntityTypes = Object.freeze([
   EntityTypes.NoteTrack,
@@ -18,7 +23,7 @@ export const noteEntityTypes = Object.freeze([
   EntityTypes.TempoAutomationTrack
 ]);
 
-export function collectAudiotoolEntities(source) {
+export function collectAudiotoolEntities(source: AudiotoolProjectSource): AudiotoolEntity[] {
   if (!source) {
     throw new AudiotoolProjectError('Audiotool project source is required.');
   }
@@ -27,16 +32,18 @@ export function collectAudiotoolEntities(source) {
     return source;
   }
 
-  if (Array.isArray(source.entities)) {
-    return source.entities;
+  const projectSource = source as any;
+
+  if (Array.isArray(projectSource.entities)) {
+    return projectSource.entities;
   }
 
-  if (Array.isArray(source.document?.entities)) {
-    return source.document.entities;
+  if (Array.isArray(projectSource.document?.entities)) {
+    return projectSource.document.entities;
   }
 
-  if (source.queryEntities) {
-    return collectFromQuery(source.queryEntities);
+  if (projectSource.queryEntities) {
+    return collectFromQuery(projectSource.queryEntities);
   }
 
   throw new AudiotoolProjectError(
@@ -44,7 +51,7 @@ export function collectAudiotoolEntities(source) {
   );
 }
 
-export function getEntityId(entity) {
+export function getEntityId(entity: AudiotoolEntity | null | undefined): string | null {
   return (
     entity?.id ??
     entity?.uuid ??
@@ -55,7 +62,7 @@ export function getEntityId(entity) {
   );
 }
 
-export function getEntityType(entity) {
+export function getEntityType(entity: AudiotoolEntity | null | undefined): string | null {
   return (
     entity?.type ??
     entity?.key ??
@@ -65,8 +72,8 @@ export function getEntityType(entity) {
   );
 }
 
-export function locationEntityType(value) {
-  const unwrapped = unwrapFieldValue(value, value);
+export function locationEntityType(value: unknown): string | null {
+  const unwrapped = unwrapFieldValue(value, value) as any;
 
   if (!unwrapped || typeof unwrapped !== 'object') {
     return null;
@@ -87,7 +94,11 @@ export function locationEntityType(value) {
   return null;
 }
 
-export function getField(entity, fieldName, fallback = undefined) {
+export function getField<T = any>(
+  entity: AudiotoolEntity | null | undefined,
+  fieldName: string,
+  fallback: T | undefined = undefined
+): T {
   const fields = entity?.fields;
 
   if (fields && Object.hasOwn(fields, fieldName)) {
@@ -98,10 +109,14 @@ export function getField(entity, fieldName, fallback = undefined) {
     return unwrapFieldValue(entity[fieldName], fallback);
   }
 
-  return fallback;
+  return fallback as T;
 }
 
-export function getObjectField(entity, fieldName, fallback = {}) {
+export function getObjectField(
+  entity: AudiotoolEntity | null | undefined,
+  fieldName: string,
+  fallback: AudiotoolEntity = {}
+): AudiotoolEntity {
   const field = entity?.fields?.[fieldName] ?? entity?.[fieldName];
   const value = unwrapFieldValue(field, fallback);
 
@@ -116,8 +131,8 @@ export function getObjectField(entity, fieldName, fallback = {}) {
   return unwrapObject(value);
 }
 
-export function locationKey(value) {
-  const unwrapped = unwrapFieldValue(value, value);
+export function locationKey(value: unknown): string | null {
+  const unwrapped = unwrapFieldValue(value, value) as any;
 
   if (!unwrapped) {
     return null;
@@ -154,9 +169,9 @@ export function locationKey(value) {
   return null;
 }
 
-export function buildEntityIndex(entities) {
-  const byId = new Map();
-  const byType = new Map();
+export function buildEntityIndex(entities: AudiotoolEntity[]): AudiotoolEntityIndex {
+  const byId = new Map<string, AudiotoolEntity>();
+  const byType = new Map<string, AudiotoolEntity[]>();
 
   for (const entity of entities) {
     const id = getEntityId(entity);
@@ -176,25 +191,25 @@ export function buildEntityIndex(entities) {
   return { byId, byType };
 }
 
-export function getEntityByLocation(index, value) {
+export function getEntityByLocation(index: AudiotoolEntityIndex, value: unknown) {
   const key = locationKey(value);
   return key ? index.byId.get(key) : undefined;
 }
 
-export function toFiniteNumber(value, fallback = 0) {
+export function toFiniteNumber(value: unknown, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
 
-function collectFromQuery(queryEntities) {
+function collectFromQuery(queryEntities: any): AudiotoolEntity[] {
   if (typeof queryEntities.get === 'function') {
     return queryEntities.get();
   }
 
   if (typeof queryEntities.ofTypes === 'function') {
-    const entities = [];
+    const entities: AudiotoolEntity[] = [];
     const seen = new Set();
-    const pushEntity = (entity) => {
+    const pushEntity = (entity: AudiotoolEntity) => {
       const id = getEntityId(entity) ?? entity;
 
       if (seen.has(id)) {
@@ -217,33 +232,33 @@ function collectFromQuery(queryEntities) {
   throw new AudiotoolProjectError('Nexus document does not expose queryable entities.');
 }
 
-function unwrapFieldValue(field, fallback = undefined) {
+function unwrapFieldValue<T = any>(field: unknown, fallback: T | undefined = undefined): T {
   if (field === undefined || field === null) {
-    return fallback;
+    return fallback as T;
   }
 
   if (typeof field !== 'object') {
-    return field;
+    return field as T;
   }
 
   if ('value' in field) {
-    return field.value;
+    return field.value as T;
   }
 
   if ('current' in field) {
-    return field.current;
+    return field.current as T;
   }
 
-  return field;
+  return field as T;
 }
 
-function unwrapFieldMap(fields) {
+function unwrapFieldMap(fields: Record<string, unknown>) {
   return Object.fromEntries(
     Object.entries(fields).map(([key, value]) => [key, unwrapFieldValue(value)])
   );
 }
 
-function unwrapObject(value) {
+function unwrapObject(value: Record<string, unknown>) {
   return Object.fromEntries(
     Object.entries(value)
       .filter(([key]) => key !== 'location')

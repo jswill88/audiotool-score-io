@@ -13,13 +13,30 @@ import {
 } from './entities.js';
 import { AudiotoolProjectError } from './errors.js';
 import { classifyTrackForNotation } from './notation-classification.js';
+import type {
+  AudiotoolEntity,
+  AudiotoolProjectContext,
+  AudiotoolProjectManifest,
+  AudiotoolProjectSource,
+  AudiotoolTempo,
+  AudiotoolTimeSignature,
+  AudiotoolTrackManifest,
+  InspectOptions,
+  TrackSelection
+} from './types.js';
 
-export function inspectAudiotoolProject(projectSource, options = {}) {
+export function inspectAudiotoolProject(
+  projectSource: AudiotoolProjectSource,
+  options: InspectOptions = {}
+): AudiotoolProjectManifest {
   const entities = collectAudiotoolEntities(projectSource);
   return inspectAudiotoolEntities(entities, options);
 }
 
-export function inspectAudiotoolEntities(entities, options = {}) {
+export function inspectAudiotoolEntities(
+  entities: AudiotoolEntity[],
+  options: InspectOptions = {}
+): AudiotoolProjectManifest {
   const context = createProjectContext(entities, options);
   const tracks = context.noteTracks.map((track, index) => buildTrackManifest(track, context, index));
 
@@ -36,7 +53,10 @@ export function inspectAudiotoolEntities(entities, options = {}) {
   };
 }
 
-export function createProjectContext(entities, options = {}) {
+export function createProjectContext(
+  entities: AudiotoolEntity[],
+  options: InspectOptions = {}
+): AudiotoolProjectContext {
   const index = buildEntityIndex(entities);
   const noteTracks = sortTracks(index.byType.get(EntityTypes.NoteTrack) ?? []);
   const noteRegions = index.byType.get(EntityTypes.NoteRegion) ?? [];
@@ -64,10 +84,18 @@ export function createProjectContext(entities, options = {}) {
   };
 }
 
-export function selectTracks(context, selection = undefined) {
+export function selectTracks(
+  context: AudiotoolProjectContext,
+  selection: TrackSelection | undefined = undefined
+): AudiotoolTrackManifest[] {
   const tracks = context.noteTracks.map((track, index) => buildTrackManifest(track, context, index));
 
-  if (!selection || selection.length === 0 || selection === 'all') {
+  if (
+    selection === undefined ||
+    selection === null ||
+    selection === 'all' ||
+    (Array.isArray(selection) && selection.length === 0)
+  ) {
     return tracks;
   }
 
@@ -75,7 +103,7 @@ export function selectTracks(context, selection = undefined) {
   const byId = new Map(tracks.map((track) => [track.id, track]));
   const byOrder = new Map(tracks.map((track) => [String(track.order), track]));
   const byRawOrder = new Map(tracks.map((track) => [String(track.rawOrder), track]));
-  const chosen = [];
+  const chosen: AudiotoolTrackManifest[] = [];
 
   for (const key of selected) {
     const track = byId.get(key) ?? byOrder.get(key) ?? byRawOrder.get(key);
@@ -92,7 +120,7 @@ export function selectTracks(context, selection = undefined) {
   return chosen;
 }
 
-export function getRegionsForTrack(trackId, context) {
+export function getRegionsForTrack(trackId: string, context: AudiotoolProjectContext) {
   return context.noteRegions
     .filter((regionEntity) => locationKey(getField(regionEntity, 'track')) === trackId)
     .sort((a, b) => {
@@ -102,24 +130,28 @@ export function getRegionsForTrack(trackId, context) {
     });
 }
 
-export function getNotesForCollection(collectionId, context) {
+export function getNotesForCollection(collectionId: string | null, context: AudiotoolProjectContext) {
   return context.notes
     .filter((note) => locationKey(getField(note, 'collection')) === collectionId)
     .sort((a, b) => toFiniteNumber(getField(a, 'positionTicks')) - toFiniteNumber(getField(b, 'positionTicks')));
 }
 
-function buildTrackManifest(track, context, visualIndex = 0) {
-  const id = getEntityId(track);
+function buildTrackManifest(
+  track: AudiotoolEntity,
+  context: AudiotoolProjectContext,
+  visualIndex = 0
+): AudiotoolTrackManifest {
+  const id = getEntityId(track) ?? '';
   const rawOrder = toFiniteNumber(getField(track, 'orderAmongTracks'), 0);
   const order = visualIndex + 1;
-  const isEnabled = getField(track, 'isEnabled', true) !== false;
+  const isEnabled = getField<boolean>(track, 'isEnabled', true) !== false;
   const playerLocation = getField(track, 'player');
   const playerId = locationKey(playerLocation);
   const player = getEntityByLocation(context.index, playerLocation);
   const playerType = player
-    ? getEntityType(player) ?? getField(player, 'type', undefined)
+    ? getEntityType(player) ?? getField<string | null>(player, 'type', null)
     : locationEntityType(playerLocation);
-  const presetName = player ? getField(player, 'presetName', null) : null;
+  const presetName = player ? getField<string | null>(player, 'presetName', null) : null;
   const playerName = player ? getPlayerName(player) : null;
   const notation = classifyTrackForNotation({ playerType, presetName });
   const regions = getRegionsForTrack(id, context);
@@ -141,15 +173,17 @@ function buildTrackManifest(track, context, visualIndex = 0) {
     isEnabled,
     regionCount: regions.length,
     hasNotes,
-    regionIds: regions.map((region) => getEntityId(region)).filter(Boolean)
+    regionIds: regions
+      .map((region) => getEntityId(region))
+      .filter((id): id is string => Boolean(id))
   };
 }
 
-function hasNotesForCollection(collectionId, context) {
+function hasNotesForCollection(collectionId: string | null, context: AudiotoolProjectContext) {
   return context.notes.some((note) => locationKey(getField(note, 'collection')) === collectionId);
 }
 
-function sortTracks(tracks) {
+function sortTracks(tracks: AudiotoolEntity[]) {
   return [...tracks].sort((a, b) => {
     const aOrder = toFiniteNumber(getField(a, 'orderAmongTracks'), 0);
     const bOrder = toFiniteNumber(getField(b, 'orderAmongTracks'), 0);
@@ -162,20 +196,23 @@ function sortTracks(tracks) {
   });
 }
 
-function getPlayerName(player) {
+function getPlayerName(player: AudiotoolEntity) {
   return (
-    getField(player, 'displayName') ??
-    getField(player, 'name') ??
+    getField<string | null>(player, 'displayName', null) ??
+    getField<string | null>(player, 'name', null) ??
     null
   );
 }
 
-function buildTrackLabel(order, playerName) {
+function buildTrackLabel(order: number, playerName: string | null) {
   const trackPrefix = Number.isFinite(order) ? `Track ${order}` : 'Track';
   return playerName ? `${trackPrefix} - ${playerName}` : trackPrefix;
 }
 
-function extractTempo(index, options) {
+function extractTempo(
+  index: AudiotoolProjectContext['index'],
+  options: InspectOptions
+): AudiotoolTempo {
   if (options.tempo) {
     return normalizeTempo(options.tempo);
   }
@@ -188,7 +225,10 @@ function extractTempo(index, options) {
   };
 }
 
-function extractTimeSignature(index, options) {
+function extractTimeSignature(
+  index: AudiotoolProjectContext['index'],
+  options: InspectOptions
+): AudiotoolTimeSignature {
   if (options.timeSignature) {
     return normalizeTimeSignature(options.timeSignature);
   }
@@ -213,7 +253,7 @@ function extractTimeSignature(index, options) {
   };
 }
 
-function normalizeTempo(tempo) {
+function normalizeTempo(tempo: NonNullable<InspectOptions['tempo']>): AudiotoolTempo {
   if (typeof tempo === 'number') {
     return { bpm: tempo };
   }
@@ -223,7 +263,9 @@ function normalizeTempo(tempo) {
   };
 }
 
-function normalizeTimeSignature(timeSignature) {
+function normalizeTimeSignature(
+  timeSignature: NonNullable<InspectOptions['timeSignature']>
+): AudiotoolTimeSignature {
   if (Array.isArray(timeSignature)) {
     return {
       numerator: toFiniteNumber(timeSignature[0], 4),
@@ -237,7 +279,7 @@ function normalizeTimeSignature(timeSignature) {
   };
 }
 
-function firstFiniteField(entity, fieldNames) {
+function firstFiniteField(entity: AudiotoolEntity | undefined, fieldNames: string[]) {
   for (const fieldName of fieldNames) {
     const value = Number(getField(entity, fieldName));
 

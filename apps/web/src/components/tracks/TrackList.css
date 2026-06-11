@@ -18,8 +18,9 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(90deg, rgba(201, 151, 62, 0.2) 0, rgba(201, 151, 62, 0.07) 6px, transparent 6px),
-    linear-gradient(180deg, rgba(47, 42, 37, 0.98), rgba(29, 26, 23, 0.98));
+    linear-gradient(90deg, rgba(202, 164, 90, 0.14) 0, rgba(202, 164, 90, 0.04) 6px, transparent 6px),
+    var(--surface-gradient);
+  cursor: pointer;
 }
 
 .track-row.is-warning {
@@ -31,13 +32,13 @@
 }
 
 .track-row.is-skipped::after {
-  background: rgba(184, 117, 67, 0.72);
+  background: rgba(150, 67, 90, 0.72);
 }
 
 .track-row:hover {
   border-color: rgba(231, 189, 103, 0.62);
   background:
-    linear-gradient(180deg, rgba(74, 61, 43, 0.92), rgba(38, 32, 28, 0.98)),
+    var(--surface-hover),
     var(--console-3);
 }
 
@@ -68,7 +69,7 @@
   height: 22px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: #151311;
+  background: #0b0d0f;
   color: var(--brass-strong);
 }
 
@@ -121,9 +122,9 @@
 }
 
 .track-hint.is-skipped {
-  border-color: rgba(184, 117, 67, 0.34);
-  background: rgba(184, 117, 67, 0.1);
-  color: #e8b887;
+  border-color: rgba(150, 67, 90, 0.34);
+  background: rgba(150, 67, 90, 0.1);
+  color: #efb7c4;
 }
 
 .track-row.is-empty {
@@ -133,14 +134,14 @@
 
 .track-row.is-empty .track-check {
   color: var(--muted);
-  background: rgba(13, 12, 11, 0.72);
+  background: rgba(9, 11, 13, 0.72);
 }
 
 .track-row.is-empty:hover {
   border-color: var(--line);
   background:
-    linear-gradient(90deg, rgba(201, 151, 62, 0.2) 0, rgba(201, 151, 62, 0.07) 6px, transparent 6px),
-    linear-gradient(180deg, rgba(47, 42, 37, 0.98), rgba(29, 26, 23, 0.98));
+    linear-gradient(90deg, rgba(202, 164, 90, 0.14) 0, rgba(202, 164, 90, 0.04) 6px, transparent 6px),
+    var(--surface-gradient);
 }
 
 .track-hint.is-empty {
@@ -163,7 +164,7 @@
       transparent 1px,
       transparent 46px
     ),
-    rgba(20, 18, 16, 0.54);
+    rgba(10, 13, 16, 0.58);
 }
 
 .empty-track-copy {

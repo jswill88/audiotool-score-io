@@ -1,4 +1,5 @@
 import tonejsMidi from '@tonejs/midi';
+import type { Midi as ToneMidi, Track as ToneTrack } from '@tonejs/midi';
 import { AudiotoolProjectError } from './errors.js';
 import {
   collectAudiotoolEntities,
@@ -19,6 +20,18 @@ import {
   shouldExportTrackByDefault
 } from './notation-classification.js';
 import { audiotoolTicksToMidiTicks } from './ticks.js';
+import type {
+  AudiotoolEntity,
+  AudiotoolMidiFile,
+  AudiotoolMidiResult,
+  AudiotoolOutputMode,
+  AudiotoolProjectContext,
+  AudiotoolProjectSource,
+  AudiotoolTrackManifest,
+  AudiotoolWarning,
+  ExportOptions,
+  TrackSelection
+} from './types.js';
 
 const { Midi } = tonejsMidi;
 
@@ -40,14 +53,48 @@ export const OutputModes = Object.freeze({
   Combined: 'combined',
   Separate: 'separate',
   Both: 'both'
-});
+} as const);
 
-export async function exportAudiotoolProjectToMidi(projectSource, options = {}) {
+type BuildMidiParams = {
+  context: AudiotoolProjectContext;
+  tracks: AudiotoolTrackManifest[];
+  options: ExportOptions;
+  warnings: AudiotoolWarning[];
+};
+
+type FilterExportableTracksOptions = {
+  options: ExportOptions;
+  trackSelection: TrackSelection | undefined;
+  warnings: AudiotoolWarning[];
+};
+
+type ExpandedNote = {
+  pitch: number;
+  positionTicks: number;
+  durationTicks: number;
+  velocity: number;
+};
+
+type RegionTiming = {
+  regionStart: number;
+  regionDuration: number;
+  collectionOffset?: number;
+  loopDuration?: number;
+  localStart?: number;
+};
+
+export async function exportAudiotoolProjectToMidi(
+  projectSource: Promise<AudiotoolProjectSource> | AudiotoolProjectSource,
+  options: ExportOptions = {}
+): Promise<AudiotoolMidiResult> {
   const source = await projectSource;
   return exportAudiotoolEntitiesToMidi(collectAudiotoolEntities(source), options);
 }
 
-export function exportAudiotoolEntitiesToMidi(entities, options = {}) {
+export function exportAudiotoolEntitiesToMidi(
+  entities: AudiotoolProjectSource,
+  options: ExportOptions = {}
+): AudiotoolMidiResult {
   const mode = normalizeMode(options.mode);
   const context = createProjectContext(collectAudiotoolEntities(entities), options);
   const trackSelection = options.tracks ?? options.trackIds;
@@ -80,7 +127,7 @@ export function exportAudiotoolEntitiesToMidi(entities, options = {}) {
     };
   }
 
-  const files = [];
+  const files: AudiotoolMidiFile[] = [];
 
   if (mode === OutputModes.Combined || mode === OutputModes.Both) {
     const midi = buildMidi({
@@ -127,11 +174,14 @@ export function exportAudiotoolEntitiesToMidi(entities, options = {}) {
   };
 }
 
-export function createMidiFromAudiotoolEntities(entities, options = {}) {
+export function createMidiFromAudiotoolEntities(
+  entities: AudiotoolProjectSource,
+  options: ExportOptions = {}
+): ToneMidi {
   const context = createProjectContext(collectAudiotoolEntities(entities), options);
   const trackSelection = options.tracks ?? options.trackIds;
   const selectedTracks = selectTracks(context, trackSelection);
-  const warnings = [];
+  const warnings: AudiotoolWarning[] = [];
   const exportableTracks = filterExportableTracks(selectedTracks, {
     options,
     trackSelection,
@@ -146,7 +196,10 @@ export function createMidiFromAudiotoolEntities(entities, options = {}) {
   });
 }
 
-function filterExportableTracks(tracks, { options, trackSelection, warnings }) {
+function filterExportableTracks(
+  tracks: AudiotoolTrackManifest[],
+  { options, trackSelection, warnings }: FilterExportableTracksOptions
+) {
   const hasExplicitSelection = isExplicitTrackSelection(trackSelection);
 
   return tracks.filter((track) => {
@@ -184,7 +237,7 @@ function filterExportableTracks(tracks, { options, trackSelection, warnings }) {
   });
 }
 
-function addNotationWarnings(tracks, warnings) {
+function addNotationWarnings(tracks: AudiotoolTrackManifest[], warnings: AudiotoolWarning[]) {
   for (const track of tracks) {
     if (track.notation?.status === NotationStatuses.Ready) {
       continue;
@@ -199,7 +252,7 @@ function addNotationWarnings(tracks, warnings) {
   }
 }
 
-function isExplicitTrackSelection(selection) {
+function isExplicitTrackSelection(selection: TrackSelection | undefined) {
   if (selection === undefined || selection === null) {
     return false;
   }
@@ -211,7 +264,7 @@ function isExplicitTrackSelection(selection) {
   return String(selection).trim().length > 0;
 }
 
-function buildMidi({ context, tracks, options, warnings }) {
+function buildMidi({ context, tracks, options, warnings }: BuildMidiParams): ToneMidi {
   const midi = new Midi();
   midi.header.name = options.title ?? 'Audiotool Export';
   midi.header.setTempo(context.tempo.bpm);
@@ -237,14 +290,20 @@ function buildMidi({ context, tracks, options, warnings }) {
   return midi;
 }
 
-function applyNotationMidiIdentity(track, trackIndex) {
+function applyNotationMidiIdentity(track: ToneTrack, trackIndex: number) {
   track.channel = notationMidiChannels[trackIndex % notationMidiChannels.length];
   track.instrument.number = singleStaffMidiPrograms[
     Math.floor(trackIndex / notationMidiChannels.length) % singleStaffMidiPrograms.length
   ];
 }
 
-function addNotesForTrack(midiTrack, trackManifest, context, options, warnings) {
+function addNotesForTrack(
+  midiTrack: ToneTrack,
+  trackManifest: AudiotoolTrackManifest,
+  context: AudiotoolProjectContext,
+  options: ExportOptions,
+  warnings: AudiotoolWarning[]
+) {
   const regions = getRegionsForTrack(trackManifest.id, context);
 
   for (const noteRegion of regions) {
@@ -284,14 +343,22 @@ function addNotesForTrack(midiTrack, trackManifest, context, options, warnings) 
   }
 }
 
-function expandRegionNotes(notes, region, context) {
+function expandRegionNotes(
+  notes: AudiotoolEntity[],
+  region: AudiotoolEntity,
+  context: {
+    noteRegionId: string | null;
+    trackId: string;
+    warnings: AudiotoolWarning[];
+  }
+): ExpandedNote[] {
   const regionStart = nonNegativeNumber(region.positionTicks);
   const regionDuration = nonNegativeNumber(region.durationTicks);
   const collectionOffset = nonNegativeNumber(region.collectionOffsetTicks);
   const loopOffset = nonNegativeNumber(region.loopOffsetTicks);
   const loopDuration = nonNegativeNumber(region.loopDurationTicks);
   const hasLoop = loopDuration > 0;
-  const occurrences = [];
+  const occurrences: ExpandedNote[] = [];
 
   if (regionDuration <= 0) {
     return occurrences;
@@ -350,7 +417,11 @@ function expandRegionNotes(notes, region, context) {
   return occurrences.sort((a, b) => a.positionTicks - b.positionTicks || a.pitch - b.pitch);
 }
 
-function addLoopedOccurrences(occurrences, note, loop) {
+function addLoopedOccurrences(
+  occurrences: ExpandedNote[],
+  note: ExpandedNote,
+  loop: Required<Pick<RegionTiming, 'regionStart' | 'regionDuration' | 'collectionOffset' | 'loopDuration'>>
+) {
   const baseLocalStart = note.positionTicks - loop.collectionOffset;
   let iteration = Math.floor(-baseLocalStart / loop.loopDuration);
 
@@ -375,7 +446,11 @@ function addLoopedOccurrences(occurrences, note, loop) {
   }
 }
 
-function addClippedOccurrence(occurrences, note, region) {
+function addClippedOccurrence(
+  occurrences: ExpandedNote[],
+  note: ExpandedNote,
+  region: Required<Pick<RegionTiming, 'regionStart' | 'regionDuration' | 'localStart'>>
+) {
   const localStart = region.localStart;
   const localEnd = localStart + note.durationTicks;
 
@@ -399,7 +474,17 @@ function addClippedOccurrence(occurrences, note, region) {
   });
 }
 
-function createMidiFile({ kind, name, midi, trackIds }) {
+function createMidiFile({
+  kind,
+  name,
+  midi,
+  trackIds
+}: {
+  kind: AudiotoolMidiFile['kind'];
+  name: string;
+  midi: ToneMidi;
+  trackIds: string[];
+}): AudiotoolMidiFile {
   return {
     kind,
     name,
@@ -410,7 +495,7 @@ function createMidiFile({ kind, name, midi, trackIds }) {
   };
 }
 
-function buildPartFileName(track) {
+function buildPartFileName(track: AudiotoolTrackManifest) {
   const label = track.label
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -419,9 +504,9 @@ function buildPartFileName(track) {
   return `${label || track.id || 'track'}.mid`;
 }
 
-function normalizeMode(mode = OutputModes.Combined) {
-  if (Object.values(OutputModes).includes(mode)) {
-    return mode;
+function normalizeMode(mode: ExportOptions['mode'] = OutputModes.Combined): AudiotoolOutputMode {
+  if (Object.values(OutputModes).includes(mode as AudiotoolOutputMode)) {
+    return mode as AudiotoolOutputMode;
   }
 
   throw new AudiotoolProjectError(
@@ -429,18 +514,18 @@ function normalizeMode(mode = OutputModes.Combined) {
   );
 }
 
-function isInsideLoop(positionTicks, loopOffset, loopDuration) {
+function isInsideLoop(positionTicks: number, loopOffset: number, loopDuration: number) {
   return positionTicks >= loopOffset && positionTicks < loopOffset + loopDuration;
 }
 
-function nonNegativeNumber(value) {
+function nonNegativeNumber(value: unknown) {
   return Math.max(0, toFiniteNumber(value, 0));
 }
 
-function clampVelocity(value) {
+function clampVelocity(value: unknown) {
   return Math.min(1, Math.max(0, toFiniteNumber(value, 1)));
 }
 
-function clampMidiPitch(value) {
+function clampMidiPitch(value: unknown) {
   return Math.min(127, Math.max(0, Math.round(toFiniteNumber(value, 60))));
 }

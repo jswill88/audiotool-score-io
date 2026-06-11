@@ -9,7 +9,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(52, 46, 40, 0.54), rgba(24, 21, 19, 0.72));
+    var(--surface-gradient-soft);
 }
 
 .auth-copy {

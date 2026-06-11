@@ -54,10 +54,50 @@ export {
   defaultMidiPpq,
   midiTicksToAudiotoolTicks
 } from './ticks.js';
+export type {
+  AudiotoolAuthOptions,
+  AudiotoolClient,
+  AudiotoolClientLike,
+  AudiotoolDocument,
+  AudiotoolEntity,
+  AudiotoolEntityIndex,
+  AudiotoolLocation,
+  AudiotoolMidiFile,
+  AudiotoolMidiResult,
+  AudiotoolOutputMode,
+  AudiotoolProjectContext,
+  AudiotoolProjectDetails,
+  AudiotoolProjectListResult,
+  AudiotoolProjectManifest,
+  AudiotoolProjectReference,
+  AudiotoolProjectSource,
+  AudiotoolTempo,
+  AudiotoolTimeSignature,
+  AudiotoolTrackManifest,
+  AudiotoolWarning,
+  ExportOptions,
+  InspectOptions,
+  NotationClassification,
+  NotationKind,
+  NotationStatus,
+  OpenProjectOptions,
+  ProjectLike,
+  ProjectListOptions,
+  ProjectReferenceType,
+  TicksOptions,
+  TrackSelection,
+  UnknownRecord
+} from './types.js';
 
 export { exportAudiotoolProjectToMidi as extractAudiotoolProjectToMidi } from './render.js';
 
-export async function createMidiFromAudiotoolProject(projectSource, options = {}) {
+import type { Midi } from '@tonejs/midi';
+import type { AudiotoolProjectSource, ExportOptions } from './types.js';
+
+export async function createMidiFromAudiotoolProject(
+  projectSource: AudiotoolProjectSource,
+  options: ExportOptions = {}
+): Promise<Midi> {
   const { createMidiFromAudiotoolEntities } = await import('./render.js');
   return createMidiFromAudiotoolEntities(projectSource, options);
 }

@@ -1,5 +1,7 @@
 export class AudiotoolToMidiError extends Error {
-  constructor(message, statusCode = 500) {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 500) {
     super(message);
     this.name = 'AudiotoolToMidiError';
     this.statusCode = statusCode;
@@ -7,7 +9,7 @@ export class AudiotoolToMidiError extends Error {
 }
 
 export class AudiotoolProjectError extends AudiotoolToMidiError {
-  constructor(message, statusCode = 400) {
+  constructor(message: string, statusCode = 400) {
     super(message, statusCode);
     this.name = 'AudiotoolProjectError';
   }

@@ -7,7 +7,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(15, 14, 13, 0.9), rgba(36, 31, 27, 0.88));
+    var(--control-well);
 }
 
 .segmented-control button {
@@ -24,8 +24,8 @@
 
 .segmented-control button.is-active {
   background:
-    linear-gradient(180deg, rgba(231, 189, 103, 0.96), rgba(177, 122, 40, 0.96));
-  color: #1c1309;
+    var(--active-gradient);
+  color: var(--on-accent);
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.26);
 }
 

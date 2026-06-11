@@ -13,7 +13,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [x] When switching between projects or starting a new conversion, the previous score is hidden.
 - [x] add space between tempo and part name, and part name and staff
 - [x] make a handoff document to a new session
-- [ ] Add a favicon.
+- [x] Add a favicon.
 - [x] Change the default quantization grid to 24.
 - [x] Remove exact note counts from the UI/manifest; only track whether a part has 0 notes.
 - [x] Remove the MIDI include checkbox from the web UI.
@@ -39,7 +39,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] Show the score following along during playback.
 - [ ] Allow pressing play from the browser.
 - [ ] Allow mapping drum notation
-- [ ] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and `packages/midi-to-musicxml` are done.
+- [x] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and both reusable packages are done.
 - [ ] Check accessibility
 
 ## Notes

@@ -1,8 +1,9 @@
 import { AudiotoolProjectError } from './errors.js';
+import type { AudiotoolProjectReference } from './types.js';
 
 const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
-export function parseAudiotoolProjectReference(projectReference) {
+export function parseAudiotoolProjectReference(projectReference: string): AudiotoolProjectReference {
   if (typeof projectReference !== 'string') {
     throw new AudiotoolProjectError('Audiotool project reference must be a string.');
   }
@@ -30,7 +31,7 @@ export function parseAudiotoolProjectReference(projectReference) {
   };
 }
 
-export function audiotoolProjectReferenceToName(projectReference) {
+export function audiotoolProjectReferenceToName(projectReference: string | AudiotoolProjectReference) {
   const reference = typeof projectReference === 'string'
     ? parseAudiotoolProjectReference(projectReference)
     : projectReference;
@@ -44,7 +45,7 @@ export function audiotoolProjectReferenceToName(projectReference) {
   return reference.projectName;
 }
 
-export function audiotoolProjectReferenceToOpenReference(projectReference) {
+export function audiotoolProjectReferenceToOpenReference(projectReference: string | AudiotoolProjectReference) {
   const reference = typeof projectReference === 'string'
     ? parseAudiotoolProjectReference(projectReference)
     : projectReference;
@@ -56,7 +57,7 @@ export function audiotoolProjectReferenceToOpenReference(projectReference) {
   return reference.openReference;
 }
 
-function parseProjectUrl(input) {
+function parseProjectUrl(input: string) {
   try {
     const url = new URL(input);
     const projectParam = url.searchParams.get('project');
@@ -79,7 +80,7 @@ function parseProjectUrl(input) {
   }
 }
 
-function parseResourceName(input) {
+function parseResourceName(input: string) {
   const match = input.match(/^projects\/([^/?#\s]+)$/i);
   const projectId = match?.[1] ?? null;
 
@@ -89,6 +90,6 @@ function parseResourceName(input) {
   };
 }
 
-function extractUuid(input) {
+function extractUuid(input: string) {
   return input.match(uuidPattern)?.[0] ?? null;
 }
