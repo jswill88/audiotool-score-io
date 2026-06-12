@@ -6,17 +6,21 @@
   font-size: 14px;
 }
 
-.project-meta strong,
-.project-meta span {
+.project-meta > strong,
+.project-meta > span {
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.project-meta strong {
+.project-meta > strong {
   color: var(--paper);
   font-size: 15px;
+}
+
+.project-meta .inline-text-edit {
+  max-width: 220px;
 }
 
 @media (max-width: 760px) {

@@ -104,7 +104,8 @@ export async function convertMidiToMusicXml({
   grid = defaultQuantizationGrid,
   preprocessedPath,
   museScore = {},
-  title
+  title,
+  partNames
 }: ConvertMidiToMusicXmlOptions): Promise<ConvertMidiToMusicXmlResult> {
   if (!inputPath) {
     throw new MidiValidationError('inputPath is required.');
@@ -137,7 +138,7 @@ export async function convertMidiToMusicXml({
 
     await convertWithMuseScore(convertPath, outputPath, museScore);
     await writeMusicXmlTitle(outputPath, title);
-    await writeMusicXmlPartNames(outputPath);
+    await writeMusicXmlPartNames(outputPath, partNames);
     await writeMusicXmlFinalBarline(outputPath);
 
     return {

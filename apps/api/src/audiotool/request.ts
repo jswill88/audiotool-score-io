@@ -18,7 +18,8 @@ import type {
   AudiotoolProjectListResult,
   ConversionRequestOptions,
   InspectOptions,
-  ProjectListOptions
+  ProjectListOptions,
+  ScoreImportRequestOptions
 } from '../types.js';
 
 export async function createRequestAudiotoolSession(req: Request): Promise<AudiotoolClient> {
@@ -59,6 +60,8 @@ export function readConversionRequestOptions(req: Request): ConversionRequestOpt
   return {
     mode: readAudiotoolOutputMode(req.body?.mode ?? req.body?.outputMode ?? req.query.mode),
     tracks: readTrackSelection(req.body?.tracks ?? req.body?.trackIds),
+    title: stringifyOptional(req.body?.title)?.trim() || undefined,
+    trackTitles: readTrackTitles(req.body?.trackTitles ?? req.body?.trackNames),
     includeDisabledTracks: readBooleanBody(
       req.body?.includeDisabledTracks,
       false,
@@ -88,6 +91,17 @@ export function readConversionRequestOptions(req: Request): ConversionRequestOpt
   };
 }
 
+export function readScoreImportRequestOptions(req: Request): ScoreImportRequestOptions {
+  return {
+    dryRun: readBooleanBody(req.body?.dryRun, false, 'dryRun'),
+    title: stringifyOptional(req.body?.title)?.trim() || undefined,
+    selectedPartIds: readStringSelection(req.body?.parts ?? req.body?.partIds),
+    partTitles: readStringMap(req.body?.partTitles ?? req.body?.partNames, 'partTitles'),
+    projectTemplateName: stringifyOptional(req.body?.projectTemplateName)?.trim() || undefined,
+    maxImportedNotes: readOptionalPositiveInteger(req.body?.maxImportedNotes, 'maxImportedNotes')
+  };
+}
+
 export function throwIfAudiotoolServiceError(
   result: AudiotoolProjectListResult
 ): asserts result is Exclude<AudiotoolProjectListResult, Error> {
@@ -106,7 +120,7 @@ function readAudiotoolAuth(req: Request): AudiotoolAuth {
   const tokenData = req.body?.audiotoolAuth ?? req.body?.authTokens ?? req.body?.tokens;
 
   if (tokenData !== undefined && tokenData !== null) {
-    return readAudiotoolBrowserAuth(tokenData);
+    return readAudiotoolBrowserAuth(readJsonField(tokenData, 'audiotoolAuth'));
   }
 
   const headerValue = req.get('authorization') ?? '';
@@ -179,9 +193,60 @@ function readAudiotoolOutputMode(value: unknown = 'combined'): AudiotoolOutputMo
   return outputMode;
 }
 
+function readTrackTitles(value: unknown): Record<string, string> {
+  return readStringMap(value, 'trackTitles');
+}
+
+function readStringMap(value: unknown, name: string): Record<string, string> {
+  const parsedValue = readJsonField(value, name);
+
+  if (value === undefined || value === null) {
+    return {};
+  }
+
+  if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
+    throw new ClientError(`"${name}" must be an object keyed by ID.`);
+  }
+
+  const titles: Record<string, string> = {};
+
+  for (const [trackId, title] of Object.entries(parsedValue)) {
+    const normalizedTrackId = trackId.trim();
+    const normalizedTitle = stringifyOptional(title)?.trim();
+
+    if (!normalizedTrackId) {
+      throw new ClientError(`"${name}" cannot include an empty ID.`);
+    }
+
+    if (normalizedTitle) {
+      titles[normalizedTrackId] = normalizedTitle;
+    }
+  }
+
+  return titles;
+}
+
 function readTrackSelection(value: unknown): string[] | undefined {
+  return readStringSelection(value);
+}
+
+function readStringSelection(value: unknown): string[] | undefined {
   if (value === undefined || value === null || value === 'all') {
     return undefined;
+  }
+
+  const parsedValue = readJsonField(value, 'selection');
+
+  if (parsedValue === undefined || parsedValue === null || parsedValue === 'all') {
+    return undefined;
+  }
+
+  if (Array.isArray(parsedValue)) {
+    return parsedValue.map((item) => String(item));
+  }
+
+  if (typeof parsedValue === 'string' && parsedValue.trim().startsWith('[')) {
+    throw new ClientError('"selection" must be an array, a comma-separated string, or omitted.');
   }
 
   if (Array.isArray(value)) {
@@ -198,6 +263,12 @@ function readTrackSelection(value: unknown): string[] | undefined {
   throw new ClientError('"tracks" must be an array, a comma-separated string, or omitted.');
 }
 
+function readOptionalPositiveInteger(value: unknown, name: string): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+
+  return readPositiveInteger(value, 0, name);
+}
+
 function readBooleanBody(value: unknown, fallback: boolean, name: string): boolean {
   if (value === undefined) return fallback;
   if (typeof value === 'boolean') return value;
@@ -209,4 +280,22 @@ function readBooleanBody(value: unknown, fallback: boolean, name: string): boole
 function stringifyOptional(value: unknown): string | undefined {
   if (value === undefined) return undefined;
   return String(value);
+}
+
+function readJsonField(value: unknown, name: string): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed || !/^[{[]/.test(trimmed)) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    throw new ClientError(`"${name}" must be valid JSON when sent as a string.`);
+  }
 }

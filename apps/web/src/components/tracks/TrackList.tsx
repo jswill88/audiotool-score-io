@@ -1,5 +1,7 @@
+import { useId } from 'react';
 import { AlertTriangle, Ban, Check } from 'lucide-react';
 import './TrackList.css';
+import { InlineTextEdit } from '../InlineTextEdit';
 import { formatDeviceType } from '../../utils/format';
 import type { AppStatus, SelectedProject, TrackManifest } from '../../types';
 
@@ -8,6 +10,8 @@ type TrackListProps = {
   status: AppStatus;
   tracks: TrackManifest[];
   selectedTrackIds: string[];
+  trackTitles: Record<string, string>;
+  onTrackTitleChange: (trackId: string, title: string) => void;
   onToggle: (trackId: string) => void;
 };
 
@@ -16,8 +20,12 @@ export function TrackList({
   status,
   tracks,
   selectedTrackIds,
+  trackTitles,
+  onTrackTitleChange,
   onToggle
 }: TrackListProps) {
+  const checkboxIdPrefix = useId();
+
   if (tracks.length === 0) {
     const emptyState = getEmptyState(selectedProject, status);
 
@@ -39,10 +47,13 @@ export function TrackList({
         const checked = !isEmpty && selectedTrackIds.includes(track.id);
         const statusClass = notationStatus === 'ready' ? '' : `is-${notationStatus}`;
         const selectedClass = checked ? 'is-selected' : '';
+        const checkboxId = `${checkboxIdPrefix}-${track.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+        const exportTitle = trackTitles[track.id] ?? track.label;
 
         return (
-          <label className={`track-row ${selectedClass} ${isEmpty ? 'is-empty' : ''} ${statusClass}`} key={track.id}>
+          <div className={`track-row ${selectedClass} ${isEmpty ? 'is-empty' : ''} ${statusClass}`} key={track.id}>
             <input
+              id={checkboxId}
               type="checkbox"
               checked={checked}
               disabled={isEmpty}
@@ -52,11 +63,24 @@ export function TrackList({
                 }
               }}
             />
-            <span className="track-check" aria-hidden="true">
-              {checked ? <Check size={13} /> : null}
-            </span>
+            <label className="track-check-label" htmlFor={checkboxId}>
+              <span className="track-check" aria-hidden="true">
+                {checked ? <Check size={13} /> : null}
+              </span>
+            </label>
             <span className="track-main">
-              <strong>{track.label}</strong>
+              <label className="track-name" htmlFor={checkboxId}>{track.label}</label>
+              {!isEmpty ? (
+                <span className="track-export-title">
+                  <small>Export name</small>
+                  <InlineTextEdit
+                    ariaLabel={`Edit export name for ${track.label}`}
+                    fallbackValue={track.label}
+                    value={exportTitle}
+                    onCommit={(title) => onTrackTitleChange(track.id, title)}
+                  />
+                </span>
+              ) : null}
               <small>{formatDeviceType(track.playerType)}</small>
               {isEmpty ? (
                 <span className="track-hint is-empty">
@@ -72,7 +96,7 @@ export function TrackList({
                 </span>
               ) : null}
             </span>
-          </label>
+          </div>
         );
       })}
     </div>

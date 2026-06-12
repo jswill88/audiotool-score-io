@@ -31,6 +31,7 @@
   place-items: center;
   min-width: 64px;
   height: 32px;
+  padding-inline: 14px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -73,6 +74,11 @@
 @media (max-width: 760px) {
   .segmented-control {
     width: 100%;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(var(--segment-count, 3), minmax(0, 1fr));
+  }
+
+  .segmented-control label {
+    padding-inline: 8px;
+    font-size: 14px;
   }
 }

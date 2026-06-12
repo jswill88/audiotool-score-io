@@ -1,6 +1,6 @@
 import type { TokenData } from '@audiotool/nexus';
 
-export type StatusArea = 'projects' | 'tracks' | null;
+export type StatusArea = 'projects' | 'tracks' | 'import' | null;
 export type StatusPhase = 'idle' | 'loading' | 'success' | 'error';
 
 export type AppStatus = {
@@ -10,6 +10,7 @@ export type AppStatus = {
 };
 
 export type OutputMode = 'score' | 'parts' | 'both';
+export type AppWorkflow = 'export' | 'import';
 export type ViewerTab = 'score' | 'xml';
 export type QuantizationGrid = 4 | 8 | 12 | 16 | 24 | 32 | 48 | 64;
 
@@ -85,4 +86,57 @@ export type ProjectListResponse = {
 export type InspectProjectResponse = {
   details: ProjectDetails | null;
   manifest: ProjectManifest;
+};
+
+export type ScoreImportWarning = {
+  code: string;
+  message: string;
+  partId?: string;
+  trackIndex?: number;
+};
+
+export type ScoreImportNote = {
+  pitch: number;
+  positionTicks: number;
+  durationTicks: number;
+  velocity: number;
+};
+
+export type ScoreImportPart = {
+  id: string;
+  title: string;
+  trackIndex: number;
+  noteCount: number;
+  isPercussion: boolean;
+  shouldImportByDefault: boolean;
+  notes?: ScoreImportNote[];
+};
+
+export type ScoreImportPlan = {
+  title: string;
+  sourceName?: string;
+  tempo: {
+    bpm: number;
+    sourceTicks: number;
+  };
+  timeSignature: {
+    numerator: number;
+    denominator: number;
+    sourceTicks: number;
+  };
+  durationTicks: number;
+  parts: ScoreImportPart[];
+  warnings: ScoreImportWarning[];
+};
+
+export type ScoreImportResult = {
+  project: AudiotoolProject;
+  dawUrl: string;
+  plan: ScoreImportPlan;
+  importedParts: Array<{
+    id: string;
+    title: string;
+    noteCount: number;
+  }>;
+  warnings: ScoreImportWarning[];
 };

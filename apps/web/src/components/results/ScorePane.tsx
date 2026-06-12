@@ -3,13 +3,22 @@ import type { SelectedProject } from '../../types';
 import './ScorePane.css';
 
 type ScorePaneProps = {
+  emptyDescription?: string;
+  emptyTitle?: string;
   id: string;
   labelledBy: string;
   selectedProject: SelectedProject | null;
   xml: string;
 };
 
-export function ScorePane({ id, labelledBy, selectedProject, xml }: ScorePaneProps) {
+export function ScorePane({
+  emptyDescription,
+  emptyTitle,
+  id,
+  labelledBy,
+  selectedProject,
+  xml
+}: ScorePaneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [renderError, setRenderError] = useState('');
 
@@ -73,6 +82,10 @@ export function ScorePane({ id, labelledBy, selectedProject, xml }: ScorePanePro
           title: 'No project selected',
           description: 'Select a project to preview the score here.'
         };
+    const resolvedEmptyState = {
+      title: emptyTitle ?? emptyState.title,
+      description: emptyDescription ?? emptyState.description
+    };
 
     return (
       <div
@@ -83,8 +96,8 @@ export function ScorePane({ id, labelledBy, selectedProject, xml }: ScorePanePro
         tabIndex={0}
       >
         <div className="score-empty-copy">
-          <strong>{emptyState.title}</strong>
-          <span>{emptyState.description}</span>
+          <strong>{resolvedEmptyState.title}</strong>
+          <span>{resolvedEmptyState.description}</span>
         </div>
       </div>
     );

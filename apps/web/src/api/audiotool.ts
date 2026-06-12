@@ -4,6 +4,8 @@ import type {
   OutputMode,
   ProjectListResponse,
   QuantizationGrid,
+  ScoreImportResult,
+  ScoreImportPlan,
   ServerAuth
 } from '../types';
 
@@ -29,7 +31,9 @@ export async function convertAudiotoolProject({
   tracks,
   mode,
   quantize,
-  grid
+  grid,
+  title,
+  trackTitles
 }: {
   auth: ServerAuth;
   project: string;
@@ -37,6 +41,8 @@ export async function convertAudiotoolProject({
   mode: OutputMode;
   quantize: boolean;
   grid: QuantizationGrid;
+  title?: string;
+  trackTitles?: Record<string, string>;
 }): Promise<ConversionResult> {
   const response = await fetch(`${apiBaseUrl}/audiotool/convert`, {
     method: 'POST',
@@ -49,7 +55,9 @@ export async function convertAudiotoolProject({
       tracks,
       mode,
       quantize,
-      grid
+      grid,
+      title,
+      trackTitles
     })
   });
 
@@ -58,6 +66,71 @@ export async function convertAudiotoolProject({
   }
 
   return readConversionResponse(response);
+}
+
+export async function analyzeScoreImport({
+  file,
+  title
+}: {
+  file: File;
+  title?: string;
+}): Promise<{ plan: ScoreImportPlan }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('dryRun', 'true');
+
+  if (title) {
+    formData.append('title', title);
+  }
+
+  const response = await fetch(`${apiBaseUrl}/audiotool/import`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorResponse(response));
+  }
+
+  return response.json() as Promise<{ plan: ScoreImportPlan }>;
+}
+
+export async function importScoreToAudiotool({
+  auth,
+  file,
+  title,
+  parts,
+  partTitles
+}: {
+  auth: ServerAuth;
+  file: File;
+  title?: string;
+  parts: string[];
+  partTitles?: Record<string, string>;
+}): Promise<ScoreImportResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('audiotoolAuth', JSON.stringify(auth));
+  formData.append('parts', JSON.stringify(parts));
+
+  if (title) {
+    formData.append('title', title);
+  }
+
+  if (partTitles) {
+    formData.append('partTitles', JSON.stringify(partTitles));
+  }
+
+  const response = await fetch(`${apiBaseUrl}/audiotool/import`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorResponse(response));
+  }
+
+  return response.json() as Promise<ScoreImportResult>;
 }
 
 async function requestJson<T>(

@@ -26,13 +26,15 @@ export async function convertMidiFilesToMusicXml({
   workDir,
   quantize,
   grid,
-  title
+  title,
+  trackTitles
 }: {
   midiFiles: AudiotoolMidiFile[];
   workDir: string;
   quantize: boolean;
   grid: Parameters<typeof convertMidiToMusicXml>[0]['grid'];
   title: string;
+  trackTitles?: Record<string, string>;
 }): Promise<MusicXmlFile[]> {
   const outputs: MusicXmlFile[] = [];
 
@@ -48,6 +50,7 @@ export async function convertMidiFilesToMusicXml({
       quantize,
       grid,
       title: midiFile.title || title,
+      partNames: readPartNames(midiFile.trackIds, trackTitles),
       museScore: conversionOptions
     });
 
@@ -66,21 +69,27 @@ export async function createAudiotoolArchive({
   details,
   midiResult,
   musicXmlFiles,
-  includeMidi
+  includeMidi,
+  title,
+  trackTitles
 }: {
   details: AudiotoolProjectDetails;
   midiResult: AudiotoolMidiResult;
   musicXmlFiles: MusicXmlFile[];
   includeMidi: boolean;
+  title?: string;
+  trackTitles?: Record<string, string>;
 }) {
   const zip = new AdmZip();
   const manifest = {
     project: serializeProject(details.project),
     reference: details.reference,
+    title,
     tempo: midiResult.tempo,
     timeSignature: midiResult.timeSignature,
     tracks: midiResult.tracks,
     exportedTracks: midiResult.exportedTracks,
+    trackTitles,
     warnings: midiResult.warnings,
     files: musicXmlFiles.map((file: MusicXmlFile) => ({
       kind: file.kind,
@@ -156,4 +165,14 @@ function bytesToBuffer(bytes: AudiotoolMidiFile['bytes']) {
 function sanitizeFileName(value: unknown) {
   const parsed = path.parse(String(value));
   return `${sanitizeFileBase(parsed.name)}${parsed.ext.replace(/[^a-zA-Z0-9.]/g, '')}`;
+}
+
+function readPartNames(trackIds: string[] | undefined, trackTitles: Record<string, string> | undefined) {
+  if (!trackIds || !trackTitles) {
+    return undefined;
+  }
+
+  const partNames = trackIds.map((trackId) => trackTitles[trackId]?.trim() ?? '');
+
+  return partNames.some(Boolean) ? partNames : undefined;
 }

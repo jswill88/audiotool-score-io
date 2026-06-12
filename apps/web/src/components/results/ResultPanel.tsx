@@ -16,9 +16,12 @@ type ResultPanelProps = {
   activeFile: MusicXmlFile | null;
   activeFileName: string;
   activeResult: ActiveConversionResult | null;
+  emptyDescription?: string;
+  emptyTitle?: string;
   selectedProject: SelectedProject | null;
   setActiveFileName: (fileName: string) => void;
   setViewerTab: (tab: ViewerTab) => void;
+  title?: string;
   viewerTab: ViewerTab;
 };
 
@@ -26,9 +29,12 @@ export function ResultPanel({
   activeFile,
   activeFileName,
   activeResult,
+  emptyDescription,
+  emptyTitle,
   selectedProject,
   setActiveFileName,
   setViewerTab,
+  title = 'Result',
   viewerTab
 }: ResultPanelProps) {
   const resultTabsId = useId();
@@ -46,7 +52,7 @@ export function ResultPanel({
   return (
     <section className="panel viewer-panel">
       <div className="viewer-header">
-        <SectionTitle icon={<Eye size={17} />} title="Result" />
+        <SectionTitle icon={<Eye size={17} />} title={title} />
         <div className="viewer-actions">
           {activeResult?.downloadUrl ? (
             <a className="icon-link" href={activeResult.downloadUrl} download={activeResult.downloadName}>
@@ -91,6 +97,8 @@ export function ResultPanel({
       {viewerTab === 'score' ? (
         <ScorePane
           key={scorePaneKey}
+          emptyDescription={emptyDescription}
+          emptyTitle={emptyTitle}
           id={scorePanelId}
           labelledBy={scoreTabId}
           selectedProject={selectedProject}

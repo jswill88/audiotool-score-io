@@ -7,9 +7,11 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ### Future Features
 
 - [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
+- [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.
 - [ ] Show the score following along during playback.
 - [ ] Allow pressing play from the browser.
 - [ ] Allow mapping drum notation
+- [ ] Ability to choose which region?
 
 ### Stretch Ideas
 
@@ -41,11 +43,13 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 - [x] Update the color scheme toward a modern DAW look with classical/Mozart hints.
 - [x] Use visual track order numbers in labels instead of raw Audiotool entity ids.
+- [x] Add editable score and track export titles that flow into MIDI metadata, MusicXML titles, MusicXML part names, and exported part filenames.
 - [x] Find confusing code and refactor. Look especially for very long files
 - [x] There should be a loading indicator when the score is being prepared to be displayed
 - [x] Create link to project
 - [x] Loading spinners for opening/inspecting projects
 - [x] Sometimes parts appear to be merged into one double staff when they should be separate parts
+- [x] Update logo colors
 
 ### Accessibility
 
@@ -68,5 +72,6 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### Future Features
 
+- [x] Add a MusicXML-to-Audiotool import workflow with a `score-to-audiotool` package, `/audiotool/import` route, MusicXML upload/analyze UI, part selection, imported track naming, and basic Gakki note-track project creation.
 - [x] Add `/sign-in` and protected `/app` routes. `/` redirects based on auth state, and the authenticated app header has a logout button that returns to `/sign-in`.
 - [x] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and both reusable packages are done.

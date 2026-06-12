@@ -6,8 +6,9 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 
 - `packages/midi-to-musicxml`: standalone TypeScript MIDI to MusicXML conversion package with optional quantization and MuseScore support.
 - `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track to MIDI package. Audiotool extraction is intentionally separate from MIDI to MusicXML conversion.
+- `packages/score-to-audiotool`: standalone TypeScript MusicXML score importer that turns score parts into editable Audiotool note tracks.
 - `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
-- `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, conversion, and MusicXML viewing.
+- `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, MusicXML export, MusicXML import, and score viewing.
 
 For a file-by-file navigation guide, see [`CODEMAP.md`](CODEMAP.md).
 
@@ -83,7 +84,7 @@ Set `?grid=8`, `?grid=16`, or another supported grid value to control quantizati
 
 ## Audiotool to MIDI
 
-`@midi-to-xml/audiotool-to-midi` exports Audiotool note tracks as standard MIDI. It keeps the Audiotool track entity ID as the stable key, while using track order and player display name for labels.
+`@midi-to-xml/audiotool-to-midi` exports Audiotool note tracks as standard MIDI. It keeps the Audiotool track entity ID as the stable key, while using track order and player display name for labels. The web app lets users edit the score title and each track's export title before conversion; blank edits fall back to the detected project or track label.
 
 Core helpers:
 
@@ -103,7 +104,11 @@ const manifest = inspectAudiotoolProject(project);
 
 const result = await exportAudiotoolProjectToMidi(project, {
   tracks: [manifest.tracks[0].id],
-  mode: 'both'
+  mode: 'both',
+  title: 'Project Sonata',
+  trackTitles: {
+    [manifest.tracks[0].id]: 'Clarinet Melody'
+  }
 });
 ```
 
@@ -145,16 +150,43 @@ curl -X POST http://localhost:3000/audiotool/inspect \
   -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>"}'
 ```
 
-Convert selected Audiotool tracks all the way to MusicXML:
+Convert selected Audiotool tracks all the way to MusicXML. Optional `title` and `trackTitles` values override the exported score title and selected track/part names:
 
 ```bash
 curl -X POST "http://localhost:3000/audiotool/convert?quantize=false" \
   -H "Content-Type: application/json" \
-  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score"}' \
+  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score","title":"Project Sonata","trackTitles":{"<track-id>":"Clarinet Melody"}}' \
   --output audiotool.musicxml
 ```
 
 Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts.
+
+## MusicXML to Audiotool
+
+The authenticated web app also has a `MusicXML -> Audiotool` workflow. Upload a `.musicxml`, `.xml`, or `.mxl` score, analyze its parts, choose which parts to import, edit the imported track names, and create a new Audiotool project.
+
+The first importer version maps selected score parts to one Audiotool note track each, using basic Gakki instruments and mixer channels. It imports note pitch, timing, duration, velocity, the first tempo, and the first time signature. Notation-only details such as slurs, dynamics, articulations, lyrics, repeats, voice splitting, and percussion notation are reported as warnings and are not preserved yet.
+
+Analyze an upload without creating a project:
+
+```bash
+curl -X POST http://localhost:3000/audiotool/import \
+  -F "dryRun=true" \
+  -F "file=@score.musicxml"
+```
+
+Create a new Audiotool project from selected parts:
+
+```bash
+curl -X POST http://localhost:3000/audiotool/import \
+  -F 'audiotoolAuth={"accessToken":"...","refreshToken":"...","expiresAt":1893456000000,"clientId":"..."}' \
+  -F "title=Imported Score" \
+  -F 'parts=["part-1","part-2"]' \
+  -F 'partTitles={"part-1":"Violin","part-2":"Cello"}' \
+  -F "file=@score.musicxml"
+```
+
+For scripts, you can use an `Authorization: Bearer <PAT>` header or set `AUDIOTOOL_PAT`, the same as the existing Audiotool export endpoints.
 
 ## MuseScore configuration
 

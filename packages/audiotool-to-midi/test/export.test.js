@@ -278,6 +278,32 @@ describe('audiotool-to-midi export', () => {
     ]);
   });
 
+  it('uses requested track titles in MIDI metadata and part file names', () => {
+    const result = exportAudiotoolEntitiesToMidi(basicProject(), {
+      mode: 'both',
+      trackTitles: {
+        'track-1': 'Clarinet Melody',
+        'track-2': 'Bass Line'
+      }
+    });
+    const scoreMidi = readMidi(result.files[0].bytes);
+    const partMidis = result.files.slice(1).map((file) => readMidi(file.bytes));
+
+    assert.deepEqual(scoreMidi.tracks.map((track) => track.name), [
+      'Clarinet Melody',
+      'Bass Line'
+    ]);
+    assert.deepEqual(partMidis.map((midi) => midi.tracks[0].name), [
+      'Clarinet Melody',
+      'Bass Line'
+    ]);
+    assert.deepEqual(result.files.map((file) => file.name), [
+      'audiotool-score.mid',
+      'clarinet-melody.mid',
+      'bass-line.mid'
+    ]);
+  });
+
   it('writes the Audiotool project BPM into exported MIDI files', () => {
     const project = basicProject().map((item) => (
       item.type === 'config' ? { ...item, bpm: 96 } : item

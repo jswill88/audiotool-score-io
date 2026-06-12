@@ -156,7 +156,7 @@ export function exportAudiotoolEntitiesToMidi(
 
       files.push(createMidiFile({
         kind: 'part',
-        name: buildPartFileName(track),
+        name: buildPartFileName(track, options),
         midi,
         trackIds: [track.id]
       }));
@@ -281,7 +281,7 @@ function buildMidi({ context, tracks, options, warnings }: BuildMidiParams): Ton
 
   for (const [trackIndex, trackManifest] of tracks.entries()) {
     const track = midi.addTrack();
-    track.name = trackManifest.label;
+    track.name = resolveTrackTitle(trackManifest, options);
     applyNotationMidiIdentity(track, trackIndex);
 
     addNotesForTrack(track, trackManifest, context, options, warnings);
@@ -495,13 +495,17 @@ function createMidiFile({
   };
 }
 
-function buildPartFileName(track: AudiotoolTrackManifest) {
-  const label = track.label
+function buildPartFileName(track: AudiotoolTrackManifest, options: ExportOptions) {
+  const label = resolveTrackTitle(track, options)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
   return `${label || track.id || 'track'}.mid`;
+}
+
+function resolveTrackTitle(track: AudiotoolTrackManifest, options: ExportOptions) {
+  return options.trackTitles?.[track.id]?.trim() || track.label;
 }
 
 function normalizeMode(mode: ExportOptions['mode'] = OutputModes.Combined): AudiotoolOutputMode {

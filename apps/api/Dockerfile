@@ -11,6 +11,7 @@ WORKDIR /usr/src/app
 COPY package.json package-lock.json ./
 COPY packages/midi-to-musicxml/package.json packages/midi-to-musicxml/package.json
 COPY packages/audiotool-to-midi/package.json packages/audiotool-to-midi/package.json
+COPY packages/score-to-audiotool/package.json packages/score-to-audiotool/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 
@@ -22,6 +23,7 @@ COPY apps/api apps/api
 
 RUN npm run build --workspace @midi-to-xml/audiotool-to-midi \
   && npm run build --workspace @midi-to-xml/midi-to-musicxml \
+  && npm run build --workspace @midi-to-xml/score-to-audiotool \
   && npm run build --workspace @midi-to-xml/api \
   && npm prune --omit=dev
 

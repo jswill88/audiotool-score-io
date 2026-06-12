@@ -27,6 +27,8 @@ export type InspectOptions = {
 export type ConversionRequestOptions = {
   mode: AudiotoolOutputMode;
   tracks?: string[];
+  title?: string;
+  trackTitles: Record<string, string>;
   includeDisabledTracks: boolean;
   includeDisabledRegions: boolean;
   includeSkippedTracks: boolean;
@@ -36,6 +38,15 @@ export type ConversionRequestOptions = {
   stop: boolean;
   quantize: boolean;
   grid: QuantizationGrid;
+};
+
+export type ScoreImportRequestOptions = {
+  dryRun: boolean;
+  title?: string;
+  selectedPartIds?: string[];
+  partTitles: Record<string, string>;
+  projectTemplateName?: string;
+  maxImportedNotes?: number;
 };
 
 export type ProjectLike = {

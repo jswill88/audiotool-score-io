@@ -1,12 +1,22 @@
 import './ProjectMeta.css';
+import { InlineTextEdit } from '../InlineTextEdit';
 import type { ProjectManifest, SelectedProject } from '../../types';
 
 type ProjectMetaProps = {
+  defaultScoreTitle: string;
+  onScoreTitleChange: (title: string) => void;
+  scoreTitle: string;
   selectedProject: SelectedProject | null;
   manifest: ProjectManifest | null;
 };
 
-export function ProjectMeta({ selectedProject, manifest }: ProjectMetaProps) {
+export function ProjectMeta({
+  defaultScoreTitle,
+  manifest,
+  onScoreTitleChange,
+  scoreTitle,
+  selectedProject
+}: ProjectMetaProps) {
   const project = selectedProject?.details?.project;
   const summary = manifest
     ? manifest.totals?.hasNotes
@@ -20,7 +30,14 @@ export function ProjectMeta({ selectedProject, manifest }: ProjectMetaProps) {
 
   return (
     <div className="project-meta">
-      <strong>{project?.displayName ?? selectedProject?.reference ?? 'Project'}</strong>
+      <strong>
+        <InlineTextEdit
+          ariaLabel="Edit score title"
+          fallbackValue={defaultScoreTitle}
+          value={scoreTitle}
+          onCommit={onScoreTitleChange}
+        />
+      </strong>
       <span>{summary}</span>
     </div>
   );

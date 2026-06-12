@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type CSSProperties } from 'react';
 import './SegmentedControl.css';
 
 type SegmentedControlProps<T extends string> = {
@@ -17,7 +17,10 @@ export function SegmentedControl<T extends string>({
   const groupName = useId();
 
   return (
-    <fieldset className="segmented-control">
+    <fieldset
+      className="segmented-control"
+      style={{ '--segment-count': options.length } as CSSProperties}
+    >
       <legend>{ariaLabel}</legend>
       {options.map(([optionValue, label]) => {
         const checked = value === optionValue;

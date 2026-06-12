@@ -112,6 +112,7 @@ export type ExportOptions = InspectOptions & {
   tracks?: TrackSelection;
   trackIds?: TrackSelection;
   title?: string;
+  trackTitles?: Record<string, string>;
   combinedFileName?: string;
   includeDisabledTracks?: boolean;
   includeDisabledRegions?: boolean;

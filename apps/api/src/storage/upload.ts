@@ -28,6 +28,22 @@ export const upload = multer({
   }
 });
 
+export const scoreUpload = multer({
+  storage,
+  limits: {
+    fileSize: maxUploadBytes
+  },
+  fileFilter(_req, file, cb) {
+    const isScore = /\.musicxml$|\.xml$|\.mxl$/i.test(file.originalname);
+    if (isScore) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error('Only MusicXML files are accepted'));
+  }
+});
+
 export async function ensureUploadDir() {
   await fs.mkdir(uploadDir, { recursive: true });
 }

@@ -23,6 +23,7 @@ export type ConvertMidiToMusicXmlOptions = {
   preprocessedPath?: string;
   museScore?: MuseScoreOptions;
   title?: string | null;
+  partNames?: string[];
 };
 
 export type ConvertMidiToMusicXmlResult = {

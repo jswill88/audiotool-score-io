@@ -15,9 +15,9 @@ export async function writeMusicXmlFinalBarline(filePath: string) {
   await fs.writeFile(filePath, applyMusicXmlFinalBarline(xml));
 }
 
-export async function writeMusicXmlPartNames(filePath: string) {
+export async function writeMusicXmlPartNames(filePath: string, partNames?: string[]) {
   const xml = await fs.readFile(filePath, 'utf8');
-  await fs.writeFile(filePath, applyMusicXmlPartNames(xml));
+  await fs.writeFile(filePath, applyMusicXmlPartNames(xml, partNames));
 }
 
 export function applyMusicXmlTitle(xml: string, title?: string | null) {
@@ -31,13 +31,15 @@ export function applyMusicXmlTitle(xml: string, title?: string | null) {
   return removeMovementTitle(setWorkTitle(xml, escapedTitle));
 }
 
-export function applyMusicXmlPartNames(xml: string) {
+export function applyMusicXmlPartNames(xml: string, partNames: string[] = []) {
   const scorePartCount = [...xml.matchAll(/<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi)].length;
   const singlePartHeadingNames = new Set<string>();
+  let scorePartIndex = 0;
   const updatedXml = xml.replace(
     /<score-part\b[^>]*>[\s\S]*?<\/score-part>/gi,
     (scorePartXml: string) => {
-      const result = normalizeScorePartName(scorePartXml);
+      const result = normalizeScorePartName(scorePartXml, partNames[scorePartIndex]);
+      scorePartIndex += 1;
 
       if (scorePartCount === 1) {
         result.generatedHeadingNames.forEach((name) => singlePartHeadingNames.add(name));
@@ -65,7 +67,7 @@ export function applyMusicXmlFinalBarline(xml: string) {
   return addFinalBarlineToPart(xml);
 }
 
-function normalizeScorePartName(scorePartXml: string): ScorePartNameResult {
+function normalizeScorePartName(scorePartXml: string, explicitName?: string): ScorePartNameResult {
   const partNameMatch = scorePartXml.match(/<part-name\b[^>]*>([\s\S]*?)<\/part-name>/i);
 
   if (!partNameMatch) {
@@ -75,13 +77,17 @@ function normalizeScorePartName(scorePartXml: string): ScorePartNameResult {
   const partName = unescapeXmlText(partNameMatch[1] ?? '');
   const midiPartName = removeMuseScoreMidiInstrumentPrefix(partName);
   const normalizedName = normalizeMuseScoreMidiPartName(partName);
-  const shouldRemoveGeneratedAbbreviation = normalizedName !== partName || isAudiotoolTrackName(midiPartName);
+  const overrideName = normalizeTitle(explicitName);
+  const resolvedName = overrideName ?? normalizedName;
+  const shouldRemoveGeneratedAbbreviation = overrideName !== null ||
+    normalizedName !== partName ||
+    isAudiotoolTrackName(midiPartName);
 
-  if (normalizedName === partName && !shouldRemoveGeneratedAbbreviation) {
+  if (resolvedName === partName && !shouldRemoveGeneratedAbbreviation) {
     return { xml: scorePartXml, generatedHeadingNames: [] };
   }
 
-  const escapedName = escapeXmlText(normalizedName);
+  const escapedName = escapeXmlText(resolvedName);
   const partNameXml = `<part-name>${escapedName}</part-name>`;
   const xml = scorePartXml
     .replace(/<part-name\b[^>]*>[\s\S]*?<\/part-name>/i, partNameXml)
@@ -92,7 +98,8 @@ function normalizeScorePartName(scorePartXml: string): ScorePartNameResult {
     generatedHeadingNames: uniqueNames([
       partName,
       midiPartName,
-      normalizedName
+      normalizedName,
+      resolvedName
     ].filter(Boolean))
   };
 }

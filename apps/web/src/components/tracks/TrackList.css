@@ -11,7 +11,7 @@
   position: relative;
   display: grid;
   grid-template-columns: 0 22px minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   min-height: 72px;
   padding: 8px 16px 8px 10px;
   gap: 8px;
@@ -20,7 +20,7 @@
   background:
     linear-gradient(90deg, rgba(202, 164, 90, 0.14) 0, rgba(202, 164, 90, 0.04) 6px, transparent 6px),
     var(--surface-gradient);
-  cursor: pointer;
+  cursor: default;
 }
 
 .track-row.is-warning {
@@ -76,6 +76,12 @@
   height: 0;
 }
 
+.track-check-label {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
 .track-check {
   display: grid;
   place-items: center;
@@ -106,23 +112,48 @@
 .track-main {
   display: grid;
   min-width: 0;
-  gap: 3px;
+  gap: 5px;
 }
 
-.track-main strong,
+.track-name,
 .track-main small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.track-main strong {
+.track-name {
+  color: var(--ink);
+  cursor: pointer;
   font-size: 16px;
+  font-weight: 760;
 }
 
 .track-main small {
   color: var(--muted);
   font-size: 14px;
+}
+
+.track-export-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 7px;
+}
+
+.track-export-title > small {
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.track-export-title .inline-text-edit {
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 720;
 }
 
 .track-hint {

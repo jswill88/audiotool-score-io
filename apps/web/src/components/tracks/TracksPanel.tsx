@@ -30,34 +30,44 @@ const modeOptions = [
 
 type TracksPanelProps = {
   canConvert: boolean;
+  defaultScoreTitle: string;
   grid: QuantizationGrid;
   manifest: ProjectManifest | null;
   mode: OutputMode;
   onConvert: () => void | Promise<void>;
+  onScoreTitleChange: (title: string) => void;
+  onTrackTitleChange: (trackId: string, title: string) => void;
   onTrackToggle: (trackId: string) => void;
   quantize: boolean;
+  scoreTitle: string;
   selectedProject: SelectedProject | null;
   selectedTrackIds: string[];
   setGrid: (grid: QuantizationGrid) => void;
   setMode: (mode: OutputMode) => void;
   setQuantize: (quantize: boolean) => void;
   status: AppStatus;
+  trackTitles: Record<string, string>;
 };
 
 export function TracksPanel({
   canConvert,
+  defaultScoreTitle,
   grid,
   manifest,
   mode,
   onConvert,
+  onScoreTitleChange,
+  onTrackTitleChange,
   onTrackToggle,
   quantize,
+  scoreTitle,
   selectedProject,
   selectedTrackIds,
   setGrid,
   setMode,
   setQuantize,
-  status
+  status,
+  trackTitles
 }: TracksPanelProps) {
   const gridLabelId = useId();
   const gridHelpId = useId();
@@ -69,7 +79,13 @@ export function TracksPanel({
     <section className="panel tracks-panel">
       <div className="panel-header">
         <SectionTitle icon={<ListMusic size={17} />} title="Tracks" />
-        <ProjectMeta selectedProject={selectedProject} manifest={manifest} />
+        <ProjectMeta
+          defaultScoreTitle={defaultScoreTitle}
+          manifest={manifest}
+          onScoreTitleChange={onScoreTitleChange}
+          scoreTitle={scoreTitle}
+          selectedProject={selectedProject}
+        />
       </div>
 
       <TrackList
@@ -77,6 +93,8 @@ export function TracksPanel({
         status={status}
         tracks={manifest?.tracks ?? []}
         selectedTrackIds={selectedTrackIds}
+        trackTitles={trackTitles}
+        onTrackTitleChange={onTrackTitleChange}
         onToggle={onTrackToggle}
       />
 

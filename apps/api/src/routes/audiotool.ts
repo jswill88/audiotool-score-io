@@ -4,6 +4,14 @@ import {
   inspectAudiotoolProjectReference,
   withAudiotoolProject
 } from '@midi-to-xml/audiotool-to-midi';
+import {
+  buildScoreImportPlan,
+  createAudiotoolProjectFromScore
+} from '@midi-to-xml/score-to-audiotool';
+import type {
+  AudiotoolImportClient,
+  ScoreImportPlan
+} from '@midi-to-xml/score-to-audiotool';
 import { Router } from 'express';
 import {
   buildArchiveName,
@@ -20,10 +28,14 @@ import {
   readInspectOptions,
   readProjectListOptions,
   readProjectReference,
+  readScoreImportRequestOptions,
   throwIfAudiotoolServiceError
 } from '../audiotool/request.js';
+import { conversionOptions } from '../config/env.js';
 import { ClientError } from '../errors/client-error.js';
 import type { AudiotoolMidiResult } from '../types.js';
+import { scoreUpload } from '../storage/upload.js';
+import { cleanupFiles } from '../utils/files.js';
 import { sendError } from '../utils/responses.js';
 
 export const audiotoolRouter = Router();
@@ -105,7 +117,7 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
     const projectReference = readProjectReference(req);
     const options = readConversionRequestOptions(req);
     const details = await getAudiotoolProjectDetails(client, projectReference);
-    const projectTitle = readProjectTitle(details.project);
+    const projectTitle = options.title ?? readProjectTitle(details.project);
     const midiResult = await withAudiotoolProject<AudiotoolMidiResult>(
       client,
       projectReference,
@@ -113,6 +125,7 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
         mode: options.mode,
         tracks: options.tracks,
         title: projectTitle,
+        trackTitles: options.trackTitles,
         includeDisabledTracks: options.includeDisabledTracks,
         includeDisabledRegions: options.includeDisabledRegions,
         includeSkippedTracks: options.includeSkippedTracks
@@ -129,7 +142,8 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
       workDir,
       quantize: options.quantize,
       grid: options.grid,
-      title: projectTitle
+      title: projectTitle,
+      trackTitles: options.trackTitles
     });
 
     if (musicXmlFiles.length === 1 && !options.includeMidi && !options.forceZip) {
@@ -146,7 +160,9 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
       details,
       midiResult,
       musicXmlFiles,
-      includeMidi: options.includeMidi
+      includeMidi: options.includeMidi,
+      title: projectTitle,
+      trackTitles: options.trackTitles
     });
 
     await cleanupWorkDir(workDir);
@@ -160,3 +176,58 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
     sendError(res, error);
   }
 });
+
+audiotoolRouter.post('/audiotool/import', scoreUpload.single('file'), async (req, res) => {
+  const sourcePath = req.file?.path;
+
+  try {
+    if (!req.file || !sourcePath) {
+      throw new ClientError('MusicXML file is required under the "file" field.');
+    }
+
+    const options = readScoreImportRequestOptions(req);
+
+    if (options.dryRun) {
+      const plan = await buildScoreImportPlan({
+        inputPath: sourcePath,
+        sourceName: req.file.originalname,
+        title: options.title,
+        museScore: conversionOptions
+      });
+
+      return res.json({ plan: serializeScoreImportPlan(plan) });
+    }
+
+    const client = await createRequestAudiotoolSession(req);
+    const result = await createAudiotoolProjectFromScore({
+      client: client as unknown as AudiotoolImportClient,
+      inputPath: sourcePath,
+      sourceName: req.file.originalname,
+      title: options.title,
+      selectedPartIds: options.selectedPartIds,
+      partTitles: options.partTitles,
+      projectTemplateName: options.projectTemplateName,
+      maxImportedNotes: options.maxImportedNotes,
+      museScore: conversionOptions
+    });
+
+    res.json({
+      project: serializeProject(result.project),
+      dawUrl: result.dawUrl,
+      plan: serializeScoreImportPlan(result.plan),
+      importedParts: result.importedParts,
+      warnings: result.warnings
+    });
+  } catch (error) {
+    sendError(res, error);
+  } finally {
+    await cleanupFiles(sourcePath ? [sourcePath] : []);
+  }
+});
+
+function serializeScoreImportPlan(plan: ScoreImportPlan) {
+  return {
+    ...plan,
+    parts: plan.parts.map(({ notes: _notes, ...part }) => part)
+  };
+}

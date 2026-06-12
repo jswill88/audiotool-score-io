@@ -158,6 +158,33 @@ test('applyMusicXmlPartNames strips non-piano MuseScore MIDI prefixes from Audio
   assert.match(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>/);
 });
 
+test('applyMusicXmlPartNames uses requested part names without shifting missing overrides', () => {
+  const xml = applyMusicXmlPartNames(`
+    <score-partwise version="3.1">
+      <part-list>
+        <score-part id="P1">
+          <part-name>Piano, Track 1 - Lead</part-name>
+          <part-abbreviation>Pno.</part-abbreviation>
+        </score-part>
+        <score-part id="P2">
+          <part-name>Piano, Track 2 - Pad</part-name>
+          <part-abbreviation>Pno.</part-abbreviation>
+        </score-part>
+        <score-part id="P3">
+          <part-name>Lead 1 (square), Track 3 - Hook</part-name>
+          <part-abbreviation>Ld.</part-abbreviation>
+        </score-part>
+      </part-list>
+    </score-partwise>
+  `, ['Clarinet Melody', '', 'Tenor Line']);
+
+  assert.match(xml, /<part-name>Clarinet Melody<\/part-name>/);
+  assert.match(xml, /<part-name>Pad \(2\)<\/part-name>/);
+  assert.match(xml, /<part-name>Tenor Line<\/part-name>/);
+  assert.doesNotMatch(xml, /<part-name>Hook \(3\)<\/part-name>/);
+  assert.doesNotMatch(xml, /<part-abbreviation>/);
+});
+
 test('applyMusicXmlPartNames keeps single-part Audiotool labels in the default part-name position', () => {
   const xml = applyMusicXmlPartNames(`
     <score-partwise version="3.1">

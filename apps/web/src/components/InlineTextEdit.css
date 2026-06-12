@@ -1,0 +1,40 @@
+.inline-text-edit {
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto) auto;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 5px;
+}
+
+.inline-text-edit.is-editing {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.inline-text-edit-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-text-edit input {
+  height: 30px;
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.mini-icon-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background:
+    var(--control-gradient),
+    var(--console-2);
+  color: var(--brass-strong);
+  cursor: pointer;
+}

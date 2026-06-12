@@ -14,6 +14,7 @@
   "dependencies": {
     "@midi-to-xml/audiotool-to-midi": "0.1.0",
     "@midi-to-xml/midi-to-musicxml": "0.1.0",
+    "@midi-to-xml/score-to-audiotool": "0.1.0",
     "adm-zip": "^0.5.17",
     "dotenv": "^17.4.2",
     "express": "^4.18.4",

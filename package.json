@@ -18,11 +18,11 @@
     "docker:dev": "docker compose -f compose.dev.yml up --build",
     "docker:dev:down": "docker compose -f compose.dev.yml down",
     "docker:up": "docker compose up --build",
-    "dev:api": "npm run build --workspace @midi-to-xml/audiotool-to-midi && npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run build --workspace @midi-to-xml/api && npm run start --workspace @midi-to-xml/api",
+    "dev:api": "npm run build --workspace @midi-to-xml/audiotool-to-midi && npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run build --workspace @midi-to-xml/score-to-audiotool && npm run build --workspace @midi-to-xml/api && npm run start --workspace @midi-to-xml/api",
     "dev:web": "npm run dev --workspace @midi-to-xml/web",
     "test": "npm run test --workspaces --if-present",
     "start": "npm run start:api",
-    "start:api": "npm run build --workspace @midi-to-xml/audiotool-to-midi && npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run build --workspace @midi-to-xml/api && npm run start --workspace @midi-to-xml/api",
+    "start:api": "npm run build --workspace @midi-to-xml/audiotool-to-midi && npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run build --workspace @midi-to-xml/score-to-audiotool && npm run build --workspace @midi-to-xml/api && npm run start --workspace @midi-to-xml/api",
     "start:web": "npm run preview --workspace @midi-to-xml/web",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

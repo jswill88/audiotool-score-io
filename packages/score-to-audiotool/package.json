@@ -1,0 +1,24 @@
+{
+  "name": "@midi-to-xml/score-to-audiotool",
+  "version": "0.1.0",
+  "description": "Import score files into Audiotool projects as editable note tracks.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm run build && find dist test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test": "npm run build && node --test \"test/**/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@midi-to-xml/midi-to-musicxml": "0.1.0",
+    "@tonejs/midi": "^2.0.28"
+  }
+}
