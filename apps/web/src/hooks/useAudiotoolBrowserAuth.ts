@@ -32,46 +32,12 @@ export function useAudiotoolBrowserAuth(): AudiotoolBrowserAuth {
     let cancelled = false;
 
     async function initializeAuth() {
-      if (!isAudiotoolAuthConfigured()) {
-        setState({
-          phase: 'unconfigured',
-          client: null,
-          error: 'Set VITE_AUDIOTOOL_CLIENT_ID to enable Audiotool login.'
-        });
-        return;
-      }
-
-      const supportError = readAudiotoolBrowserAuthSupportError();
-
-      if (supportError) {
-        setState({
-          phase: 'error',
-          client: null,
-          error: supportError
-        });
-        return;
-      }
-
       try {
-        const { audiotool } = await import('@audiotool/nexus');
-        const result = await audiotool(audiotoolAuthConfig);
+        const nextState = await readAudiotoolAuthState();
 
-        if (cancelled) return;
-
-        if (result.status === 'authenticated') {
-          setState({
-            phase: 'authenticated',
-            client: result,
-            error: ''
-          });
-          return;
+        if (!cancelled) {
+          setState(nextState);
         }
-
-        setState({
-          phase: 'unauthenticated',
-          client: result,
-          error: result.error?.message ?? ''
-        });
       } catch (error) {
         if (!cancelled) {
           setState({
@@ -102,23 +68,35 @@ export function useAudiotoolBrowserAuth(): AudiotoolBrowserAuth {
       return;
     }
 
-    if (state.client?.status === 'unauthenticated') {
-      try {
-        await state.client.login();
-      } catch (error) {
-        setState({
-          phase: 'error',
-          client: null,
-          error: formatAudiotoolBrowserAuthError(error)
-        });
+    try {
+      const authState = state.client?.status === 'unauthenticated'
+        ? state
+        : await readAudiotoolAuthState();
+
+      setState(authState);
+
+      if (authState.client?.status === 'unauthenticated') {
+        await authState.client.login();
       }
+    } catch (error) {
+      setState({
+        phase: 'error',
+        client: null,
+        error: formatAudiotoolBrowserAuthError(error)
+      });
     }
-  }, [state.client]);
+  }, [state]);
 
   const logout = useCallback(() => {
     if (state.client?.status === 'authenticated') {
       state.client.logout();
     }
+
+    setState({
+      phase: 'unauthenticated',
+      client: null,
+      error: ''
+    });
   }, [state.client]);
 
   const exportServerAuth = useCallback(() => {
@@ -140,6 +118,43 @@ export function useAudiotoolBrowserAuth(): AudiotoolBrowserAuth {
     login,
     logout,
     exportServerAuth
+  };
+}
+
+async function readAudiotoolAuthState(): Promise<AuthState> {
+  if (!isAudiotoolAuthConfigured()) {
+    return {
+      phase: 'unconfigured',
+      client: null,
+      error: 'Set VITE_AUDIOTOOL_CLIENT_ID to enable Audiotool login.'
+    };
+  }
+
+  const supportError = readAudiotoolBrowserAuthSupportError();
+
+  if (supportError) {
+    return {
+      phase: 'error',
+      client: null,
+      error: supportError
+    };
+  }
+
+  const { audiotool } = await import('@audiotool/nexus');
+  const result = await audiotool(audiotoolAuthConfig);
+
+  if (result.status === 'authenticated') {
+    return {
+      phase: 'authenticated',
+      client: result,
+      error: ''
+    };
+  }
+
+  return {
+    phase: 'unauthenticated',
+    client: result,
+    error: result.error?.message ?? ''
   };
 }
 

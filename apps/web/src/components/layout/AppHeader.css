@@ -48,6 +48,23 @@
   display: block;
 }
 
+.topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.account-name {
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 h1 {
   font-family: var(--display-script);
   font-size: 44px;
@@ -60,5 +77,10 @@ h1 {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 }

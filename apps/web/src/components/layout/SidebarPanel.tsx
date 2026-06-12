@@ -1,11 +1,8 @@
 import { ProjectsPanel } from '../projects/ProjectsPanel';
-import { SessionPanel } from '../projects/SessionPanel';
-import type { AudiotoolBrowserAuth } from '../../hooks/useAudiotoolBrowserAuth';
 import type { AppStatus, AudiotoolProject, SelectedProject } from '../../types';
 import './SidebarPanel.css';
 
 type SidebarPanelProps = {
-  audiotoolAuth: AudiotoolBrowserAuth;
   inspectProject: (projectReference: string) => void | Promise<void>;
   loadProjects: () => void | Promise<void>;
   projectInput: string;
@@ -16,7 +13,6 @@ type SidebarPanelProps = {
 };
 
 export function SidebarPanel({
-  audiotoolAuth,
   inspectProject,
   loadProjects,
   projectInput,
@@ -27,9 +23,6 @@ export function SidebarPanel({
 }: SidebarPanelProps) {
   return (
     <section className="panel sidebar-panel" aria-label="Project browser">
-      <SessionPanel
-        auth={audiotoolAuth}
-      />
       <ProjectsPanel
         inspectProject={inspectProject}
         loadProjects={loadProjects}

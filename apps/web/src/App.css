@@ -26,6 +26,52 @@
   box-shadow: var(--shadow), var(--inner-glow);
 }
 
+.auth-shell {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.auth-workspace {
+  display: grid;
+  align-items: center;
+  width: min(100%, 520px);
+  min-height: 0;
+  margin-inline: auto;
+}
+
+.auth-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.auth-panel-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.auth-panel h2 {
+  color: var(--paper);
+  font-size: 23px;
+  line-height: 1.2;
+}
+
+.auth-panel p {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.auth-page-button {
+  width: 100%;
+  margin-left: 0;
+}
+
+.route-status-panel {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  color: var(--muted);
+  font-weight: 720;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     padding: 10px;
@@ -33,5 +79,9 @@
 
   .workspace {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-workspace {
+    align-items: start;
   }
 }

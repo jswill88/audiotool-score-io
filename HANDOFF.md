@@ -19,6 +19,8 @@ Read `AGENTS.md` for standing agent instructions. The handoff is useful for curr
 
 Keep this handoff current when changes affect behavior, setup/run commands, verification steps, known tradeoffs, or useful next-session context.
 
+`TODO.md` now keeps active backlog items near the top and archives checked-off work in a `Completed` section at the bottom.
+
 ## Important Current State
 
 As of this handoff, the latest MusicXML display cleanup is part of the intended committed baseline.
@@ -69,10 +71,13 @@ What the latest cleanup does:
 - `packages/midi-to-musicxml` is now TypeScript source compiled to ignored `dist/` output. Its package entry points at `dist/index.js`, publishes `dist/index.d.ts`, and exports option/result types from `src/types.ts`.
 - Docker API images build `@midi-to-xml/audiotool-to-midi`, `@midi-to-xml/midi-to-musicxml`, and `@midi-to-xml/api` during image creation, prune dev dependencies, and run the API workspace directly.
 - The web app uses `apps/web/public/logo.svg` as both favicon and header brand mark. The mark combines a brass treble-clef shape with a compact DAW-style MIDI piano-roll grid. `apps/web/index.html` now points at `/src/main.tsx`.
+- The web app has a small client-side auth boundary: `/` redirects with history replacement based on Audiotool auth state, `/sign-in` is public, and `/app` is protected. The authenticated workspace has a header logout button that clears the browser auth state and returns to `/sign-in`. The API remains the real security boundary for project and conversion requests.
 - The visual theme now uses black/dark graphite as the dominant app chrome color. Brass and teal remain accents, and the notation preview keeps its paper-like score surface.
 - Keyboard focus now uses a stronger teal ring. Track rows show selected state on the full row while keyboard focus is indicated on the checkbox affordance to avoid clipped row outlines. The output mode segmented control is implemented as a native radio group with an accessible label.
 - Active project choices now expose `aria-current`, and active converted-file buttons expose `aria-pressed`, so visual active states have matching semantics for assistive technology.
 - The accessibility pass added explicit labels/help text for project and quantization inputs, ARIA tabs for the Score/XML switcher, polite live status announcements, named tab panels for score/XML panes, a screen-reader fallback note for rendered notation, reduced-motion handling for spinners, and an axe fix for the sidebar landmark.
+- Keyboard-only tab order has been smoke-tested in Chrome with mocked Audiotool auth/API responses. The verified path covers sign-in, project loading, manual inspect, project selection, track checkbox selection, output mode arrow-key switching, quantize/grid options, conversion, download, Score/XML result tabs, converted-file switching, and XML panel focus.
+- Screen-reader smoke was checked through Chrome's accessibility tree with mocked Audiotool auth/API responses. The pass verified exposed roles, accessible names, checked/selected/pressed/disabled states, live status announcement text, project list semantics, result tabs, converted-file buttons, and XML tab panel focus. A live VoiceOver audio pass could not be completed from this session because macOS opened VoiceOver Quickstart instead of a usable reader session.
 - For future web UI work, treat accessibility as part of done: prefer native semantic controls, ensure every interactive element has an accessible name and state, verify keyboard order/focus, avoid color-only status signals, and update the `TODO.md` Accessibility checklist when new concerns appear.
 
 Last verified commands:

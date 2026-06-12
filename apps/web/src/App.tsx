@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Loader2, LogIn } from 'lucide-react';
 import {
   convertAudiotoolProject,
   inspectAudiotoolProject,
@@ -25,6 +26,42 @@ import './App.css';
 
 export function App() {
   const audiotoolAuth = useAudiotoolBrowserAuth();
+  const { route, navigate } = useAppRoute();
+  const redirectTarget = getRedirectTarget(route, audiotoolAuth);
+
+  useEffect(() => {
+    if (redirectTarget) {
+      navigate(redirectTarget, { replace: true });
+    }
+  }, [navigate, redirectTarget]);
+
+  const handleLogout = useCallback(() => {
+    audiotoolAuth.logout();
+    navigate('/sign-in', { replace: true });
+  }, [audiotoolAuth, navigate]);
+
+  if (redirectTarget) {
+    return <RouteStatusPage message={statusMessageForRedirect(route, redirectTarget, audiotoolAuth)} />;
+  }
+
+  if (route === '/sign-in') {
+    return <SignInPage auth={audiotoolAuth} />;
+  }
+
+  if (route === '/app' && audiotoolAuth.isAuthenticated) {
+    return <AppWorkspace audiotoolAuth={audiotoolAuth} onLogout={handleLogout} />;
+  }
+
+  return <RouteStatusPage message="Checking Audiotool session" />;
+}
+
+function AppWorkspace({
+  audiotoolAuth,
+  onLogout
+}: {
+  audiotoolAuth: AudiotoolBrowserAuth;
+  onLogout: () => void;
+}) {
   const inspectRequestId = useRef(0);
   const conversionRequestId = useRef(0);
   const [projectInput, setProjectInput] = useState('');
@@ -78,6 +115,13 @@ export function App() {
       }
     };
   }, [activeResult]);
+
+  useEffect(() => {
+    return () => {
+      inspectRequestId.current += 1;
+      conversionRequestId.current += 1;
+    };
+  }, []);
 
   const loadProjects = useCallback(async () => {
     const auth = readRequestAuth(audiotoolAuth);
@@ -211,13 +255,12 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <AppHeader />
+      <AppHeader accountName={formatUserName(audiotoolAuth.userName)} onLogout={onLogout} />
       <div className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
         {statusAnnouncement}
       </div>
       <section className="workspace">
         <SidebarPanel
-          audiotoolAuth={audiotoolAuth}
           inspectProject={inspectProject}
           loadProjects={loadProjects}
           projectInput={projectInput}
@@ -263,6 +306,169 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function SignInPage({ auth }: { auth: AudiotoolBrowserAuth }) {
+  const isLoading = auth.phase === 'loading';
+  const isUnavailable = auth.phase === 'unconfigured' || auth.phase === 'error';
+  const errorMessage = auth.error;
+
+  return (
+    <main className="app-shell auth-shell">
+      <AppHeader />
+      <section className="auth-workspace" aria-labelledby="sign-in-title">
+        <div className="panel auth-panel">
+          <div className="auth-panel-copy">
+            <h2 id="sign-in-title">{authTitle(auth)}</h2>
+            <p>{authSubtitle(auth)}</p>
+          </div>
+          {errorMessage ? (
+            <div className="panel-error" role="alert">
+              <AlertTriangle size={15} aria-hidden="true" />
+              <span>{errorMessage}</span>
+            </div>
+          ) : null}
+          <button
+            className="primary-button auth-page-button"
+            type="button"
+            disabled={isLoading || isUnavailable}
+            onClick={auth.login}
+          >
+            {isLoading
+              ? <Loader2 className="spin" size={16} aria-hidden="true" />
+              : <LogIn size={16} aria-hidden="true" />}
+            <span>{isLoading ? 'Checking' : 'Sign in'}</span>
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function RouteStatusPage({ message }: { message: string }) {
+  return (
+    <main className="app-shell auth-shell">
+      <AppHeader />
+      <section className="auth-workspace" aria-live="polite" aria-busy="true">
+        <div className="panel auth-panel route-status-panel">
+          <Loader2 className="spin" size={18} aria-hidden="true" />
+          <span>{message}</span>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+type AppRoute = '/' | '/sign-in' | '/app' | string;
+
+type NavigateOptions = {
+  replace?: boolean;
+};
+
+function useAppRoute() {
+  const [route, setRoute] = useState<AppRoute>(() => normalizeRoute(window.location.pathname));
+
+  const navigate = useCallback((target: AppRoute, options: NavigateOptions = {}) => {
+    const normalizedTarget = normalizeRoute(target);
+    const current = normalizeRoute(window.location.pathname);
+
+    if (current === normalizedTarget) {
+      setRoute(normalizedTarget);
+      return;
+    }
+
+    if (options.replace) {
+      window.history.replaceState(null, '', normalizedTarget);
+    } else {
+      window.history.pushState(null, '', normalizedTarget);
+    }
+
+    setRoute(normalizedTarget);
+    window.scrollTo({ top: 0, left: 0 });
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setRoute(normalizeRoute(window.location.pathname));
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  return { route, navigate };
+}
+
+function normalizeRoute(pathname: string): AppRoute {
+  const path = pathname.replace(/\/+$/, '') || '/';
+  return path === '/' || path === '/sign-in' || path === '/app' ? path : pathname;
+}
+
+function getRedirectTarget(route: AppRoute, auth: AudiotoolBrowserAuth): AppRoute | null {
+  if (route !== '/' && route !== '/sign-in' && route !== '/app') {
+    return '/';
+  }
+
+  if (auth.phase === 'loading') {
+    return null;
+  }
+
+  if (route === '/') {
+    return auth.isAuthenticated ? '/app' : '/sign-in';
+  }
+
+  if (route === '/sign-in' && auth.isAuthenticated) {
+    return '/app';
+  }
+
+  if (route === '/app' && !auth.isAuthenticated) {
+    return '/sign-in';
+  }
+
+  return null;
+}
+
+function statusMessageForRedirect(
+  route: AppRoute,
+  redirectTarget: AppRoute,
+  auth: AudiotoolBrowserAuth
+) {
+  if (auth.phase === 'loading') {
+    return 'Checking Audiotool session';
+  }
+
+  if (route === '/app' && redirectTarget === '/sign-in') {
+    return 'Opening sign-in';
+  }
+
+  if (redirectTarget === '/app') {
+    return 'Opening app';
+  }
+
+  return 'Opening sign-in';
+}
+
+function authTitle(auth: AudiotoolBrowserAuth) {
+  if (auth.phase === 'loading') return 'Checking Audiotool session';
+  if (auth.phase === 'unconfigured') return 'Audiotool app not configured';
+  if (auth.phase === 'error') return 'Audiotool login unavailable';
+  return 'Sign in with Audiotool';
+}
+
+function authSubtitle(auth: AudiotoolBrowserAuth) {
+  if (auth.phase === 'loading') return 'Looking for an existing browser session.';
+  if (auth.phase === 'unconfigured' || auth.phase === 'error') return 'Sign-in setup needs attention before the app can open.';
+  return 'Connect your Audiotool account to open the converter.';
+}
+
+function formatUserName(userName: string) {
+  const normalized = String(userName ?? '').trim();
+
+  if (!normalized) {
+    return 'Audiotool user';
+  }
+
+  return normalized.replace(/^users\//i, '');
 }
 
 function readRequestAuth(audiotoolAuth: AudiotoolBrowserAuth): ServerAuth | false {

@@ -53,11 +53,11 @@ Use this as the first stop when deciding where a change belongs.
 
 ## Web App Guide
 
-- `apps/web/src/App.tsx`: Top-level app state and workflow handlers.
+- `apps/web/src/App.tsx`: Client-side `/`, `/sign-in`, and `/app` auth routing plus app workflow handlers.
 - `apps/web/src/types.ts`: Shared browser app types for auth, status, projects, tracks, and conversion results.
 - `apps/web/src/api/audiotool.ts`: Browser API client for Audiotool project and conversion routes.
 - `apps/web/src/hooks/useAudiotoolBrowserAuth.ts`: Audiotool browser OAuth lifecycle and token export for the API.
-- `apps/web/src/components/projects`: Sign-in, project listing, and project selection UI.
+- `apps/web/src/components/projects`: Project listing, direct project entry, and project selection UI.
 - `apps/web/src/components/tracks`: Track manifest, selection, mode, and quantization controls.
 - `apps/web/src/components/results`: File tabs, MusicXML text, download link, and score preview.
 - `apps/web/src/components/layout`: App shell/header/sidebar structure.

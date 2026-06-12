@@ -51,7 +51,9 @@ Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that ar
    npm run dev
    ```
 
-   Open `http://127.0.0.1:5173/`. The Vite dev server proxies API requests to `http://127.0.0.1:3000`.
+   Open `http://127.0.0.1:5173/`. The root route redirects to `/sign-in` or `/app` based on the
+   Audiotool auth state; `/app` is the protected converter workspace. The Vite dev server proxies API
+   requests to `http://127.0.0.1:3000`.
    CSS changes hot reload through Vite. If the Docker web container is already using port `5173`,
    stop it with `docker compose stop web` or run Vite on another port:
 
@@ -182,7 +184,8 @@ Start a local Docker dev environment with Vite hot reload:
 npm run docker:dev
 ```
 
-Open `http://127.0.0.1:5173/`. The web service runs Vite in a Node container,
+Open `http://127.0.0.1:5173/`. The root route redirects to `/sign-in` or protected `/app` based on
+auth state. The web service runs Vite in a Node container,
 mounts the local source tree, and proxies API requests to the Compose `api`
 service. CSS changes should hot reload on save.
 
@@ -205,7 +208,7 @@ Start the production-style API and static web app together:
 docker compose up --build
 ```
 
-Register `http://127.0.0.1:5173/` as an Audiotool redirect URI, set `VITE_AUDIOTOOL_CLIENT_ID` in `.env`, then open `http://127.0.0.1:5173/`. The web container serves the React app and proxies `/audiotool`, `/convert`, `/health`, and `/ready` to the API container.
+Register `http://127.0.0.1:5173/` as an Audiotool redirect URI, set `VITE_AUDIOTOOL_CLIENT_ID` in `.env`, then open `http://127.0.0.1:5173/`. The web container serves the React app, supports direct refreshes on `/sign-in` and `/app`, and proxies `/audiotool`, `/convert`, `/health`, and `/ready` to the API container.
 
 Optional host port overrides:
 
