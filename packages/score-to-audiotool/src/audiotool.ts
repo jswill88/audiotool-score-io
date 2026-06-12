@@ -90,66 +90,12 @@ export async function writeScoreImportPlanToAudiotoolDocument(
     const firstMixerOrder = nextMixerOrder(transaction);
 
     selectedPlan.parts.forEach((part, index) => {
-      const title = part.title || `Part ${index + 1}`;
-      const colorIndex = index % 42;
-      const player = transaction.create('gakki', {
-        displayName: title,
-        soundfontId: defaultGakkiSoundfontId,
-        positionX: 120 + (index % 4) * 210,
-        positionY: 100 + Math.floor(index / 4) * 170
-      });
-      const mixerChannel = transaction.create('mixerChannel', {
-        displayParameters: {
-          displayName: title,
-          orderAmongStrips: firstMixerOrder + index,
-          colorIndex
-        }
-      });
-
-      transaction.create('desktopAudioCable', {
-        fromSocket: readFieldLocation(player, 'audioOutput'),
-        toSocket: readFieldLocation(mixerChannel, 'audioInput'),
-        colorIndex
-      });
-
-      const noteTrack = transaction.create('noteTrack', {
-        orderAmongTracks: firstTrackOrder + index,
-        isEnabled: true,
-        player: readEntityLocation(player)
-      });
-      const collection = transaction.create('noteCollection', {});
-
-      transaction.create('noteRegion', {
-        collection: readEntityLocation(collection),
-        track: readEntityLocation(noteTrack),
-        region: {
-          positionTicks: 0,
-          durationTicks: selectedPlan.durationTicks,
-          collectionOffsetTicks: 0,
-          loopOffsetTicks: 0,
-          loopDurationTicks: selectedPlan.durationTicks,
-          isEnabled: true,
-          colorIndex,
-          displayName: title
-        }
-      });
-
-      for (const note of part.notes) {
-        transaction.create('note', {
-          collection: readEntityLocation(collection),
-          positionTicks: note.positionTicks,
-          durationTicks: note.durationTicks,
-          pitch: note.pitch,
-          velocity: note.velocity,
-          doesSlide: false
-        });
-      }
-
-      importedParts.push({
-        id: part.id,
-        title,
-        noteCount: part.notes.length
-      });
+      importedParts.push(writeScorePartToDocument(transaction, part, {
+        durationTicks: selectedPlan.durationTicks,
+        firstMixerOrder,
+        firstTrackOrder,
+        index
+      }));
     });
 
     return importedParts;
@@ -191,6 +137,145 @@ export function selectScoreImportParts(
     parts,
     warnings
   };
+}
+
+function writeScorePartToDocument(
+  transaction: AudiotoolTransactionLike,
+  part: ScoreImportPart,
+  {
+    durationTicks,
+    firstMixerOrder,
+    firstTrackOrder,
+    index
+  }: {
+    durationTicks: number;
+    firstMixerOrder: number;
+    firstTrackOrder: number;
+    index: number;
+  }
+): ImportedAudiotoolPart {
+  const title = part.title || `Part ${index + 1}`;
+  const colorIndex = index % 42;
+  const player = createPartPlayer(transaction, title, index);
+  const mixerChannel = createPartMixerChannel(transaction, title, {
+    colorIndex,
+    orderAmongStrips: firstMixerOrder + index
+  });
+
+  connectPlayerToMixer(transaction, player, mixerChannel, colorIndex);
+
+  const noteTrack = transaction.create('noteTrack', {
+    orderAmongTracks: firstTrackOrder + index,
+    isEnabled: true,
+    player: readEntityLocation(player)
+  });
+  const collection = transaction.create('noteCollection', {});
+
+  createPartRegion(transaction, {
+    collection,
+    colorIndex,
+    durationTicks,
+    noteTrack,
+    title
+  });
+  writePartNotes(transaction, collection, part);
+
+  return {
+    id: part.id,
+    title,
+    noteCount: part.notes.length
+  };
+}
+
+function createPartPlayer(transaction: AudiotoolTransactionLike, title: string, index: number) {
+  return transaction.create('gakki', {
+    displayName: title,
+    soundfontId: defaultGakkiSoundfontId,
+    positionX: 120 + (index % 4) * 210,
+    positionY: 100 + Math.floor(index / 4) * 170
+  });
+}
+
+function createPartMixerChannel(
+  transaction: AudiotoolTransactionLike,
+  title: string,
+  {
+    colorIndex,
+    orderAmongStrips
+  }: {
+    colorIndex: number;
+    orderAmongStrips: number;
+  }
+) {
+  return transaction.create('mixerChannel', {
+    displayParameters: {
+      displayName: title,
+      orderAmongStrips,
+      colorIndex
+    }
+  });
+}
+
+function connectPlayerToMixer(
+  transaction: AudiotoolTransactionLike,
+  player: unknown,
+  mixerChannel: unknown,
+  colorIndex: number
+) {
+  transaction.create('desktopAudioCable', {
+    fromSocket: readFieldLocation(player, 'audioOutput'),
+    toSocket: readFieldLocation(mixerChannel, 'audioInput'),
+    colorIndex
+  });
+}
+
+function createPartRegion(
+  transaction: AudiotoolTransactionLike,
+  {
+    collection,
+    colorIndex,
+    durationTicks,
+    noteTrack,
+    title
+  }: {
+    collection: unknown;
+    colorIndex: number;
+    durationTicks: number;
+    noteTrack: unknown;
+    title: string;
+  }
+) {
+  transaction.create('noteRegion', {
+    collection: readEntityLocation(collection),
+    track: readEntityLocation(noteTrack),
+    region: {
+      positionTicks: 0,
+      durationTicks,
+      collectionOffsetTicks: 0,
+      loopOffsetTicks: 0,
+      loopDurationTicks: durationTicks,
+      isEnabled: true,
+      colorIndex,
+      displayName: title
+    }
+  });
+}
+
+function writePartNotes(
+  transaction: AudiotoolTransactionLike,
+  collection: unknown,
+  part: ScoreImportPart
+) {
+  for (const note of part.notes) {
+    transaction.create('note', {
+      collection: readEntityLocation(collection),
+      positionTicks: note.positionTicks,
+      durationTicks: note.durationTicks,
+      pitch: note.pitch,
+      velocity: note.velocity,
+      doesSlide: false
+    });
+  }
 }
 
 function prepareProjectConfig(transaction: AudiotoolTransactionLike, plan: ScoreImportPlan) {

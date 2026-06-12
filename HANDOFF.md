@@ -35,6 +35,10 @@ The main files involved are:
 - `apps/web/src/types.ts`
 - `apps/web/src/auth/audiotoolAuth.ts`
 - `apps/web/src/hooks/useAudiotoolBrowserAuth.ts`
+- `apps/web/src/hooks/useAppRoute.ts`
+- `apps/web/src/hooks/useExportWorkflow.ts`
+- `apps/web/src/hooks/useScoreImportWorkflow.ts`
+- `apps/web/src/utils/workflow.ts`
 - `apps/api/tsconfig.json`
 - `apps/api/src/types.ts`
 - `apps/api/src/routes/audiotool.ts`
@@ -98,10 +102,17 @@ What the latest cleanup does:
 - The MusicXML-to-Audiotool part list no longer shows per-part note counts in the UI; the import plan still carries note counts internally.
 - Track and score-part lists use the same bounded internal scroll behavior so long lists do not push their surrounding action controls away.
 - Empty source tracks in the MusicXML-to-Audiotool import plan now produce user-facing warnings like `Part 2 had no notes and was skipped.` instead of exposing the internal MIDI-track wording.
+- The browser title, header brand text, and logo accessible title now use the broader app name `Audiotool Score I/O`.
+- The web app shell has been split so route state lives in `useAppRoute`, Audiotool export state/actions live in `useExportWorkflow`, MusicXML import state/actions live in `useScoreImportWorkflow`, and shared title/selection helpers live in `apps/web/src/utils/workflow.ts`. `App.tsx` is now mostly route/workflow composition plus panel wiring.
+- Score-to-Audiotool document writing has named helpers for the per-part Gakki/mixer/cable/region/note creation steps, and the API project-detail GET/POST routes share one handler.
 
 Last verified commands:
 
 ```bash
+npm run typecheck --workspace @midi-to-xml/web
+npm run typecheck --workspace @midi-to-xml/score-to-audiotool
+npm run typecheck --workspace @midi-to-xml/audiotool-to-midi
+npm run typecheck --workspace @midi-to-xml/api
 npx --yes @axe-core/cli http://127.0.0.1:5174/ --exit
 npm run check --workspace @midi-to-xml/web
 npm run build --workspace @midi-to-xml/audiotool-to-midi

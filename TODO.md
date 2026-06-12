@@ -24,6 +24,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### Immediate
 
+- [x] Update title to Audiotool Score I/O now that the app imports and exports.
 - [x] Ignore drum tracks by default, especially Beatbox 8/9. Machiniste and unknown note players warn but stay selectable by default.
 - [x] Every track is "unknown type" which feels wrong.
 - [x] If there are 0 notes in a track, we can disable it or ignore it. We can show it maybe, but not allow conversion. There's nothing to convert.

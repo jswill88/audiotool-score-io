@@ -2,8 +2,25 @@ import { AudiotoolProjectError } from './errors.js';
 import type {
   AudiotoolEntity,
   AudiotoolEntityIndex,
-  AudiotoolProjectSource
+  AudiotoolProjectSource,
+  UnknownRecord
 } from './types.js';
+
+type ProjectSourceRecord = UnknownRecord & {
+  entities?: unknown;
+  document?: unknown;
+  queryEntities?: unknown;
+};
+
+type EntityQuery = {
+  get: () => AudiotoolEntity[];
+};
+
+type QueryEntities = {
+  get?: () => AudiotoolEntity[];
+  ofTypes?: (...types: string[]) => EntityQuery;
+  ofTargetTypes?: (...types: string[]) => EntityQuery;
+};
 
 export const EntityTypes = Object.freeze({
   Config: 'config',
@@ -32,13 +49,19 @@ export function collectAudiotoolEntities(source: AudiotoolProjectSource): Audiot
     return source;
   }
 
-  const projectSource = source as any;
+  if (!isRecord(source)) {
+    throw new AudiotoolProjectError(
+      'Expected an entity array, an object with entities, or a Nexus document.'
+    );
+  }
+
+  const projectSource = source as ProjectSourceRecord;
 
   if (Array.isArray(projectSource.entities)) {
     return projectSource.entities;
   }
 
-  if (Array.isArray(projectSource.document?.entities)) {
+  if (isRecord(projectSource.document) && Array.isArray(projectSource.document.entities)) {
     return projectSource.document.entities;
   }
 
@@ -73,14 +96,14 @@ export function getEntityType(entity: AudiotoolEntity | null | undefined): strin
 }
 
 export function locationEntityType(value: unknown): string | null {
-  const unwrapped = unwrapFieldValue(value, value) as any;
+  const unwrapped = unwrapFieldValue<unknown>(value, value);
 
-  if (!unwrapped || typeof unwrapped !== 'object') {
+  if (!isRecord(unwrapped)) {
     return null;
   }
 
   if (unwrapped.entityType) {
-    return unwrapped.entityType;
+    return String(unwrapped.entityType);
   }
 
   if (unwrapped.location) {
@@ -132,7 +155,7 @@ export function getObjectField(
 }
 
 export function locationKey(value: unknown): string | null {
-  const unwrapped = unwrapFieldValue(value, value) as any;
+  const unwrapped = unwrapFieldValue<unknown>(value, value);
 
   if (!unwrapped) {
     return null;
@@ -142,20 +165,20 @@ export function locationKey(value: unknown): string | null {
     return unwrapped;
   }
 
-  if (typeof unwrapped !== 'object') {
+  if (!isRecord(unwrapped)) {
     return String(unwrapped);
   }
 
   if (unwrapped.entityId) {
-    return unwrapped.entityId;
+    return String(unwrapped.entityId);
   }
 
   if (unwrapped.id) {
-    return unwrapped.id;
+    return String(unwrapped.id);
   }
 
   if (unwrapped.uuid) {
-    return unwrapped.uuid;
+    return String(unwrapped.uuid);
   }
 
   if (unwrapped.location) {
@@ -201,7 +224,11 @@ export function toFiniteNumber(value: unknown, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
-function collectFromQuery(queryEntities: any): AudiotoolEntity[] {
+function collectFromQuery(queryEntities: unknown): AudiotoolEntity[] {
+  if (!isQueryEntities(queryEntities)) {
+    throw new AudiotoolProjectError('Nexus document does not expose queryable entities.');
+  }
+
   if (typeof queryEntities.get === 'function') {
     return queryEntities.get();
   }
@@ -230,6 +257,14 @@ function collectFromQuery(queryEntities: any): AudiotoolEntity[] {
   }
 
   throw new AudiotoolProjectError('Nexus document does not expose queryable entities.');
+}
+
+function isQueryEntities(value: unknown): value is QueryEntities {
+  return isRecord(value);
+}
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return Boolean(value) && typeof value === 'object';
 }
 
 function unwrapFieldValue<T = any>(field: unknown, fallback: T | undefined = undefined): T {

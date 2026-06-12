@@ -12,7 +12,7 @@ import type {
   AudiotoolImportClient,
   ScoreImportPlan
 } from '@midi-to-xml/score-to-audiotool';
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import {
   buildArchiveName,
   cleanupWorkDir,
@@ -56,7 +56,10 @@ audiotoolRouter.post('/audiotool/projects', async (req, res) => {
   }
 });
 
-audiotoolRouter.post('/audiotool/project', async (req, res) => {
+audiotoolRouter.post('/audiotool/project', handleProjectDetails);
+audiotoolRouter.get('/audiotool/project', handleProjectDetails);
+
+async function handleProjectDetails(req: Request, res: Response) {
   try {
     const client = await createRequestAudiotoolSession(req);
     const details = await getAudiotoolProjectDetails(client, readProjectReference(req));
@@ -68,21 +71,7 @@ audiotoolRouter.post('/audiotool/project', async (req, res) => {
   } catch (error) {
     sendError(res, error);
   }
-});
-
-audiotoolRouter.get('/audiotool/project', async (req, res) => {
-  try {
-    const client = await createRequestAudiotoolSession(req);
-    const details = await getAudiotoolProjectDetails(client, readProjectReference(req));
-
-    res.json({
-      reference: details.reference,
-      project: serializeProject(details.project)
-    });
-  } catch (error) {
-    sendError(res, error);
-  }
-});
+}
 
 audiotoolRouter.post('/audiotool/inspect', async (req, res) => {
   try {
