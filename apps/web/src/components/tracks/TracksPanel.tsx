@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { SectionTitle } from '../SectionTitle';
 import { SegmentedControl } from '../SegmentedControl';
+import { SelectAllCheckbox } from '../SelectAllCheckbox';
 import { ProjectMeta } from './ProjectMeta';
 import { TrackList } from './TrackList';
 import type {
@@ -35,7 +36,9 @@ type TracksPanelProps = {
   manifest: ProjectManifest | null;
   mode: OutputMode;
   onConvert: () => void | Promise<void>;
+  onDeselectAllTracks: () => void;
   onScoreTitleChange: (title: string) => void;
+  onSelectAllTracks: () => void;
   onTrackTitleChange: (trackId: string, title: string) => void;
   onTrackToggle: (trackId: string) => void;
   quantize: boolean;
@@ -56,7 +59,9 @@ export function TracksPanel({
   manifest,
   mode,
   onConvert,
+  onDeselectAllTracks,
   onScoreTitleChange,
+  onSelectAllTracks,
   onTrackTitleChange,
   onTrackToggle,
   quantize,
@@ -74,6 +79,15 @@ export function TracksPanel({
   const trackError = status?.phase === 'error' && status?.area === 'tracks'
     ? status.message
     : '';
+  const tracks = manifest?.tracks ?? [];
+  const selectableTrackIds = new Set(tracks
+    .filter((track) => track.hasNotes === true)
+    .map((track) => track.id));
+  const selectableTrackCount = selectableTrackIds.size;
+  const selectedTrackCount = selectedTrackIds.filter((trackId) => selectableTrackIds.has(trackId)).length;
+  const hasSelectableTracks = selectableTrackCount > 0;
+  const allSelectableTracksSelected = hasSelectableTracks && selectedTrackCount === selectableTrackCount;
+  const someSelectableTracksSelected = selectedTrackCount > 0 && selectedTrackCount < selectableTrackCount;
 
   return (
     <section className="panel tracks-panel">
@@ -88,10 +102,24 @@ export function TracksPanel({
         />
       </div>
 
+      {tracks.length > 0 ? (
+        <div className="track-selection-bar" role="group" aria-label="Track selection controls">
+          <SelectAllCheckbox
+            ariaLabel="Select all tracks"
+            checked={allSelectableTracksSelected}
+            countText={`${selectedTrackCount} of ${selectableTrackCount} selected`}
+            disabled={!hasSelectableTracks}
+            indeterminate={someSelectableTracksSelected}
+            label="All"
+            onToggle={allSelectableTracksSelected ? onDeselectAllTracks : onSelectAllTracks}
+          />
+        </div>
+      ) : null}
+
       <TrackList
         selectedProject={selectedProject}
         status={status}
-        tracks={manifest?.tracks ?? []}
+        tracks={tracks}
         selectedTrackIds={selectedTrackIds}
         trackTitles={trackTitles}
         onTrackTitleChange={onTrackTitleChange}

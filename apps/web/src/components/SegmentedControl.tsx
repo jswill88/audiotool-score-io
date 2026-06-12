@@ -6,15 +6,44 @@ type SegmentedControlProps<T extends string> = {
   value: T;
   options: ReadonlyArray<readonly [T, string]>;
   onChange: (value: T) => void;
+  variant?: 'radio' | 'buttons';
 };
 
 export function SegmentedControl<T extends string>({
   ariaLabel,
   value,
   options,
-  onChange
+  onChange,
+  variant = 'radio'
 }: SegmentedControlProps<T>) {
   const groupName = useId();
+
+  if (variant === 'buttons') {
+    return (
+      <div
+        aria-label={ariaLabel}
+        className="segmented-control"
+        role="group"
+        style={{ '--segment-count': options.length } as CSSProperties}
+      >
+        {options.map(([optionValue, label]) => {
+          const checked = value === optionValue;
+
+          return (
+            <button
+              aria-pressed={checked}
+              className={checked ? 'is-active' : ''}
+              key={optionValue}
+              type="button"
+              onClick={() => onChange(optionValue)}
+            >
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <fieldset

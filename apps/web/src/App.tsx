@@ -477,6 +477,7 @@ function AppWorkspace({
             ariaLabel="Conversion workflow"
             value={workflow}
             options={workflowOptions}
+            variant="buttons"
             onChange={setWorkflow}
           />
         </div>
@@ -498,7 +499,9 @@ function AppWorkspace({
               manifest={manifest}
               mode={mode}
               onConvert={convertProject}
+              onDeselectAllTracks={() => setSelectedTrackIds([])}
               onScoreTitleChange={setScoreTitle}
+              onSelectAllTracks={() => setSelectedTrackIds(Array.from(selectableTrackIds))}
               onTrackTitleChange={(trackId, title) => {
                 setTrackTitles((current) => ({
                   ...current,
@@ -544,6 +547,7 @@ function AppWorkspace({
               importResult={scoreImportResult}
               onAnalyze={analyzeScoreFile}
               onCreate={createProjectFromScore}
+              onDeselectAllParts={() => setSelectedImportPartIds([])}
               onFileChange={handleScoreFileChange}
               onPartTitleChange={(partId, title) => {
                 setImportPartTitles((current) => ({
@@ -557,6 +561,9 @@ function AppWorkspace({
                     ? current.filter((id) => id !== partId)
                     : [...current, partId]
                 ));
+              }}
+              onSelectAllParts={() => {
+                setSelectedImportPartIds(scoreImportPlan?.parts.map((part) => part.id) ?? []);
               }}
               onTitleChange={setScoreImportTitle}
               partTitles={importPartTitles}

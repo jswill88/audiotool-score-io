@@ -91,6 +91,13 @@ What the latest cleanup does:
 - `/audiotool/import` accepts multipart uploads. With `dryRun=true`, it returns a score import plan. Without `dryRun`, it requires Audiotool auth, creates a new Audiotool project, and writes selected parts as Gakki-backed note tracks with mixer channels, audio cables, one region per part, and MIDI-derived notes.
 - The importer preserves note pitch/timing/duration/velocity plus the first tempo/time signature. It warns that slurs, articulations, dynamics, lyrics, repeats, voice splitting, later tempo/signature changes, and true drum mapping are not imported yet.
 - The web workflow switcher now keeps export/import content on the same outer workspace width. The MusicXML-to-Audiotool page uses a single full-width rail, the workflow tabs have more horizontal padding, and the MusicXML upload control uses a left-aligned custom `Choose File` button with keyboard focus styling.
+- Track export-name editing in the Audiotool-to-MusicXML flow is fixed: the hidden checkbox CSS in track rows is scoped to the checkbox input only, so the inline text editor input remains visible when the pencil button is clicked.
+- Track and score-part lists now use native master checkboxes with indeterminate state for select-all behavior. Export select-all chooses only tracks with notes; import select-all chooses every detected score part.
+- The track and score-part master checkboxes both sit below their section titles for matching list layout. Their visible label is `All`, with specific accessible labels for tracks and parts.
+- The top-level conversion workflow selector now uses pressed buttons instead of a radio group. The output mode segmented control remains a native radio group.
+- The MusicXML-to-Audiotool part list no longer shows per-part note counts in the UI; the import plan still carries note counts internally.
+- Track and score-part lists use the same bounded internal scroll behavior so long lists do not push their surrounding action controls away.
+- Empty source tracks in the MusicXML-to-Audiotool import plan now produce user-facing warnings like `Part 2 had no notes and was skipped.` instead of exposing the internal MIDI-track wording.
 
 Last verified commands:
 
@@ -108,8 +115,6 @@ npm test --workspace @midi-to-xml/score-to-audiotool
 npm run check --workspace @midi-to-xml/score-to-audiotool
 npm run typecheck --workspace @midi-to-xml/api
 npm run check --workspace @midi-to-xml/api
-APP_URL=http://127.0.0.1:5175/ node tmp/verify-keyboard-tab-order.mjs
-APP_URL=http://127.0.0.1:5175/ node tmp/verify-screen-reader-smoke.mjs
 npm test
 npm run typecheck
 npm run check

@@ -31,6 +31,9 @@ test('buildScoreImportPlanFromMidiFile maps MIDI tracks to Audiotool-tick parts'
       velocity: 0.5
     });
 
+    const emptyPart = midi.addTrack();
+    emptyPart.name = 'Empty Part';
+
     const drums = midi.addTrack();
     drums.name = 'Drums';
     drums.channel = 9;
@@ -58,6 +61,10 @@ test('buildScoreImportPlanFromMidiFile maps MIDI tracks to Audiotool-tick parts'
     assert.equal(plan.parts[0].notes[0].durationTicks, 1920);
     assert.equal(plan.parts[1].isPercussion, true);
     assert.equal(plan.parts[1].shouldImportByDefault, false);
+    assert.equal(
+      plan.warnings.some((warning) => warning.message === 'Part 2 had no notes and was skipped.'),
+      true
+    );
 
     const selected = selectScoreImportParts(plan);
     assert.deepEqual(selected.parts.map((part) => part.title), ['Violin']);

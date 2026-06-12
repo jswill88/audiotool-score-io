@@ -94,7 +94,7 @@ export async function buildScoreImportPlanFromMidiFile({
     if (notes.length === 0) {
       warnings.push({
         code: 'empty-midi-track',
-        message: `MIDI track ${trackIndex + 1} had no notes and was skipped.`,
+        message: `Part ${trackIndex + 1} had no notes and was skipped.`,
         trackIndex
       });
       return;

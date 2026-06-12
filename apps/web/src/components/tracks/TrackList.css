@@ -3,6 +3,7 @@
   align-content: start;
   gap: 8px;
   min-height: 220px;
+  max-height: 340px;
   overflow: auto;
   padding-right: 2px;
 }
@@ -69,7 +70,7 @@
   opacity: 0.52;
 }
 
-.track-row input {
+.track-row > input[type="checkbox"] {
   pointer-events: none;
   opacity: 0;
   width: 0;

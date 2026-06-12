@@ -8,6 +8,7 @@ import {
   Wand2
 } from 'lucide-react';
 import { SectionTitle } from '../SectionTitle';
+import { SelectAllCheckbox } from '../SelectAllCheckbox';
 import type {
   AppStatus,
   ScoreImportPart,
@@ -22,9 +23,11 @@ type ScoreImportPanelProps = {
   importResult: ScoreImportResult | null;
   onAnalyze: () => void | Promise<void>;
   onCreate: () => void | Promise<void>;
+  onDeselectAllParts: () => void;
   onFileChange: (file: File | null) => void | Promise<void>;
   onPartTitleChange: (partId: string, title: string) => void;
   onPartToggle: (partId: string) => void;
+  onSelectAllParts: () => void;
   onTitleChange: (title: string) => void;
   partTitles: Record<string, string>;
   plan: ScoreImportPlan | null;
@@ -39,9 +42,11 @@ export function ScoreImportPanel({
   importResult,
   onAnalyze,
   onCreate,
+  onDeselectAllParts,
   onFileChange,
   onPartTitleChange,
   onPartToggle,
+  onSelectAllParts,
   onTitleChange,
   partTitles,
   plan,
@@ -55,6 +60,12 @@ export function ScoreImportPanel({
   const importError = status.phase === 'error' && status.area === 'import'
     ? status.message
     : '';
+  const partCount = plan?.parts.length ?? 0;
+  const knownPartIds = new Set(plan?.parts.map((part) => part.id) ?? []);
+  const selectedPartCount = selectedPartIds.filter((partId) => knownPartIds.has(partId)).length;
+  const hasParts = partCount > 0;
+  const allPartsSelected = hasParts && selectedPartCount === partCount;
+  const somePartsSelected = selectedPartCount > 0 && selectedPartCount < partCount;
 
   return (
     <section className="panel score-import-panel">
@@ -132,10 +143,20 @@ export function ScoreImportPanel({
         <div className="score-import-parts" aria-label="Detected score parts">
           <div className="score-import-parts-header">
             <SectionTitle icon={<Music2 size={17} />} title="Parts" />
-            {plan ? (
-              <span>{selectedPartIds.length} of {plan.parts.length} selected</span>
-            ) : null}
           </div>
+          {plan ? (
+            <div className="score-import-selection">
+              <SelectAllCheckbox
+                ariaLabel="Select all parts"
+                checked={allPartsSelected}
+                countText={`${selectedPartCount} of ${partCount} selected`}
+                disabled={!hasParts}
+                indeterminate={somePartsSelected}
+                label="All"
+                onToggle={allPartsSelected ? onDeselectAllParts : onSelectAllParts}
+              />
+            </div>
+          ) : null}
           {plan ? (
             <div className="score-part-list">
               {plan.parts.map((part) => (
@@ -218,10 +239,11 @@ function ScoreImportPartRow({
           aria-label={`Imported track name for ${part.title}`}
           onChange={(event) => onTitleChange(part.id, event.target.value)}
         />
-        <div className="score-part-meta">
-          <span>{part.noteCount} notes</span>
-          {part.isPercussion ? <span>Percussion</span> : null}
-        </div>
+        {part.isPercussion ? (
+          <div className="score-part-meta">
+            <span>Percussion</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

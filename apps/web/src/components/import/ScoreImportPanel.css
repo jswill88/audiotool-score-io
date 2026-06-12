@@ -74,10 +74,12 @@
   font-weight: 680;
 }
 
-.score-import-parts-header span {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
+.score-import-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 10px;
 }
 
 .score-part-list {
@@ -184,6 +186,12 @@
 @media (max-width: 760px) {
   .score-import-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .score-import-parts-header,
+  .score-import-selection {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .score-import-actions {

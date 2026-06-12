@@ -25,7 +25,8 @@
   border: 0;
 }
 
-.segmented-control label {
+.segmented-control label,
+.segmented-control button {
   position: relative;
   display: grid;
   place-items: center;
@@ -41,6 +42,10 @@
   font-weight: 720;
 }
 
+.segmented-control button {
+  appearance: none;
+}
+
 .segmented-control input {
   position: absolute;
   inset: 0;
@@ -51,19 +56,22 @@
   pointer-events: none;
 }
 
-.segmented-control label:hover {
+.segmented-control label:hover,
+.segmented-control button:hover {
   background: rgba(239, 243, 246, 0.06);
   color: var(--ink);
 }
 
-.segmented-control label:focus-within {
+.segmented-control label:focus-within,
+.segmented-control button:focus-visible {
   z-index: 1;
   border-color: var(--focus-ring);
   outline: 3px solid var(--focus-ring-soft);
   outline-offset: 2px;
 }
 
-.segmented-control label.is-active {
+.segmented-control label.is-active,
+.segmented-control button.is-active {
   border-color: rgba(255, 248, 234, 0.36);
   background:
     var(--active-gradient);
@@ -77,7 +85,8 @@
     grid-template-columns: repeat(var(--segment-count, 3), minmax(0, 1fr));
   }
 
-  .segmented-control label {
+  .segmented-control label,
+  .segmented-control button {
     padding-inline: 8px;
     font-size: 14px;
   }
