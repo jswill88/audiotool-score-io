@@ -256,6 +256,19 @@ Stop both containers:
 docker compose down
 ```
 
+### Oracle A1 capacity helper
+
+For the Oracle Cloud Free Tier deployment, the current E2 micro VM is memory-constrained. The repo includes a local OCI CLI helper that repeatedly tries to create a stronger `VM.Standard.A1.Flex` instance when Oracle capacity becomes available:
+
+```bash
+cp scripts/oracle/a1-capacity-hunter.env.example scripts/oracle/a1-capacity-hunter.env
+$EDITOR scripts/oracle/a1-capacity-hunter.env
+OCI_DRY_RUN=true scripts/oracle/a1-capacity-hunter.sh
+scripts/oracle/a1-capacity-hunter.sh
+```
+
+See [`scripts/oracle/README.md`](scripts/oracle/README.md) for required OCIDs and migration steps.
+
 ### API-only image
 
 Build the image:

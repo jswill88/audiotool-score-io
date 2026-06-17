@@ -4,8 +4,48 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ## Active
 
+### DuckDNS Oracle Deployment Checklist
+
+- [x] Create an Oracle Cloud Always Free VM for the app, preferably an Ampere A1 instance with enough RAM for MuseScore conversions.
+- [x] Add ingress rules in the Oracle security list/network security group for ports `80` and `443`; keep app internals such as API port `3000` closed to the public internet.
+- [x] SSH into the VM, install Docker, Docker Compose, Git, and Caddy.
+- [x] Clone this repo onto the VM and run `npm install` only if local validation/build debugging is needed; normal production launch should use Docker Compose.
+- [x] Create a DuckDNS account, choose the subdomain `audiotool-score-io.duckdns.org`, and point it at the VM public IP.
+- [x] Configure DuckDNS IP updates on the VM using the DuckDNS token, either with cron or a small systemd timer, so the subdomain stays current if the VM IP changes.
+- [x] Wait for DNS to resolve, then confirm the VM sees the expected public IP with `dig audiotool-score-io.duckdns.org` or `nslookup audiotool-score-io.duckdns.org`.
+- [x] Register or update the Audiotool developer application with the production redirect URL `https://audiotool-score-io.duckdns.org/`.
+- [x] Create the production `.env` on the VM with `VITE_AUDIOTOOL_CLIENT_ID`, `VITE_AUDIOTOOL_REDIRECT_URL=https://audiotool-score-io.duckdns.org/`, `VITE_AUDIOTOOL_SCOPE=project:write`, `AUDIOTOOL_CLIENT_ID`, and the existing conversion settings.
+- [x] Bind Docker Compose host ports to localhost where possible, for example `WEB_PORT=127.0.0.1:5173` and `API_PORT=127.0.0.1:3000`, so Caddy is the only public entrypoint.
+- [x] Configure `/etc/caddy/Caddyfile` with `audiotool-score-io.duckdns.org { reverse_proxy 127.0.0.1:5173 }`.
+- [x] Start or reload Caddy and confirm it obtains an HTTPS certificate for the DuckDNS subdomain.
+- [x] Launch the app with `docker compose up -d --build` from the repo root on the VM.
+- [x] Check container health with `docker compose ps` and `docker compose logs api web`.
+- [x] Verify public endpoints: `https://audiotool-score-io.duckdns.org/`, `https://audiotool-score-io.duckdns.org/health`, and `https://audiotool-score-io.duckdns.org/ready`.
+- [x] Add `scripts/oracle/a1-capacity-hunter.sh` to automate gentle OCI CLI retries for an A1 Flex replacement VM.
+- [x] Configure `scripts/oracle/a1-capacity-hunter.env` locally with OCI tenancy, compartment, subnet, ARM image, and SSH public key values.
+- [x] Start the local A1 capacity hunter as a macOS LaunchAgent using copied config under `~/.config/audiotool-score-io`.
+- [ ] Let the A1 capacity hunter run until Oracle creates a `VM.Standard.A1.Flex` instance, then migrate DuckDNS and the app to the new VM.
+- [ ] Test the full browser flow over HTTPS: sign in with Audiotool, load projects, inspect tracks, convert MusicXML, upload MusicXML, and import selected parts back to Audiotool.
+- [ ] Document the chosen DuckDNS name, VM region/shape, env-var decisions, and final verification commands in `HANDOFF.md` after the deployment is working.
+
+#### Push-To-Main Redeploy Automation
+
+- [ ] Create a dedicated deploy user or deploy SSH key for the Oracle VM instead of using a personal everyday SSH key.
+- [ ] Add the deploy public key to the VM user's `~/.ssh/authorized_keys` and confirm that GitHub Actions can SSH into the VM non-interactively.
+- [ ] Add GitHub repository secrets for `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`, and the expected public app URL.
+- [ ] Set `DEPLOY_SSH_KEY` to the full private key file contents, including the `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----` lines, not the local key path such as `~/.ssh/midi_to_xml_deploy`.
+- [ ] Keep production runtime secrets in the VM's `.env`; do not copy Audiotool tokens, DuckDNS tokens, or production `.env` values into the workflow file.
+- [ ] Add a `.github/workflows/deploy.yml` workflow that runs on pushes to `main`, uses the SSH key, and deploys from the VM checkout.
+- [ ] In the deploy workflow, run `git fetch --all`, reset or fast-forward the VM checkout to `origin/main`, and then run `docker compose up -d --build`.
+- [ ] Add GitHub Actions concurrency so only one deploy to the VM can run at a time.
+- [ ] After Compose restarts, have the workflow check `docker compose ps`, `https://audiotool-score-io.duckdns.org/health`, and `https://audiotool-score-io.duckdns.org/ready`.
+- [ ] Decide on a rollback path, such as keeping the last known-good commit hash in the deploy log and manually redeploying that commit if health checks fail.
+- [ ] Document the deploy workflow name, required GitHub secrets, and rollback command in `HANDOFF.md` once automation is live.
+
 ### Future Features
 
+- [ ] Investigate API timeout/abort handling around Audiotool project inspect/open requests so bad PAT/project probes cannot wedge the API or make `/health` time out.
+- [ ] Put parts into separate section, like tracks is
 - [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
 - [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.
 - [ ] Show the score following along during playback.

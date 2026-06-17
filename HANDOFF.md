@@ -22,6 +22,26 @@ Keep this handoff current when changes affect behavior, setup/run commands, veri
 
 `TODO.md` now keeps active backlog items near the top and archives checked-off work in a `Completed` section at the bottom.
 
+## Deployment Notes
+
+Production deployment is in progress on Oracle Cloud with DuckDNS and Caddy. The chosen DuckDNS hostname is `audiotool-score-io.duckdns.org`, so production URLs should use `https://audiotool-score-io.duckdns.org/` unless the deployment plan changes.
+
+Current VM details:
+
+- SSH user/host used during setup: `opc@159.54.186.136`.
+- Repo path on the VM: `/home/opc/audiotool-score-export`.
+- Caddy proxies `audiotool-score-io.duckdns.org` to `127.0.0.1:5173`.
+- Docker Compose currently binds `web` to `127.0.0.1:5173->8080` and `api` to `127.0.0.1:3000->3000`, keeping Caddy as the public entrypoint.
+- The deployed web Nginx config now sets `proxy_connect_timeout 10s`, `proxy_send_timeout 300s`, and `proxy_read_timeout 300s` so long Audiotool/API operations are not cut off by the default 60-second proxy timeout.
+- DuckDNS updater exists at `/opt/duckdns/update.sh`; the latest checked result was `OK`, and root cron runs it every 5 minutes.
+- Public checks passed for `/`, `/health`, and `/ready`; `/ready` reported MuseScore through `xvfb-run`.
+- Public `/audiotool/inspect` routing was checked with an intentionally invalid `audiotoolAuth` body and returned the expected HTTP 400 validation error. A PAT-backed dummy project probe (`projects/test`) previously wedged the API process until the API container was restarted, so real browser OAuth inspect/export/import still needs manual verification and API upstream timeout handling should be investigated.
+- A local OCI CLI helper exists at `scripts/oracle/a1-capacity-hunter.sh` with docs in `scripts/oracle/README.md`. OCI CLI is installed/configured locally, `scripts/oracle/a1-capacity-hunter.env` is filled in and gitignored, and the matching SSH public key is at `~/.ssh/oracle_audiotool_score_io.pub`. `scripts/oracle/install-a1-capacity-hunter-launchd.sh` installs the macOS LaunchAgent setup.
+- The A1 capacity hunter is currently running as a macOS LaunchAgent named `com.audiotool-score-io.a1-capacity-hunter`. Because `launchd` could not execute from the repo under `Documents`, the running copy is installed at `~/.local/bin/a1-capacity-hunter.sh` with copied config at `~/.config/audiotool-score-io/a1-capacity-hunter.env`. Logs are in `~/Library/Logs/audiotool-score-io/a1-capacity-hunter.log` plus LaunchAgent stdout/stderr logs in the same directory.
+- Latest checked A1 attempt: Oracle returned `Out of host capacity.` for `VM.Standard.A1.Flex` in `us-sanjose-1`, then the LaunchAgent process stayed alive and slept for 1800 seconds before its next retry.
+
+Remaining deployment checks: complete the real browser OAuth/export/import flow over HTTPS, then set up push-to-main redeploy automation.
+
 ## Important Current State
 
 As of this handoff, the latest MusicXML display cleanup is part of the intended committed baseline.
