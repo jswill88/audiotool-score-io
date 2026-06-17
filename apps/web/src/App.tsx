@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, LogIn } from 'lucide-react';
 import { SegmentedControl } from './components/SegmentedControl';
-import { ScoreImportPanel } from './components/import/ScoreImportPanel';
+import { ScoreImportPanel, ScorePartsPanel } from './components/import/ScoreImportPanel';
+import { AppFooter } from './components/layout/AppFooter';
 import { AppHeader } from './components/layout/AppHeader';
 import { SidebarPanel } from './components/layout/SidebarPanel';
 import { ResultPanel } from './components/results/ResultPanel';
@@ -23,8 +24,8 @@ import { formatUserName } from './utils/workflow';
 import './App.css';
 
 const workflowOptions = [
-  ['export', 'Audiotool -> MusicXML'],
-  ['import', 'MusicXML -> Audiotool']
+  ['export', 'Audiotool → MusicXML'],
+  ['import', 'MusicXML → Audiotool']
 ] as const satisfies ReadonlyArray<readonly [AppWorkflow, string]>;
 
 export function App() {
@@ -153,17 +154,19 @@ function AppWorkspace({
               importResult={scoreImportWorkflow.importResult}
               onAnalyze={scoreImportWorkflow.onAnalyze}
               onCreate={scoreImportWorkflow.onCreate}
-              onDeselectAllParts={scoreImportWorkflow.onDeselectAllParts}
               onFileChange={scoreImportWorkflow.onFileChange}
+              onTitleChange={scoreImportWorkflow.onTitleChange}
+              projectTitle={scoreImportWorkflow.projectTitle}
+              status={status}
+            />
+            <ScorePartsPanel
+              onDeselectAllParts={scoreImportWorkflow.onDeselectAllParts}
               onPartTitleChange={scoreImportWorkflow.onPartTitleChange}
               onPartToggle={scoreImportWorkflow.onPartToggle}
               onSelectAllParts={scoreImportWorkflow.onSelectAllParts}
-              onTitleChange={scoreImportWorkflow.onTitleChange}
               partTitles={scoreImportWorkflow.partTitles}
               plan={scoreImportWorkflow.plan}
-              projectTitle={scoreImportWorkflow.projectTitle}
               selectedPartIds={scoreImportWorkflow.selectedPartIds}
-              status={status}
             />
             <ResultPanel
               activeFile={scoreImportWorkflow.scorePreviewFile}
@@ -180,6 +183,7 @@ function AppWorkspace({
           </>
         )}
       </section>
+      <AppFooter />
     </main>
   );
 }
@@ -197,6 +201,10 @@ function SignInPage({ auth }: { auth: AudiotoolBrowserAuth }) {
           <div className="auth-panel-copy">
             <h2 id="sign-in-title">{authTitle(auth)}</h2>
             <p>{authSubtitle(auth)}</p>
+            <div className="auth-flow-list" aria-label="Supported conversion workflows">
+              <span>Audiotool → MusicXML</span>
+              <span>MusicXML → Audiotool</span>
+            </div>
           </div>
           {errorMessage ? (
             <div className="panel-error" role="alert">
@@ -217,6 +225,7 @@ function SignInPage({ auth }: { auth: AudiotoolBrowserAuth }) {
           </button>
         </div>
       </section>
+      <AppFooter />
     </main>
   );
 }
@@ -231,6 +240,7 @@ function RouteStatusPage({ message }: { message: string }) {
           <span>{message}</span>
         </div>
       </section>
+      <AppFooter />
     </main>
   );
 }

@@ -1,0 +1,35 @@
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1380px;
+  margin-inline: auto;
+  gap: 8px;
+  padding: 0 2px 2px;
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.app-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  color: var(--teal);
+}
+
+.app-footer svg {
+  flex: 0 0 auto;
+}
+
+.footer-separator {
+  color: var(--line-strong);
+}

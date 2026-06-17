@@ -11,10 +11,10 @@ export function AppHeader({ accountName, onLogout }: AppHeaderProps) {
     <header className="topbar">
       <div className="brand-lockup">
         <div className="brand-mark">
-          <img className="brand-logo" src="/logo.svg" alt="Audiotool Score I/O logo" />
+          <img className="brand-logo" src="/logo.svg" alt="Audiotool Score IO logo" />
         </div>
         <div>
-          <h1>Audiotool Score I/O</h1>
+          <h1>Audiotool Score IO</h1>
         </div>
       </div>
       {onLogout ? (

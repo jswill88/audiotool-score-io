@@ -44,7 +44,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### README Recruiter/Employer Polish
 
-- [ ] Rewrite the README opening for recruiters and employers: state what Audiotool Score I/O does, who it helps, and why it is technically interesting in the first few paragraphs.
+- [ ] Rewrite the README opening for recruiters and employers: state what Audiotool Score IO does, who it helps, and why it is technically interesting in the first few paragraphs.
 - [ ] Add a concise `Project Highlights` section covering full-stack TypeScript, OAuth/API integration, MusicXML/MIDI processing, Docker deployment, accessibility work, and production operations.
 - [ ] Add a `Live Demo` or `Production Deployment` section with the DuckDNS URL, current status, and any auth/demo limitations explained plainly.
 - [ ] Add a `How It Works` section that describes the main export/import flows without requiring the reader to understand the codebase first.
@@ -56,7 +56,6 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ### Future Features
 
 - [ ] Investigate API timeout/abort handling around Audiotool project inspect/open requests so bad PAT/project probes cannot wedge the API or make `/health` time out.
-- [ ] Put parts into separate section, like tracks is
 - [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
 - [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.
 - [ ] Show the score following along during playback.
@@ -75,7 +74,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### Immediate
 
-- [x] Update title to Audiotool Score I/O now that the app imports and exports.
+- [x] Update title to Audiotool Score IO now that the app imports and exports.
 - [x] Ignore drum tracks by default, especially Beatbox 8/9. Machiniste and unknown note players warn but stay selectable by default.
 - [x] Every track is "unknown type" which feels wrong.
 - [x] If there are 0 notes in a track, we can disable it or ignore it. We can show it maybe, but not allow conversion. There's nothing to convert.
@@ -125,5 +124,6 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ### Future Features
 
 - [x] Add a MusicXML-to-Audiotool import workflow with a `score-to-audiotool` package, `/audiotool/import` route, MusicXML upload/analyze UI, part selection, imported track naming, and basic Gakki note-track project creation.
+- [x] Put MusicXML-to-Audiotool parts into their own top-level `Parts` panel, matching the separate `Tracks` section in the export workflow.
 - [x] Add `/sign-in` and protected `/app` routes. `/` redirects based on auth state, and the authenticated app header has a logout button that returns to `/sign-in`.
 - [x] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and both reusable packages are done.

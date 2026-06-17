@@ -1,6 +1,6 @@
 .app-shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 100vh;
   padding: 16px;
   gap: 14px;
@@ -17,7 +17,7 @@
 }
 
 .workspace.workflow-import {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
 }
 
 .workflow-bar {
@@ -38,7 +38,7 @@
 }
 
 .auth-shell {
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .auth-workspace {
@@ -57,7 +57,7 @@
 
 .auth-panel-copy {
   display: grid;
-  gap: 5px;
+  gap: 8px;
 }
 
 .auth-panel h2 {
@@ -69,6 +69,28 @@
 .auth-panel p {
   color: var(--muted);
   font-size: 15px;
+}
+
+.auth-flow-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-flow-list span {
+  min-width: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--control-well), var(--console-2);
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 740;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .auth-page-button {
@@ -94,5 +116,9 @@
 
   .auth-workspace {
     align-items: start;
+  }
+
+  .auth-flow-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
