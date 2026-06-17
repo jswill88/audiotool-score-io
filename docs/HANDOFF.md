@@ -20,7 +20,9 @@ Read `AGENTS.md` for standing agent instructions. The handoff is useful for curr
 
 Keep this handoff current when changes affect behavior, setup/run commands, verification steps, known tradeoffs, or useful next-session context.
 
-`TODO.md` now keeps active backlog items near the top and archives checked-off work in a `Completed` section at the bottom.
+Project docs other than the root `README.md` and `AGENTS.md` now live under `docs/`: use `docs/TODO.md` for the shared checklist, `docs/CODEMAP.md` for navigation, and `docs/deployment/` for deployment runbooks.
+
+`docs/TODO.md` now keeps active backlog items near the top and archives checked-off work in a `Completed` section at the bottom.
 
 ## Deployment Notes
 
@@ -36,7 +38,7 @@ Current VM details:
 - DuckDNS updater exists at `/opt/duckdns/update.sh`; the latest checked result was `OK`, and root cron runs it every 5 minutes.
 - Public checks passed for `/`, `/health`, and `/ready`; `/ready` reported MuseScore through `xvfb-run`.
 - Public `/audiotool/inspect` routing was checked with an intentionally invalid `audiotoolAuth` body and returned the expected HTTP 400 validation error. A PAT-backed dummy project probe (`projects/test`) previously wedged the API process until the API container was restarted, so real browser OAuth inspect/export/import still needs manual verification and API upstream timeout handling should be investigated.
-- A local OCI CLI helper exists at `scripts/oracle/a1-capacity-hunter.sh` with docs in `scripts/oracle/README.md`. OCI CLI is installed/configured locally, `scripts/oracle/a1-capacity-hunter.env` is filled in and gitignored, and the matching SSH public key is at `~/.ssh/oracle_audiotool_score_io.pub`. `scripts/oracle/install-a1-capacity-hunter-launchd.sh` installs the macOS LaunchAgent setup.
+- A local OCI CLI helper exists at `scripts/oracle/a1-capacity-hunter.sh` with docs in `docs/deployment/oracle-a1.md`. OCI CLI is installed/configured locally, `scripts/oracle/a1-capacity-hunter.env` is filled in and gitignored, and the matching SSH public key is at `~/.ssh/oracle_audiotool_score_io.pub`. `scripts/oracle/install-a1-capacity-hunter-launchd.sh` installs the macOS LaunchAgent setup.
 - The A1 capacity hunter is currently running as a macOS LaunchAgent named `com.audiotool-score-io.a1-capacity-hunter`. Because `launchd` could not execute from the repo under `Documents`, the running copy is installed at `~/.local/bin/a1-capacity-hunter.sh` with copied config at `~/.config/audiotool-score-io/a1-capacity-hunter.env`. Logs are in `~/Library/Logs/audiotool-score-io/a1-capacity-hunter.log` plus LaunchAgent stdout/stderr logs in the same directory.
 - Latest checked A1 attempt: Oracle returned `Out of host capacity.` for `VM.Standard.A1.Flex` in `us-sanjose-1`, then the LaunchAgent process stayed alive and slept for 1800 seconds before its next retry.
 
@@ -48,7 +50,7 @@ As of this handoff, the latest MusicXML display cleanup is part of the intended 
 
 The main files involved are:
 
-- `CODEMAP.md`
+- `docs/CODEMAP.md`
 - `README.md`
 - `tsconfig.base.json`
 - `apps/web/tsconfig.json`
@@ -93,7 +95,7 @@ What the latest cleanup does:
 - Remove generated MuseScore part abbreviations from Audiotool track exports.
 - Stamp Audiotool-generated MIDI tracks with separate non-percussion channels and single-staff synth/pad programs before MuseScore import, so selected tracks stay independent parts instead of collapsing into a piano grand staff.
 - Keep the ending double bar behavior.
-- Add `CODEMAP.md` as a human-oriented navigation guide and link it from `README.md`.
+- Add `docs/CODEMAP.md` as a human-oriented navigation guide and link it from `README.md`.
 - Keep `apps/api/src/routes/audiotool.ts` focused on route flow; Audiotool request/auth parsing now lives in `apps/api/src/audiotool/request.ts`, and conversion output/archive helpers live in `apps/api/src/audiotool/output.ts`.
 - Guard Audiotool browser sign-in for missing `crypto.subtle.digest`; unsupported/insecure origins now show an in-app auth error instead of an uncaught login promise rejection.
 - Complete the TypeScript migration across the app workspaces and reusable packages: the root shared TS config exists, `apps/web` has its own `tsconfig.json`, web source files are `.ts`/`.tsx`, and `apps/web` `check` runs `tsc --noEmit` before `vite build`.
@@ -110,7 +112,7 @@ What the latest cleanup does:
 - The accessibility pass added explicit labels/help text for project and quantization inputs, ARIA tabs for the Score/XML switcher, polite live status announcements, named tab panels for score/XML panes, a screen-reader fallback note for rendered notation, reduced-motion handling for spinners, and an axe fix for the sidebar landmark.
 - Keyboard-only tab order has been smoke-tested in Chrome with mocked Audiotool auth/API responses. The verified path covers sign-in, project loading, manual inspect, project selection, score-title editing, track checkbox selection, track export-title editing, output mode arrow-key switching, quantize/grid options, conversion, download, Score/XML result tabs, converted-file switching, and XML panel focus.
 - Screen-reader smoke was checked through Chrome's accessibility tree with mocked Audiotool auth/API responses. The pass verified exposed roles, accessible names, checked/selected/pressed/disabled states, title-editor textbox names/values, live status announcement text, project list semantics, result tabs, converted-file buttons, and XML tab panel focus. A live VoiceOver audio pass could not be completed from this session because macOS opened VoiceOver Quickstart instead of a usable reader session.
-- For future web UI work, treat accessibility as part of done: prefer native semantic controls, ensure every interactive element has an accessible name and state, verify keyboard order/focus, avoid color-only status signals, and update the `TODO.md` Accessibility checklist when new concerns appear.
+- For future web UI work, treat accessibility as part of done: prefer native semantic controls, ensure every interactive element has an accessible name and state, verify keyboard order/focus, avoid color-only status signals, and update the `docs/TODO.md` Accessibility checklist when new concerns appear.
 - MusicXML-to-Audiotool import is now a first-pass workflow. The web app has a mode switch between `Audiotool -> MusicXML` and `MusicXML -> Audiotool`. Import accepts `.musicxml`, `.xml`, and `.mxl`; uncompressed XML is previewed in the existing score viewer, while `.mxl` can be analyzed/imported through the API without browser preview.
 - `/audiotool/import` accepts multipart uploads. With `dryRun=true`, it returns a score import plan. Without `dryRun`, it requires Audiotool auth, creates a new Audiotool project, and writes selected parts as Gakki-backed note tracks with mixer channels, audio cables, one region per part, and MIDI-derived notes.
 - The importer preserves note pitch/timing/duration/velocity plus the first tempo/time signature. It warns that slurs, articulations, dynamics, lyrics, repeats, voice splitting, later tempo/signature changes, and true drum mapping are not imported yet.
@@ -348,14 +350,14 @@ DEFAULT_QUANTIZATION_GRID=24
 
 ## Current TODO Focus
 
-From `TODO.md`, the most relevant remaining items are:
+From `docs/TODO.md`, the most relevant remaining items are:
 
 - Future: score playback/follow-along, browser play controls, drum notation mapping, accessibility.
 
 ## Good Next-Session Checklist
 
 1. Run `git status --short` and confirm the working tree state before making changes.
-2. Read `TODO.md` and `AGENTS.md`.
+2. Read `docs/TODO.md` and `AGENTS.md`.
 3. Open the app at `http://127.0.0.1:5173/` with Docker or local dev.
 4. Test a real Audiotool project with one selected track and then multiple selected tracks.
 5. Check whether OpenSheetMusicDisplay still draws any unwanted title from `<work-title>`.
@@ -382,5 +384,5 @@ docker compose down
 ## Suggested Prompt For A New Session
 
 ```text
-Please read AGENTS.md, HANDOFF.md, README.md, TODO.md, and git status. Continue from the current committed state. First verify the app in Docker or Docker dev with a real Audiotool project if possible, then keep TODO.md updated as tasks are completed.
+Please read AGENTS.md, docs/HANDOFF.md, README.md, docs/TODO.md, and git status. Continue from the current committed state. First verify the app in Docker or Docker dev with a real Audiotool project if possible, then keep docs/TODO.md updated as tasks are completed.
 ```

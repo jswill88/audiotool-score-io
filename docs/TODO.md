@@ -26,7 +26,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [x] Start the local A1 capacity hunter as a macOS LaunchAgent using copied config under `~/.config/audiotool-score-io`.
 - [ ] Let the A1 capacity hunter run until Oracle creates a `VM.Standard.A1.Flex` instance, then migrate DuckDNS and the app to the new VM.
 - [ ] Test the full browser flow over HTTPS: sign in with Audiotool, load projects, inspect tracks, convert MusicXML, upload MusicXML, and import selected parts back to Audiotool.
-- [ ] Document the chosen DuckDNS name, VM region/shape, env-var decisions, and final verification commands in `HANDOFF.md` after the deployment is working.
+- [ ] Document the chosen DuckDNS name, VM region/shape, env-var decisions, and final verification commands in `docs/HANDOFF.md` after the deployment is working.
 
 #### Push-To-Main Redeploy Automation
 
@@ -40,7 +40,18 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] Add GitHub Actions concurrency so only one deploy to the VM can run at a time.
 - [ ] After Compose restarts, have the workflow check `docker compose ps`, `https://audiotool-score-io.duckdns.org/health`, and `https://audiotool-score-io.duckdns.org/ready`.
 - [ ] Decide on a rollback path, such as keeping the last known-good commit hash in the deploy log and manually redeploying that commit if health checks fail.
-- [ ] Document the deploy workflow name, required GitHub secrets, and rollback command in `HANDOFF.md` once automation is live.
+- [ ] Document the deploy workflow name, required GitHub secrets, and rollback command in `docs/HANDOFF.md` once automation is live.
+
+### README Recruiter/Employer Polish
+
+- [ ] Rewrite the README opening for recruiters and employers: state what Audiotool Score I/O does, who it helps, and why it is technically interesting in the first few paragraphs.
+- [ ] Add a concise `Project Highlights` section covering full-stack TypeScript, OAuth/API integration, MusicXML/MIDI processing, Docker deployment, accessibility work, and production operations.
+- [ ] Add a `Live Demo` or `Production Deployment` section with the DuckDNS URL, current status, and any auth/demo limitations explained plainly.
+- [ ] Add a `How It Works` section that describes the main export/import flows without requiring the reader to understand the codebase first.
+- [ ] Add a small architecture overview linking to `docs/CODEMAP.md` for deeper code navigation.
+- [ ] Add screenshots or a short demo GIF once the production flow is stable enough to show confidently.
+- [ ] Move dense local setup, curl examples, and low-level configuration farther down so the README scans well for non-technical first-pass readers while still serving developers.
+- [ ] Add a short `Engineering Tradeoffs` section covering MuseScore in Docker, the Oracle free-tier deployment choice, and known future improvements.
 
 ### Future Features
 
@@ -109,7 +120,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ### Documentation
 
 - [x] Add Docker start/stop instructions to the README.
-- [x] Add standing agent guidance to keep `TODO.md` and `HANDOFF.md` current.
+- [x] Add standing agent guidance to keep `docs/TODO.md` and `docs/HANDOFF.md` current.
 
 ### Future Features
 

@@ -78,6 +78,7 @@ Use this as the first stop when deciding where a change belongs.
 ## Shared Project Docs
 
 - `README.md`: User-facing setup, usage, API examples, Docker instructions, and runtime configuration.
-- `TODO.md`: Shared product/backlog checklist.
-- `HANDOFF.md`: Current project state, recent decisions, verification commands, and next-session notes.
+- `docs/TODO.md`: Shared product/backlog checklist.
+- `docs/HANDOFF.md`: Current project state, recent decisions, verification commands, and next-session notes.
+- `docs/deployment/`: Deployment runbooks and provider-specific notes.
 - `AGENTS.md`: Standing workflow instructions for coding agents.

@@ -10,7 +10,7 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 - `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
 - `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, MusicXML export, MusicXML import, and score viewing.
 
-For a file-by-file navigation guide, see [`CODEMAP.md`](CODEMAP.md).
+For a file-by-file navigation guide, see [`docs/CODEMAP.md`](docs/CODEMAP.md).
 
 ## Run locally
 
@@ -267,7 +267,7 @@ OCI_DRY_RUN=true scripts/oracle/a1-capacity-hunter.sh
 scripts/oracle/a1-capacity-hunter.sh
 ```
 
-See [`scripts/oracle/README.md`](scripts/oracle/README.md) for required OCIDs and migration steps.
+See [`docs/deployment/oracle-a1.md`](docs/deployment/oracle-a1.md) for required OCIDs and migration steps.
 
 ### API-only image
 

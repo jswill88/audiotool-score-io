@@ -1,8 +1,8 @@
 # Oracle A1 Capacity Hunter
 
-This folder contains a local helper for repeatedly trying to create an Oracle Cloud Always Free `VM.Standard.A1.Flex` instance for the production deployment.
+This runbook covers the local helper for repeatedly trying to create an Oracle Cloud Always Free `VM.Standard.A1.Flex` instance for the production deployment.
 
-Use it from your local machine, not from the tiny E2 micro VM.
+Use it from your local machine, not from the tiny E2 micro VM. Run commands from the repo root unless a step says otherwise.
 
 ## Prerequisites
 
