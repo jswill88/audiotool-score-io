@@ -138,7 +138,6 @@ function AppWorkspace({
             />
             <ResultPanel
               activeFile={exportWorkflow.activeFile}
-              activeFileName={exportWorkflow.activeFileName}
               activeResult={exportWorkflow.visibleResult}
               selectedProject={exportWorkflow.selectedProject}
               setActiveFileName={exportWorkflow.setActiveFileName}
@@ -170,7 +169,6 @@ function AppWorkspace({
             />
             <ResultPanel
               activeFile={scoreImportWorkflow.scorePreviewFile}
-              activeFileName={scoreImportWorkflow.scorePreviewFileName}
               activeResult={scoreImportWorkflow.scorePreviewResult}
               emptyDescription="Plain .musicxml and .xml files preview here after you choose them. Compressed .mxl files can still be analyzed and imported, but they do not render in this browser preview."
               emptyTitle="No preview yet"

@@ -18,6 +18,10 @@ Use this as the first stop when deciding where a change belongs.
 - `packages/midi-to-musicxml`: Reusable TypeScript MIDI-to-MusicXML package.
 - `packages/score-to-audiotool`: Reusable TypeScript MusicXML score-to-Audiotool importer package.
 
+## Experiments
+
+- `experiments/notation-ranker`: Offline synthetic-data experiment for treating quantization/notation cleanup as a candidate-ranking problem. It does not affect the app or API.
+
 ## API Guide
 
 - `apps/api/src/app.ts`: Express app composition and route mounting.
@@ -78,6 +82,7 @@ Use this as the first stop when deciding where a change belongs.
 ## Shared Project Docs
 
 - `README.md`: User-facing setup, usage, API examples, Docker instructions, and runtime configuration.
+- `experiments/notation-ranker/README.md`: Offline notation-ranker experiment notes and commands.
 - `docs/TODO.md`: Shared product/backlog checklist.
 - `docs/HANDOFF.md`: Current project state, recent decisions, verification commands, and next-session notes.
 - `docs/deployment/`: Deployment runbooks and provider-specific notes.

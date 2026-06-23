@@ -9,6 +9,7 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 - `packages/score-to-audiotool`: standalone TypeScript MusicXML score importer that turns score parts into editable Audiotool note tracks.
 - `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
 - `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, MusicXML export, MusicXML import, and score viewing.
+- `experiments/notation-ranker`: offline synthetic-data starter for evaluating ML-guided quantization and notation candidate ranking.
 
 For a file-by-file navigation guide, see [`docs/CODEMAP.md`](docs/CODEMAP.md).
 
@@ -268,6 +269,10 @@ scripts/oracle/a1-capacity-hunter.sh
 ```
 
 See [`docs/deployment/oracle-a1.md`](docs/deployment/oracle-a1.md) for required OCIDs and migration steps.
+
+### Cloud Run API deployment
+
+For a split deployment with the MuseScore-backed API on Cloud Run and the browser app hosted separately, see [`docs/deployment/cloud-run.md`](docs/deployment/cloud-run.md). The Cloud Run image uses `apps/api/Dockerfile.cloudrun`, listens on port `8080`, installs MuseScore plus `xvfb`, and relies on `CORS_ORIGINS` for browser access from the web app origin.
 
 ### API-only image
 

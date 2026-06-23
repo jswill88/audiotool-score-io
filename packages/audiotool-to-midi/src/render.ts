@@ -68,7 +68,7 @@ type FilterExportableTracksOptions = {
   warnings: AudiotoolWarning[];
 };
 
-type ExpandedNote = {
+export type ExpandedNote = {
   pitch: number;
   positionTicks: number;
   durationTicks: number;
@@ -196,7 +196,7 @@ export function createMidiFromAudiotoolEntities(
   });
 }
 
-function filterExportableTracks(
+export function filterExportableTracks(
   tracks: AudiotoolTrackManifest[],
   { options, trackSelection, warnings }: FilterExportableTracksOptions
 ) {
@@ -237,7 +237,7 @@ function filterExportableTracks(
   });
 }
 
-function addNotationWarnings(tracks: AudiotoolTrackManifest[], warnings: AudiotoolWarning[]) {
+export function addNotationWarnings(tracks: AudiotoolTrackManifest[], warnings: AudiotoolWarning[]) {
   for (const track of tracks) {
     if (track.notation?.status === NotationStatuses.Ready) {
       continue;
@@ -304,6 +304,23 @@ function addNotesForTrack(
   options: ExportOptions,
   warnings: AudiotoolWarning[]
 ) {
+  for (const note of collectExpandedNotesForTrack(trackManifest, context, options, warnings)) {
+    midiTrack.addNote({
+      midi: note.pitch,
+      ticks: audiotoolTicksToMidiTicks(note.positionTicks, options),
+      durationTicks: Math.max(1, audiotoolTicksToMidiTicks(note.durationTicks, options)),
+      velocity: note.velocity
+    });
+  }
+}
+
+export function collectExpandedNotesForTrack(
+  trackManifest: AudiotoolTrackManifest,
+  context: AudiotoolProjectContext,
+  options: ExportOptions,
+  warnings: AudiotoolWarning[]
+) {
+  const occurrences: ExpandedNote[] = [];
   const regions = getRegionsForTrack(trackManifest.id, context);
 
   for (const noteRegion of regions) {
@@ -326,21 +343,14 @@ function addNotesForTrack(
     }
 
     const notes = getNotesForCollection(collectionId, context);
-    const occurrences = expandRegionNotes(notes, region, {
+    occurrences.push(...expandRegionNotes(notes, region, {
       noteRegionId: getEntityId(noteRegion),
       trackId: trackManifest.id,
       warnings
-    });
-
-    for (const note of occurrences) {
-      midiTrack.addNote({
-        midi: note.pitch,
-        ticks: audiotoolTicksToMidiTicks(note.positionTicks, options),
-        durationTicks: Math.max(1, audiotoolTicksToMidiTicks(note.durationTicks, options)),
-        velocity: note.velocity
-      });
-    }
+    }));
   }
+
+  return occurrences.sort((a, b) => a.positionTicks - b.positionTicks || a.pitch - b.pitch);
 }
 
 function expandRegionNotes(
@@ -495,7 +505,7 @@ function createMidiFile({
   };
 }
 
-function buildPartFileName(track: AudiotoolTrackManifest, options: ExportOptions) {
+export function buildPartFileName(track: AudiotoolTrackManifest, options: ExportOptions) {
   const label = resolveTrackTitle(track, options)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -504,7 +514,7 @@ function buildPartFileName(track: AudiotoolTrackManifest, options: ExportOptions
   return `${label || track.id || 'track'}.mid`;
 }
 
-function resolveTrackTitle(track: AudiotoolTrackManifest, options: ExportOptions) {
+export function resolveTrackTitle(track: AudiotoolTrackManifest, options: ExportOptions) {
   return options.trackTitles?.[track.id]?.trim() || track.label;
 }
 

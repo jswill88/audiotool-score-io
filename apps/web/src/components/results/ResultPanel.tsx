@@ -14,7 +14,6 @@ import './ResultPanel.css';
 
 type ResultPanelProps = {
   activeFile: MusicXmlFile | null;
-  activeFileName: string;
   activeResult: ActiveConversionResult | null;
   emptyDescription?: string;
   emptyTitle?: string;
@@ -27,7 +26,6 @@ type ResultPanelProps = {
 
 export function ResultPanel({
   activeFile,
-  activeFileName,
   activeResult,
   emptyDescription,
   emptyTitle,

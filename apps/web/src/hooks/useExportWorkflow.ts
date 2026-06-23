@@ -82,7 +82,7 @@ export function useExportWorkflow({
         URL.revokeObjectURL(activeResult.downloadUrl);
       }
     };
-  }, [activeResult]);
+  }, [activeResult?.downloadUrl]);
 
   useEffect(() => {
     return () => {
@@ -198,6 +198,7 @@ export function useExportWorkflow({
     setActiveFileName('');
 
     try {
+      const selectedTrackTitles = createSelectedTrackTitles(selectedTrackIds, manifest?.tracks ?? [], trackTitles);
       const result = await convertAudiotoolProject({
         auth,
         project: projectReference,
@@ -206,7 +207,7 @@ export function useExportWorkflow({
         quantize,
         grid,
         title: scoreTitle || defaultScoreTitle,
-        trackTitles: createSelectedTrackTitles(selectedTrackIds, manifest?.tracks ?? [], trackTitles)
+        trackTitles: selectedTrackTitles
       });
 
       if (requestId !== conversionRequestId.current) {

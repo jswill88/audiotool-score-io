@@ -6,6 +6,7 @@ import {
   NotationKinds,
   NotationStatuses,
   createMidiFromAudiotoolProject,
+  exportAudiotoolEntitiesToDirectMusicXml,
   exportAudiotoolEntitiesToMidi,
   inspectAudiotoolProject
 } from '../dist/index.js';
@@ -227,6 +228,135 @@ describe('audiotool-to-midi project inspection', () => {
     assert.equal(manifest.tracks.length, 1);
     assert.equal(manifest.tracks[0].label, 'Track 1 - Offline Synth');
     assert.equal(noteSummaries(readMidi(result.files[0].bytes)).length, 1);
+  });
+});
+
+describe('audiotool-to-midi direct MusicXML POC export', () => {
+  it('writes basic part names, chords, rests, and ties without MuseScore', () => {
+    const result = exportAudiotoolEntitiesToDirectMusicXml([
+      entity('config', 'config-1', {
+        bpm: 108,
+        signatureNumerator: 4,
+        signatureDenominator: 4
+      }),
+      entity('heisenberg', 'player-1', {
+        displayName: 'Lead'
+      }),
+      entity('noteTrack', 'track-1', {
+        orderAmongTracks: 1,
+        player: location('player-1', 'heisenberg'),
+        isEnabled: true
+      }),
+      entity('noteCollection', 'collection-1'),
+      entity('noteRegion', 'region-1', {
+        track: location('track-1', 'noteTrack'),
+        collection: location('collection-1', 'noteCollection'),
+        region: region({
+          durationTicks: AudiotoolTicks.Beat * 5
+        })
+      }),
+      entity('note', 'note-1', {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks: 0,
+        durationTicks: AudiotoolTicks.Beat,
+        pitch: 60,
+        velocity: 0.75
+      }),
+      entity('note', 'note-2', {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks: 0,
+        durationTicks: AudiotoolTicks.Beat,
+        pitch: 64,
+        velocity: 0.75
+      }),
+      entity('note', 'note-3', {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks: AudiotoolTicks.Beat * 3,
+        durationTicks: AudiotoolTicks.Beat * 2,
+        pitch: 67,
+        velocity: 0.75
+      })
+    ], {
+      mode: 'score',
+      title: 'Direct Draft',
+      tracks: ['track-1']
+    });
+
+    assert.equal(result.files.length, 1);
+    const xml = result.files[0].xml;
+
+    assert.match(xml, /<work-title>Direct Draft<\/work-title>/);
+    assert.match(xml, /<part-name>Track 1 - Lead<\/part-name>/);
+    assert.match(xml, /<sound tempo="108"\/>/);
+    assert.match(xml, /<chord\/>/);
+    assert.match(xml, /<tie type="start"\/>/);
+    assert.match(xml, /<tie type="stop"\/>/);
+    assert.match(xml, /<bar-style>light-heavy<\/bar-style>/);
+  });
+
+  it('normalizes same-pitch overlaps and short legato overlaps before writing notation', () => {
+    const result = exportAudiotoolEntitiesToDirectMusicXml([
+      entity('config', 'config-1', {
+        bpm: 120,
+        signatureNumerator: 4,
+        signatureDenominator: 4
+      }),
+      entity('heisenberg', 'player-1', {
+        displayName: 'Lead'
+      }),
+      entity('noteTrack', 'track-1', {
+        orderAmongTracks: 1,
+        player: location('player-1', 'heisenberg'),
+        isEnabled: true
+      }),
+      entity('noteCollection', 'collection-1'),
+      entity('noteRegion', 'region-1', {
+        track: location('track-1', 'noteTrack'),
+        collection: location('collection-1', 'noteCollection'),
+        region: region({
+          durationTicks: AudiotoolTicks.Beat * 4
+        })
+      }),
+      entity('note', 'note-1', {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks: 0,
+        durationTicks: AudiotoolTicks.Beat + 100,
+        pitch: 60,
+        velocity: 0.75
+      }),
+      entity('note', 'note-2', {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks: AudiotoolTicks.Beat,
+        durationTicks: AudiotoolTicks.Beat,
+        pitch: 60,
+        velocity: 0.75
+      }),
+      entity('note', 'note-3', {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks: AudiotoolTicks.Beat * 2,
+        durationTicks: AudiotoolTicks.Beat + 100,
+        pitch: 64,
+        velocity: 0.75
+      }),
+      entity('note', 'note-4', {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks: AudiotoolTicks.Beat * 3,
+        durationTicks: AudiotoolTicks.Beat,
+        pitch: 67,
+        velocity: 0.75
+      })
+    ], {
+      mode: 'score',
+      title: 'Direct Draft',
+      tracks: ['track-1'],
+      quantize: false
+    });
+
+    const xml = result.files[0].xml;
+    const quarterNoteCount = (xml.match(/<type>quarter<\/type>/g) ?? []).length;
+
+    assert.equal(quarterNoteCount, 4);
+    assert.doesNotMatch(xml, /<tie type=/);
   });
 });
 

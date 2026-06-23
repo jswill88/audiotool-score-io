@@ -20,6 +20,7 @@
     "docker:up": "docker compose up --build",
     "dev:api": "npm run build --workspace @midi-to-xml/audiotool-to-midi && npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run build --workspace @midi-to-xml/score-to-audiotool && npm run build --workspace @midi-to-xml/api && npm run start --workspace @midi-to-xml/api",
     "dev:web": "npm run dev --workspace @midi-to-xml/web",
+    "notation-ranker:demo": "node experiments/notation-ranker/demo.mjs",
     "test": "npm run test --workspaces --if-present",
     "start": "npm run start:api",
     "start:api": "npm run build --workspace @midi-to-xml/audiotool-to-midi && npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run build --workspace @midi-to-xml/score-to-audiotool && npm run build --workspace @midi-to-xml/api && npm run start --workspace @midi-to-xml/api",

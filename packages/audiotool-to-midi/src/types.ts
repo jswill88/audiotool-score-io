@@ -121,6 +121,12 @@ export type ExportOptions = InspectOptions & {
   midiPpq?: number;
 };
 
+export type DirectMusicXmlOptions = ExportOptions & {
+  quantize?: boolean;
+  grid?: number;
+  divisions?: number;
+};
+
 export type AudiotoolMidiFile = {
   kind: 'score' | 'part';
   name: string;
@@ -133,6 +139,24 @@ export type AudiotoolMidiFile = {
 export type AudiotoolMidiResult = {
   mode: AudiotoolOutputMode;
   files: AudiotoolMidiFile[];
+  tracks: AudiotoolTrackManifest[];
+  exportedTracks: AudiotoolTrackManifest[];
+  tempo: AudiotoolTempo;
+  timeSignature: AudiotoolTimeSignature;
+  warnings: AudiotoolWarning[];
+};
+
+export type AudiotoolDirectMusicXmlFile = {
+  kind: 'score' | 'part';
+  name: string;
+  title?: string;
+  trackIds: string[];
+  xml: string;
+};
+
+export type AudiotoolDirectMusicXmlResult = {
+  mode: AudiotoolOutputMode;
+  files: AudiotoolDirectMusicXmlFile[];
   tracks: AudiotoolTrackManifest[];
   exportedTracks: AudiotoolTrackManifest[];
   tempo: AudiotoolTempo;

@@ -15,6 +15,13 @@ function parsePositiveInteger(value: unknown, fallback: number) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseStringList(value: string | undefined) {
+  return (value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function parseVirtualDisplayMode(value: string | undefined): VirtualDisplayMode {
   const mode = (value || 'auto').toLowerCase();
 
@@ -31,6 +38,9 @@ export const maxUploadBytes = parsePositiveInteger(process.env.MAX_UPLOAD_BYTES,
 export const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '1mb';
 export const audiotoolPat = process.env.AUDIOTOOL_PAT || undefined;
 export const audiotoolClientId = process.env.AUDIOTOOL_CLIENT_ID || undefined;
+export const corsAllowedOrigins = parseStringList(
+  process.env.CORS_ORIGINS || process.env.CORS_ORIGIN
+);
 
 export const conversionOptions: MuseScoreOptions = {
   conversionTimeoutMs: parsePositiveInteger(process.env.CONVERSION_TIMEOUT_MS, defaultConversionTimeoutMs),

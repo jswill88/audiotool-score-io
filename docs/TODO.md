@@ -4,6 +4,20 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ## Active
 
+### Cloud Run Deployment Checklist
+
+- [x] Park the direct MusicXML POC so the app/API use the MuseScore conversion path only.
+- [x] Add API CORS configuration for a split web/API deployment with `CORS_ORIGINS`.
+- [x] Add a Cloud Run API Dockerfile that listens on port `8080` and installs MuseScore with `xvfb`.
+- [x] Add a Cloud Run deployment runbook under `docs/deployment/cloud-run.md`.
+- [ ] Create or select a Google Cloud project with billing enabled and a budget alert.
+- [ ] Build and push the API image to Artifact Registry using `apps/api/Dockerfile.cloudrun`.
+- [ ] Deploy the API to Cloud Run with `min-instances=0`, `max-instances=1`, `concurrency=1`, and `CORS_ORIGINS` set to the web origin.
+- [ ] Host the web build with `VITE_API_BASE_URL` pointed at the Cloud Run service URL.
+- [ ] Register the hosted web origin as an Audiotool redirect URI.
+- [ ] Verify the full hosted browser flow: sign in, load projects, inspect tracks, convert MusicXML, upload MusicXML, and import selected parts back to Audiotool.
+- [ ] Prune old Artifact Registry image versions after deployment so the MuseScore image does not quietly accumulate storage cost.
+
 ### DuckDNS Oracle Deployment Checklist
 
 - [x] Create an Oracle Cloud Always Free VM for the app, preferably an Ampere A1 instance with enough RAM for MuseScore conversions.
@@ -24,7 +38,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [x] Add `scripts/oracle/a1-capacity-hunter.sh` to automate gentle OCI CLI retries for an A1 Flex replacement VM.
 - [x] Configure `scripts/oracle/a1-capacity-hunter.env` locally with OCI tenancy, compartment, subnet, ARM image, and SSH public key values.
 - [x] Start the local A1 capacity hunter as a macOS LaunchAgent using copied config under `~/.config/audiotool-score-io`.
-- [ ] Let the A1 capacity hunter run until Oracle creates a `VM.Standard.A1.Flex` instance, then migrate DuckDNS and the app to the new VM.
+- [ ] If returning to Oracle, choose a region/account strategy and restart the A1 capacity hunter only when it makes sense to wait for a `VM.Standard.A1.Flex` instance again.
 - [ ] Test the full browser flow over HTTPS: sign in with Audiotool, load projects, inspect tracks, convert MusicXML, upload MusicXML, and import selected parts back to Audiotool.
 - [ ] Document the chosen DuckDNS name, VM region/shape, env-var decisions, and final verification commands in `docs/HANDOFF.md` after the deployment is working.
 
@@ -56,6 +70,9 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ### Future Features
 
 - [ ] Investigate API timeout/abort handling around Audiotool project inspect/open requests so bad PAT/project probes cannot wedge the API or make `/health` time out.
+- [ ] Have codemap link to referenced files
+- [ ] Expand the notation-ranker experiment to ingest real MusicXML measures, generate candidates from the direct notation code, and train/evaluate a small learned ranker against the heuristic baseline.
+- [ ] Remove the temporary macOS MuseScore app-bundle autodiscovery once local development no longer needs that convenience; production should use container-installed MuseScore.
 - [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
 - [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.
 - [ ] Show the score following along during playback.
@@ -124,6 +141,16 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ### Future Features
 
 - [x] Add a MusicXML-to-Audiotool import workflow with a `score-to-audiotool` package, `/audiotool/import` route, MusicXML upload/analyze UI, part selection, imported track naming, and basic Gakki note-track project creation.
+- [x] Add a direct MusicXML generation POC that renders below the current MuseScore result for side-by-side comparison.
+- [x] Add an offline notation-ranker starter experiment that generates synthetic messy note-track examples, candidate quantizations, heuristic scores, oracle labels, JSONL rows, and an HTML report.
+- [x] Add first-pass beaming candidates plus nested `rhythm`, `beaming`, `voices`, and `stems` feature groups to the notation-ranker dataset.
+- [x] Add schematic SVG staff previews to the notation-ranker report so clean, messy, and candidate rhythm/beaming/stem choices can be compared visually.
+- [x] Add generated MusicXML plus OpenSheetMusicDisplay previews to the notation-ranker report, with lazy candidate-row rendering for visual review.
+- [x] Put each notation-ranker example's full candidate table into a collapsed report drawer so the examples are easier to scan.
+- [x] Add an `offbeat sustain` notation-ranker example and MusicXML tie splitting so off-beat sustained notes in 4/4 preserve visible beat boundaries.
+- [x] Add first-pass 4/4 eighth-note beaming preference so four-eighth half-measure groups score better than two-eighth beat groups when appropriate.
+- [x] Add a `release overhang` notation-ranker example plus `trim-rest-overhang` candidates so small extra note tails before clear rests can simplify to cleaner rests.
+- [x] Add a `center-crossing half` notation-ranker example so beat-aligned unsyncopated half notes in 4/4 are not over-split at the measure center.
 - [x] Put MusicXML-to-Audiotool parts into their own top-level `Parts` panel, matching the separate `Tracks` section in the export workflow.
 - [x] Add `/sign-in` and protected `/app` routes. `/` redirects based on auth state, and the authenticated app header has a logout button that returns to `/sign-in`.
 - [x] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and both reusable packages are done.

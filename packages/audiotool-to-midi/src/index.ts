@@ -30,6 +30,10 @@ export {
   exportAudiotoolProjectToMidi
 } from './render.js';
 export {
+  exportAudiotoolEntitiesToDirectMusicXml,
+  exportAudiotoolProjectToDirectMusicXml
+} from './direct-musicxml.js';
+export {
   NotationKinds,
   NotationStatuses,
   classifyTrackForNotation,
@@ -58,6 +62,8 @@ export type {
   AudiotoolAuthOptions,
   AudiotoolClient,
   AudiotoolClientLike,
+  AudiotoolDirectMusicXmlFile,
+  AudiotoolDirectMusicXmlResult,
   AudiotoolDocument,
   AudiotoolEntity,
   AudiotoolEntityIndex,
@@ -75,6 +81,7 @@ export type {
   AudiotoolTimeSignature,
   AudiotoolTrackManifest,
   AudiotoolWarning,
+  DirectMusicXmlOptions,
   ExportOptions,
   InspectOptions,
   NotationClassification,

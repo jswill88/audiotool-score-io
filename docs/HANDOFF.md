@@ -39,8 +39,8 @@ Current VM details:
 - Public checks passed for `/`, `/health`, and `/ready`; `/ready` reported MuseScore through `xvfb-run`.
 - Public `/audiotool/inspect` routing was checked with an intentionally invalid `audiotoolAuth` body and returned the expected HTTP 400 validation error. A PAT-backed dummy project probe (`projects/test`) previously wedged the API process until the API container was restarted, so real browser OAuth inspect/export/import still needs manual verification and API upstream timeout handling should be investigated.
 - A local OCI CLI helper exists at `scripts/oracle/a1-capacity-hunter.sh` with docs in `docs/deployment/oracle-a1.md`. OCI CLI is installed/configured locally, `scripts/oracle/a1-capacity-hunter.env` is filled in and gitignored, and the matching SSH public key is at `~/.ssh/oracle_audiotool_score_io.pub`. `scripts/oracle/install-a1-capacity-hunter-launchd.sh` installs the macOS LaunchAgent setup.
-- The A1 capacity hunter is currently running as a macOS LaunchAgent named `com.audiotool-score-io.a1-capacity-hunter`. Because `launchd` could not execute from the repo under `Documents`, the running copy is installed at `~/.local/bin/a1-capacity-hunter.sh` with copied config at `~/.config/audiotool-score-io/a1-capacity-hunter.env`. Logs are in `~/Library/Logs/audiotool-score-io/a1-capacity-hunter.log` plus LaunchAgent stdout/stderr logs in the same directory.
-- Latest checked A1 attempt: Oracle returned `Out of host capacity.` for `VM.Standard.A1.Flex` in `us-sanjose-1`, then the LaunchAgent process stayed alive and slept for 1800 seconds before its next retry.
+- The A1 capacity hunter LaunchAgent `com.audiotool-score-io.a1-capacity-hunter` was stopped and disabled locally after repeated `Out of host capacity.` responses in `us-sanjose-1`.
+- Cloud Run migration prep exists for a split deployment: `apps/api/Dockerfile.cloudrun` builds the MuseScore-backed API for port `8080`, `CORS_ORIGINS` allows a separate browser origin, `.dockerignore` keeps local build artifacts/secrets out of the image context, and `docs/deployment/cloud-run.md` has the deploy runbook.
 
 Remaining deployment checks: complete the real browser OAuth/export/import flow over HTTPS, then set up push-to-main redeploy automation.
 
@@ -131,6 +131,9 @@ What the latest cleanup does:
 - The shared app shell now includes a small footer with `© 2026 Joshua Williams`, a GitHub `Code` link, and `Audiotool Score IO`.
 - The web app shell has been split so route state lives in `useAppRoute`, Audiotool export state/actions live in `useExportWorkflow`, MusicXML import state/actions live in `useScoreImportWorkflow`, and shared title/selection helpers live in `apps/web/src/utils/workflow.ts`. `App.tsx` is now mostly route/workflow composition plus panel wiring.
 - Score-to-Audiotool document writing has named helpers for the per-part Gakki/mixer/cable/region/note creation steps, and the API project-detail GET/POST routes share one handler.
+- Audiotool export continues to use the MuseScore path for the app/API. The direct MusicXML generation POC remains parked in `packages/audiotool-to-midi/src/direct-musicxml.ts` and package tests, but the web app no longer calls it and the API no longer exposes `/audiotool/convert-direct-poc`.
+- Local MuseScore discovery now checks the standard macOS app bundle paths `/Applications/MuseScore 4.app/Contents/MacOS/mscore` and `/Applications/MuseScore 3.app/Contents/MacOS/mscore` after the normal PATH command names, so macOS local dev does not need `MUSESCORE_BIN` when MuseScore is installed in `/Applications`. This remains temporary convenience for local development; production should use the container-installed MuseScore path.
+- `experiments/notation-ranker` is an offline starter for ML-guided notation spelling/rhythm cleanup. It synthesizes clean one-measure note tracks, adds timing mess, generates multiple notation candidates and first-pass beaming variants, scores them with a transparent heuristic, labels oracle-best candidates, and writes `tmp/notation-ranker/examples.jsonl`, `tmp/notation-ranker/candidates.jsonl`, and `tmp/notation-ranker/report.html`. The report copies the local OpenSheetMusicDisplay bundle into `tmp/notation-ranker/assets/`, embeds generated MusicXML for the clean/messy/winner comparison, and renders those panels lazily in the browser. Each example keeps its full candidate table in a collapsed drawer, and each candidate row inside that drawer has a lazy `Render MusicXML` disclosure. Schematic SVG staff previews remain visible for the clean reference, messy input, and every candidate, including noteheads, stems, flags, beam groups, beat guides, and duration guide lines. The synthetic `offbeat sustain` pattern captures the 4/4 readability rule that off-beat sustained notes crossing beat boundaries should be split with ties; the MusicXML renderer now applies that split and candidate rows expose `rhythm.readableBeatTieSplitCount`. The synthetic `release overhang` pattern captures the rule that small extra performed tails before clear rests should simplify back to the cleaner note/rest values; `trim-rest-overhang` candidates can apply that cleanup, and features expose `rhythm.releaseOverhangTrimOpportunityCount`. The synthetic `center-crossing half` pattern preserves plain beat-aligned half notes across the middle of a 4/4 bar, so `E4 quarter | D4 half | F4 quarter` does not get over-split into tied quarters. The 4/4 clean beaming reference now prefers half-measure groups for eighth-note runs, and beaming features expose short/long eighth-only groups. Candidate rows use nested `rhythm`, `beaming`, `voices`, and `stems` feature groups. It is not wired into the app/API.
 
 Last verified commands:
 
@@ -161,6 +164,22 @@ docker build -f apps/api/Dockerfile -t midi-to-xml-api-audiotool-ts-check .
 docker run --rm midi-to-xml-api-audiotool-ts-check node --input-type=module -e "await import('./apps/api/dist/app.js'); console.log('api image import ok');"
 docker build -f Dockerfile -t midi-to-xml-root-audiotool-ts-check .
 docker run --rm midi-to-xml-root-audiotool-ts-check node --input-type=module -e "await import('./apps/api/dist/app.js'); console.log('root image import ok');"
+npm run check --workspace @midi-to-xml/api
+npm run check --workspace @midi-to-xml/web
+npm run check --workspace @midi-to-xml/audiotool-to-midi
+npm run check --workspace @midi-to-xml/midi-to-musicxml
+npm test
+docker build --platform linux/amd64 -f apps/api/Dockerfile.cloudrun -t midi-to-xml-api-cloudrun-check .
+docker run --rm -d -p 127.0.0.1:8085:8080 --name midi-to-xml-api-cloudrun-check-run midi-to-xml-api-cloudrun-check
+curl -sS http://127.0.0.1:8085/health
+curl -sS http://127.0.0.1:8085/ready
+docker stop midi-to-xml-api-cloudrun-check-run
+PORT=3999 CORS_ORIGINS=http://example.com node apps/api/dist/server.js
+curl -i -sS -X OPTIONS http://127.0.0.1:3999/audiotool/convert -H 'Origin: http://example.com' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type'
+npm run notation-ranker:demo -- --examples 12 --seed 20260623 --out tmp/notation-ranker
+node --check experiments/notation-ranker/demo.mjs
+npm run notation-ranker:demo -- --examples 24 --seed 20260623 --out tmp/notation-ranker
+npm run check
 ```
 
 The real Docker MuseScore conversion was also checked manually. It produced:
@@ -356,6 +375,8 @@ DEFAULT_QUANTIZATION_GRID=24
 
 From `docs/TODO.md`, the most relevant remaining items are:
 
+- Cloud Run deployment: create/select the Google Cloud project, build/push the API image, deploy with the cost guardrails in `docs/deployment/cloud-run.md`, host the web build with `VITE_API_BASE_URL`, and verify the real Audiotool browser flow.
+- Notation ranker: ingest real MusicXML measures, generate candidates from the direct notation code, and compare a learned ranker against the heuristic baseline.
 - Future: score playback/follow-along, browser play controls, drum notation mapping, accessibility.
 
 ## Good Next-Session Checklist

@@ -9,6 +9,7 @@ import {
   assertAllowedQuantizationGrid,
   assertValidMidiFile,
   convertMidiToMusicXml,
+  defaultMuseScoreCandidates,
   defaultQuantizationGrid,
   MidiValidationError,
   preprocessMidi
@@ -32,6 +33,10 @@ test('assertAllowedQuantizationGrid accepts supported grids and rejects unsuppor
 
 test('defaultQuantizationGrid is 24', () => {
   assert.equal(defaultQuantizationGrid, 24);
+});
+
+test('defaultMuseScoreCandidates include macOS app bundle executables', () => {
+  assert(defaultMuseScoreCandidates.includes('/Applications/MuseScore 4.app/Contents/MacOS/mscore'));
 });
 
 test('assertValidMidiFile accepts MIDI headers and rejects non-MIDI files', async (t) => {
