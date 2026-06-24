@@ -11,6 +11,7 @@ import type {
   AudiotoolMidiFile,
   AudiotoolMidiResult,
   AudiotoolProjectDetails,
+  DirectMusicXmlFile,
   MusicXmlFile,
   ProjectLike
 } from '../types.js';
@@ -65,8 +66,33 @@ export async function convertMidiFilesToMusicXml({
   return outputs;
 }
 
+export async function writeDirectMusicXmlFiles({
+  files,
+  workDir
+}: {
+  files: DirectMusicXmlFile[];
+  workDir: string;
+}): Promise<MusicXmlFile[]> {
+  const outputs: MusicXmlFile[] = [];
+
+  for (const file of files) {
+    const baseName = sanitizeFileBase(path.parse(file.name).name || file.kind);
+    const outputPath = path.join(workDir, `${baseName}.musicxml`);
+    await fs.writeFile(outputPath, file.xml);
+    outputs.push({
+      kind: file.kind,
+      name: `${baseName}.musicxml`,
+      path: outputPath,
+      trackIds: file.trackIds
+    });
+  }
+
+  return outputs;
+}
+
 export async function createAudiotoolArchive({
   details,
+  engine,
   midiResult,
   musicXmlFiles,
   includeMidi,
@@ -74,6 +100,7 @@ export async function createAudiotoolArchive({
   trackTitles
 }: {
   details: AudiotoolProjectDetails;
+  engine: 'musescore' | 'ranked-direct';
   midiResult: AudiotoolMidiResult;
   musicXmlFiles: MusicXmlFile[];
   includeMidi: boolean;
@@ -85,6 +112,7 @@ export async function createAudiotoolArchive({
     project: serializeProject(details.project),
     reference: details.reference,
     title,
+    engine,
     tempo: midiResult.tempo,
     timeSignature: midiResult.timeSignature,
     tracks: midiResult.tracks,

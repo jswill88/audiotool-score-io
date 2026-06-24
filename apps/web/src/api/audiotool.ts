@@ -1,6 +1,7 @@
 import type {
   ConversionResult,
   InspectProjectResponse,
+  NotationEngine,
   OutputMode,
   ProjectListResponse,
   QuantizationGrid,
@@ -30,6 +31,7 @@ export async function convertAudiotoolProject({
   project,
   tracks,
   mode,
+  engine,
   quantize,
   grid,
   title,
@@ -39,6 +41,7 @@ export async function convertAudiotoolProject({
   project: string;
   tracks: string[];
   mode: OutputMode;
+  engine: NotationEngine;
   quantize: boolean;
   grid: QuantizationGrid;
   title?: string;
@@ -54,6 +57,7 @@ export async function convertAudiotoolProject({
       project,
       tracks,
       mode,
+      engine,
       quantize,
       grid,
       title,

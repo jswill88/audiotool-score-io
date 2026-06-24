@@ -9,6 +9,7 @@ import type {
   ActiveConversionResult,
   AppStatus,
   AudiotoolProject,
+  NotationEngine,
   OutputMode,
   ProjectManifest,
   QuantizationGrid,
@@ -46,6 +47,7 @@ export function useExportWorkflow({
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
   const [trackTitles, setTrackTitles] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<OutputMode>('score');
+  const [engine, setEngine] = useState<NotationEngine>('ranked-direct');
   const [quantize, setQuantize] = useState(true);
   const [grid, setGrid] = useState<QuantizationGrid>(24);
   const [activeResult, setActiveResult] = useState<ActiveConversionResult | null>(null);
@@ -204,6 +206,7 @@ export function useExportWorkflow({
         project: projectReference,
         tracks: selectedTrackIds,
         mode,
+        engine,
         quantize,
         grid,
         title: scoreTitle || defaultScoreTitle,
@@ -230,6 +233,7 @@ export function useExportWorkflow({
     audiotoolAuth,
     canConvert,
     defaultScoreTitle,
+    engine,
     grid,
     manifest,
     mode,
@@ -274,6 +278,7 @@ export function useExportWorkflow({
     activeFileName,
     canConvert,
     defaultScoreTitle,
+    engine,
     grid,
     inspectProject,
     loadProjects,
@@ -292,6 +297,7 @@ export function useExportWorkflow({
     selectedProject,
     selectedTrackIds,
     setActiveFileName,
+    setEngine,
     setGrid,
     setMode,
     setProjectInput,

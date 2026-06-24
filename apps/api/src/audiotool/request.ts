@@ -18,6 +18,7 @@ import type {
   AudiotoolProjectListResult,
   ConversionRequestOptions,
   InspectOptions,
+  NotationEngine,
   ProjectListOptions,
   ScoreImportRequestOptions
 } from '../types.js';
@@ -58,6 +59,7 @@ export function readProjectListOptions(req: Request): ProjectListOptions {
 
 export function readConversionRequestOptions(req: Request): ConversionRequestOptions {
   return {
+    engine: readNotationEngine(req.body?.engine ?? req.query.engine),
     mode: readAudiotoolOutputMode(req.body?.mode ?? req.body?.outputMode ?? req.query.mode),
     tracks: readTrackSelection(req.body?.tracks ?? req.body?.trackIds),
     title: stringifyOptional(req.body?.title)?.trim() || undefined,
@@ -89,6 +91,16 @@ export function readConversionRequestOptions(req: Request): ConversionRequestOpt
       stringifyOptional(req.body?.grid ?? queryValue(req.query.grid, 'grid'))
     )
   };
+}
+
+function readNotationEngine(value: unknown = 'musescore'): NotationEngine {
+  const engine = stringifyOptional(value)?.trim().toLowerCase() ?? 'musescore';
+
+  if (engine === 'musescore' || engine === 'ranked-direct') {
+    return engine;
+  }
+
+  throw new ClientError('"engine" must be "musescore" or "ranked-direct".');
 }
 
 export function readScoreImportRequestOptions(req: Request): ScoreImportRequestOptions {

@@ -231,7 +231,7 @@ describe('audiotool-to-midi project inspection', () => {
   });
 });
 
-describe('audiotool-to-midi direct MusicXML POC export', () => {
+describe('audiotool-to-midi direct MusicXML export', () => {
   it('writes basic part names, chords, rests, and ties without MuseScore', () => {
     const result = exportAudiotoolEntitiesToDirectMusicXml([
       entity('config', 'config-1', {
@@ -358,7 +358,153 @@ describe('audiotool-to-midi direct MusicXML POC export', () => {
     assert.equal(quarterNoteCount, 4);
     assert.doesNotMatch(xml, /<tie type=/);
   });
+
+  it('ranks humanized quarter notes onto clean notation without MuseScore', () => {
+    const result = exportAudiotoolEntitiesToDirectMusicXml(
+      directNotationProject({
+        denominator: 4,
+        numerator: 4,
+        notes: [
+          [60, 70, 3740],
+          [62, 3800, 3900],
+          [64, 7750, 3720],
+          [65, 11460, 3990]
+        ]
+      }),
+      {
+        mode: 'score',
+        rankNotation: true,
+        tracks: ['track-1']
+      }
+    );
+
+    const xml = result.files[0].xml;
+    assert.equal((xml.match(/<type>quarter<\/type>/g) ?? []).length, 4);
+    assert.doesNotMatch(xml, /<type>64th<\/type>/);
+    assert.doesNotMatch(xml, /<rest\/>/);
+  });
+
+  it('splits a 6/8 half note at the dotted-quarter pulse', () => {
+    const result = exportAudiotoolEntitiesToDirectMusicXml(
+      directNotationProject({
+        denominator: 8,
+        numerator: 6,
+        notes: [
+          [67, 0, AudiotoolTicks.Beat * 2],
+          [69, AudiotoolTicks.Beat * 2, AudiotoolTicks.Beat]
+        ]
+      }),
+      {
+        mode: 'score',
+        rankNotation: true,
+        tracks: ['track-1']
+      }
+    );
+
+    const xml = result.files[0].xml;
+    assert.match(
+      xml,
+      /<step>G<\/step>[\s\S]*?<duration>1440<\/duration>[\s\S]*?<tie type="start"\/>[\s\S]*?<type>quarter<\/type>[\s\S]*?<dot\/>/
+    );
+    assert.match(
+      xml,
+      /<step>G<\/step>[\s\S]*?<duration>480<\/duration>[\s\S]*?<tie type="stop"\/>[\s\S]*?<type>eighth<\/type>/
+    );
+  });
+
+  it('keeps complete compound-beat spans intact in 9/8', () => {
+    const result = exportAudiotoolEntitiesToDirectMusicXml(
+      directNotationProject({
+        denominator: 8,
+        numerator: 9,
+        notes: [
+          [69, 0, AudiotoolTicks.Beat * 3],
+          [67, AudiotoolTicks.Beat * 3, AudiotoolTicks.Beat * 1.5]
+        ]
+      }),
+      {
+        mode: 'score',
+        rankNotation: true,
+        tracks: ['track-1']
+      }
+    );
+
+    const xml = result.files[0].xml;
+    assert.match(
+      xml,
+      /<step>A<\/step>[\s\S]*?<duration>2880<\/duration>[\s\S]*?<type>half<\/type>[\s\S]*?<dot\/>/
+    );
+    assert.match(
+      xml,
+      /<step>G<\/step>[\s\S]*?<duration>1440<\/duration>[\s\S]*?<type>quarter<\/type>[\s\S]*?<dot\/>/
+    );
+    assert.doesNotMatch(xml, /<tie type=/);
+  });
+
+  it('beams 6/8 eighth notes in two dotted-quarter groups', () => {
+    const eighth = AudiotoolTicks.Beat / 2;
+    const result = exportAudiotoolEntitiesToDirectMusicXml(
+      directNotationProject({
+        denominator: 8,
+        numerator: 6,
+        notes: Array.from({ length: 6 }, (_, index) => [
+          60 + index,
+          eighth * index,
+          eighth
+        ])
+      }),
+      {
+        mode: 'score',
+        rankNotation: true,
+        tracks: ['track-1']
+      }
+    );
+
+    const xml = result.files[0].xml;
+    assert.equal((xml.match(/<beam number="1">begin<\/beam>/g) ?? []).length, 2);
+    assert.equal((xml.match(/<beam number="1">continue<\/beam>/g) ?? []).length, 2);
+    assert.equal((xml.match(/<beam number="1">end<\/beam>/g) ?? []).length, 2);
+  });
 });
+
+function directNotationProject({
+  denominator,
+  numerator,
+  notes
+}) {
+  const durationTicks = Math.max(...notes.map(([, start, duration]) => start + duration));
+
+  return [
+    entity('config', 'config-1', {
+      bpm: 120,
+      signatureNumerator: numerator,
+      signatureDenominator: denominator
+    }),
+    entity('heisenberg', 'player-1', {
+      displayName: 'Lead'
+    }),
+    entity('noteTrack', 'track-1', {
+      orderAmongTracks: 1,
+      player: location('player-1', 'heisenberg'),
+      isEnabled: true
+    }),
+    entity('noteCollection', 'collection-1'),
+    entity('noteRegion', 'region-1', {
+      track: location('track-1', 'noteTrack'),
+      collection: location('collection-1', 'noteCollection'),
+      region: region({ durationTicks })
+    }),
+    ...notes.map(([pitch, positionTicks, noteDurationTicks], index) => (
+      entity('note', `note-${index + 1}`, {
+        collection: location('collection-1', 'noteCollection'),
+        positionTicks,
+        durationTicks: noteDurationTicks,
+        pitch,
+        velocity: 0.75
+      })
+    ))
+  ];
+}
 
 describe('audiotool-to-midi export', () => {
   it('exports selected tracks as a combined multi-track MIDI file', () => {

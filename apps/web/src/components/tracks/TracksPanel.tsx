@@ -15,6 +15,7 @@ import { ProjectMeta } from './ProjectMeta';
 import { TrackList } from './TrackList';
 import type {
   AppStatus,
+  NotationEngine,
   OutputMode,
   ProjectManifest,
   QuantizationGrid,
@@ -28,10 +29,15 @@ const modeOptions = [
   ['parts', 'Parts'],
   ['both', 'Both']
 ] as const satisfies ReadonlyArray<readonly [OutputMode, string]>;
+const engineOptions = [
+  ['ranked-direct', 'Direct'],
+  ['musescore', 'MuseScore']
+] as const satisfies ReadonlyArray<readonly [NotationEngine, string]>;
 
 type TracksPanelProps = {
   canConvert: boolean;
   defaultScoreTitle: string;
+  engine: NotationEngine;
   grid: QuantizationGrid;
   manifest: ProjectManifest | null;
   mode: OutputMode;
@@ -46,6 +52,7 @@ type TracksPanelProps = {
   selectedProject: SelectedProject | null;
   selectedTrackIds: string[];
   setGrid: (grid: QuantizationGrid) => void;
+  setEngine: (engine: NotationEngine) => void;
   setMode: (mode: OutputMode) => void;
   setQuantize: (quantize: boolean) => void;
   status: AppStatus;
@@ -55,6 +62,7 @@ type TracksPanelProps = {
 export function TracksPanel({
   canConvert,
   defaultScoreTitle,
+  engine,
   grid,
   manifest,
   mode,
@@ -69,6 +77,7 @@ export function TracksPanel({
   selectedProject,
   selectedTrackIds,
   setGrid,
+  setEngine,
   setMode,
   setQuantize,
   status,
@@ -76,6 +85,7 @@ export function TracksPanel({
 }: TracksPanelProps) {
   const gridLabelId = useId();
   const gridHelpId = useId();
+  const engineHelpId = useId();
   const trackError = status?.phase === 'error' && status?.area === 'tracks'
     ? status.message
     : '';
@@ -141,6 +151,18 @@ export function TracksPanel({
           options={modeOptions}
           onChange={setMode}
         />
+        <div className="engine-option" aria-describedby={engineHelpId}>
+          <span className="option-label">Engine</span>
+          <SegmentedControl
+            ariaLabel="Notation engine"
+            value={engine}
+            options={engineOptions}
+            onChange={setEngine}
+          />
+          <span className="visually-hidden" id={engineHelpId}>
+            Direct generates MusicXML without MuseScore. MuseScore uses MIDI conversion as a comparison baseline.
+          </span>
+        </div>
         <label className="check-row compact">
           <input
             type="checkbox"
@@ -156,7 +178,7 @@ export function TracksPanel({
             value={grid}
             aria-describedby={gridHelpId}
             aria-labelledby={gridLabelId}
-            disabled={!quantize}
+            disabled={!quantize || engine === 'ranked-direct'}
             onChange={(event) => setGrid(Number(event.target.value) as QuantizationGrid)}
           >
             {gridOptions.map((value) => (
@@ -164,7 +186,9 @@ export function TracksPanel({
             ))}
           </select>
           <span className="visually-hidden" id={gridHelpId}>
-            Select the rhythmic grid used when quantize is enabled.
+            {engine === 'ranked-direct'
+              ? 'The direct ranker chooses among several rhythmic grids automatically.'
+              : 'Select the rhythmic grid used when quantize is enabled.'}
           </span>
           <ChevronDown size={14} aria-hidden="true" />
         </label>

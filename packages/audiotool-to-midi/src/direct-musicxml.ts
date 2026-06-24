@@ -11,6 +11,7 @@ import {
   createProjectContext,
   selectTracks
 } from './tracks.js';
+import { rankNotesForNotation } from './notation-ranker.js';
 import { AudiotoolTicks } from './ticks.js';
 import type {
   AudiotoolDirectMusicXmlFile,
@@ -46,6 +47,17 @@ type MeasureEvent = {
 type VoiceEvent = MeasureEvent & {
   voice: number;
 };
+
+type Meter = {
+  beatBoundaries: number[];
+  beatTicks: number;
+  isCompound: boolean;
+  measureTicks: number;
+  numerator: number;
+  simpleBeatTicks: number;
+};
+
+type BeamMode = 'begin' | 'continue' | 'end';
 
 type DurationNotation = {
   duration: number;
@@ -207,7 +219,7 @@ function buildMusicXml({
     `  <work><work-title>${escapeXmlText(title)}</work-title></work>`,
     '  <identification>',
     '    <encoding>',
-    '      <software>Audiotool Score IO direct MusicXML POC</software>',
+    `      <software>Audiotool Score IO ${options.rankNotation ? 'ranked ' : ''}direct MusicXML</software>`,
     '    </encoding>',
     '  </identification>',
     '  <part-list>',
@@ -249,7 +261,8 @@ function buildScorePart(
     collectExpandedNotesForTrack(track, context, options, warnings),
     {
       measureDurationTicks,
-      options
+      options,
+      timeSignature: context.timeSignature
     }
   );
   const events = splitNotesIntoMeasureEvents(notes, {
@@ -275,12 +288,29 @@ function normalizeNotesForNotation(
   notes: ExpandedNote[],
   {
     measureDurationTicks,
-    options
+    options,
+    timeSignature
   }: {
     measureDurationTicks: number;
     options: DirectMusicXmlOptions;
+    timeSignature: AudiotoolTimeSignature;
   }
 ) {
+  if (options.rankNotation) {
+    const rankedNotes = rankNotesForNotation(notes, {
+      ppq: AudiotoolTicks.Beat,
+      timeSignature
+    }).map((note) => ({
+      ...note,
+      offTicks: note.positionTicks + note.durationTicks
+    }));
+    const withoutPitchOverlaps = removeSamePitchOverlaps(rankedNotes);
+
+    return preserveShortLegatoOverlaps(withoutPitchOverlaps, directGridTicks(options))
+      .filter((note) => note.durationTicks >= minimumDirectDurationTicks)
+      .sort((a, b) => a.positionTicks - b.positionTicks || a.pitch - b.pitch);
+  }
+
   const gridTicks = directGridTicks(options);
   const quantizedNotes = notes
     .map((note) => quantizeNote(note, options, {
@@ -493,6 +523,7 @@ function serializeMeasure(
   }
 ) {
   const lines = [`    <measure number="${measureNumber}">`];
+  const meter = createMeter(divisions, timeSignature);
 
   if (measureNumber === 1) {
     lines.push(...serializeMeasureHeader(part, {
@@ -505,7 +536,7 @@ function serializeMeasure(
   const voices = assignEventsToVoices(events);
 
   if (voices.length === 0) {
-    lines.push(...serializeRest(measureDuration, 1));
+    lines.push(...serializeRest(0, measureDuration, 1, meter));
   } else {
     voices.forEach((voiceEvents, voiceIndex) => {
       if (voiceIndex > 0) {
@@ -514,7 +545,12 @@ function serializeMeasure(
         lines.push('      </backup>');
       }
 
-      lines.push(...serializeVoiceEvents(voiceEvents, measureDuration, voiceIndex + 1));
+      lines.push(...serializeVoiceEvents(
+        voiceEvents,
+        measureDuration,
+        voiceIndex + 1,
+        meter
+      ));
     });
   }
 
@@ -589,28 +625,35 @@ function assignEventsToVoices(events: MeasureEvent[]) {
   return voices;
 }
 
-function serializeVoiceEvents(events: VoiceEvent[], measureDuration: number, voice: number) {
+function serializeVoiceEvents(
+  events: VoiceEvent[],
+  measureDuration: number,
+  voice: number,
+  meter: Meter
+) {
   const lines: string[] = [];
   let cursor = 0;
+  const beamLookup = createBeamLookup(events, meter);
 
   for (const event of events) {
     if (event.start > cursor) {
-      lines.push(...serializeRest(event.start - cursor, voice));
+      lines.push(...serializeRest(cursor, event.start - cursor, voice, meter));
     }
 
-    lines.push(...serializeNoteGroup(event, voice));
+    lines.push(...serializeNoteGroup(event, voice, meter, beamLookup));
     cursor = event.start + event.duration;
   }
 
   if (cursor < measureDuration) {
-    lines.push(...serializeRest(measureDuration - cursor, voice));
+    lines.push(...serializeRest(cursor, measureDuration - cursor, voice, meter));
   }
 
   return lines;
 }
 
-function serializeRest(duration: number, voice: number) {
-  return splitDuration(duration).flatMap((chunk) => serializeRestChunk(chunk, voice));
+function serializeRest(start: number, duration: number, voice: number, meter: Meter) {
+  return splitDurationForReadableBeats(start, duration, meter)
+    .flatMap((chunk) => serializeRestChunk(chunk.duration, voice));
 }
 
 function serializeRestChunk(duration: number, voice: number) {
@@ -628,11 +671,17 @@ function serializeRestChunk(duration: number, voice: number) {
   return lines;
 }
 
-function serializeNoteGroup(event: VoiceEvent, voice: number) {
-  const chunks = splitDuration(event.duration);
+function serializeNoteGroup(
+  event: VoiceEvent,
+  voice: number,
+  meter: Meter,
+  beamLookup: Map<string, BeamMode>
+) {
+  const chunks = splitDurationForReadableBeats(event.start, event.duration, meter);
   const lines: string[] = [];
+  const stemDirection = stemDirectionForPitches(event.pitches);
 
-  chunks.forEach((duration, chunkIndex) => {
+  chunks.forEach((chunk, chunkIndex) => {
     const isFirstChunk = chunkIndex === 0;
     const isLastChunk = chunkIndex === chunks.length - 1;
 
@@ -642,9 +691,13 @@ function serializeNoteGroup(event: VoiceEvent, voice: number) {
         const tieStop = event.tieStopPitches.has(pitch) || !isFirstChunk;
         const tieStart = event.tieStartPitches.has(pitch) || !isLastChunk;
         lines.push(...serializePitchedNote({
-          duration,
+          beamMode: pitchIndex === 0
+            ? beamLookup.get(eventKey(chunk.start, chunk.duration))
+            : undefined,
+          duration: chunk.duration,
           isChordTone: pitchIndex > 0,
           pitch,
+          stemDirection,
           tieStart,
           tieStop,
           voice
@@ -656,16 +709,20 @@ function serializeNoteGroup(event: VoiceEvent, voice: number) {
 }
 
 function serializePitchedNote({
+  beamMode,
   duration,
   isChordTone,
   pitch,
+  stemDirection,
   tieStart,
   tieStop,
   voice
 }: {
+  beamMode?: BeamMode;
   duration: number;
   isChordTone: boolean;
   pitch: number;
+  stemDirection: 'down' | 'up';
   tieStart: boolean;
   tieStop: boolean;
   voice: number;
@@ -700,6 +757,11 @@ function serializePitchedNote({
   lines.push(`        <voice>${voice}</voice>`);
   lines.push(`        <type>${notation.type}</type>`);
   appendDurationNotation(lines, notation);
+  lines.push(`        <stem>${stemDirection}</stem>`);
+
+  if (beamMode && isBeamableNotation(notation)) {
+    lines.push(`        <beam number="1">${beamMode}</beam>`);
+  }
 
   if (tieStop || tieStart) {
     lines.push('        <notations>');
@@ -730,6 +792,171 @@ function appendDurationNotation(lines: string[], notation: DurationNotation) {
     lines.push(`          <normal-notes>${notation.timeModification.normalNotes}</normal-notes>`);
     lines.push('        </time-modification>');
   }
+}
+
+function createMeter(
+  divisions: number,
+  timeSignature: AudiotoolTimeSignature
+): Meter {
+  const simpleBeatTicks = divisions * (4 / timeSignature.denominator);
+  const isCompound = (
+    timeSignature.denominator === 8 &&
+    timeSignature.numerator >= 6 &&
+    timeSignature.numerator % 3 === 0
+  );
+  const beatTicks = isCompound ? simpleBeatTicks * 3 : simpleBeatTicks;
+  const measureTicks = Math.round(simpleBeatTicks * timeSignature.numerator);
+  const beatBoundaries: number[] = [];
+
+  for (let boundary = beatTicks; boundary < measureTicks; boundary += beatTicks) {
+    beatBoundaries.push(boundary);
+  }
+
+  return {
+    beatBoundaries,
+    beatTicks,
+    isCompound,
+    measureTicks,
+    numerator: timeSignature.numerator,
+    simpleBeatTicks
+  };
+}
+
+function splitDurationForReadableBeats(
+  start: number,
+  duration: number,
+  meter: Meter
+) {
+  if (!crossesReadableBeatBoundary(start, duration, meter)) {
+    return withChunkStarts(start, splitDuration(duration));
+  }
+
+  const chunks: Array<{ duration: number; start: number }> = [];
+  let cursor = start;
+  const end = start + duration;
+
+  while (cursor < end) {
+    const boundary = meter.beatBoundaries.find((candidate) => candidate > cursor) ??
+      meter.measureTicks;
+    const segmentEnd = Math.min(end, boundary);
+    const segmentDuration = segmentEnd - cursor;
+    chunks.push(...withChunkStarts(cursor, splitDuration(segmentDuration)));
+    cursor = segmentEnd;
+  }
+
+  return chunks;
+}
+
+function crossesReadableBeatBoundary(
+  start: number,
+  duration: number,
+  meter: Meter
+) {
+  if (
+    duration <= meter.simpleBeatTicks ||
+    isSingleTripletDuration(duration)
+  ) {
+    return false;
+  }
+
+  if (
+    start % meter.beatTicks === 0 &&
+    duration % meter.beatTicks === 0
+  ) {
+    return false;
+  }
+
+  const end = start + duration;
+  return meter.beatBoundaries.some((boundary) => (
+    start < boundary && end > boundary
+  ));
+}
+
+function isSingleTripletDuration(duration: number) {
+  return durationNotations.some((notation) => (
+    notation.duration === duration &&
+    Boolean(notation.timeModification)
+  ));
+}
+
+function withChunkStarts(start: number, durations: number[]) {
+  let cursor = start;
+
+  return durations.map((duration) => {
+    const chunk = { duration, start: cursor };
+    cursor += duration;
+    return chunk;
+  });
+}
+
+function createBeamLookup(events: VoiceEvent[], meter: Meter) {
+  const lookup = new Map<string, BeamMode>();
+  const groupTicks = referenceBeamGroupTicks(meter);
+  const chunks = events.flatMap((event) => (
+    splitDurationForReadableBeats(event.start, event.duration, meter)
+      .filter((chunk) => isBeamableDuration(chunk.duration))
+  )).sort((left, right) => left.start - right.start || left.duration - right.duration);
+  let run: typeof chunks = [];
+
+  function finishRun() {
+    if (run.length > 1) {
+      run.forEach((chunk, index) => {
+        const mode: BeamMode = index === 0
+          ? 'begin'
+          : index === run.length - 1 ? 'end' : 'continue';
+        lookup.set(eventKey(chunk.start, chunk.duration), mode);
+      });
+    }
+
+    run = [];
+  }
+
+  for (const chunk of chunks) {
+    const previous = run.at(-1);
+    const sameGroup = !previous || (
+      previous.start + previous.duration === chunk.start &&
+      Math.floor(previous.start / groupTicks) === Math.floor(chunk.start / groupTicks)
+    );
+
+    if (!sameGroup) {
+      finishRun();
+    }
+
+    run.push(chunk);
+  }
+
+  finishRun();
+  return lookup;
+}
+
+function referenceBeamGroupTicks(meter: Meter) {
+  if (!meter.isCompound && meter.numerator === 4) {
+    return meter.measureTicks / 2;
+  }
+
+  return meter.beatTicks;
+}
+
+function isBeamableDuration(duration: number) {
+  const notation = durationByValue.get(duration);
+  return Boolean(notation && isBeamableNotation(notation));
+}
+
+function isBeamableNotation(notation: DurationNotation) {
+  return notation.type === 'eighth' ||
+    notation.type === '16th' ||
+    notation.type === '32nd' ||
+    notation.type === '64th';
+}
+
+function stemDirectionForPitches(pitches: number[]): 'down' | 'up' {
+  const average = pitches.reduce((sum, pitch) => sum + pitch, 0) /
+    Math.max(1, pitches.length);
+  return average < 71 ? 'up' : 'down';
+}
+
+function eventKey(start: number, duration: number) {
+  return `${start}:${duration}`;
 }
 
 function splitDuration(duration: number) {

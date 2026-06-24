@@ -125,6 +125,7 @@ export type DirectMusicXmlOptions = ExportOptions & {
   quantize?: boolean;
   grid?: number;
   divisions?: number;
+  rankNotation?: boolean;
 };
 
 export type AudiotoolMidiFile = {

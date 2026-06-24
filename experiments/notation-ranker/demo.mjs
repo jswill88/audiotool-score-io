@@ -4,26 +4,26 @@ import path from 'node:path';
 import process from 'node:process';
 
 const ppq = 480;
-const measureTicks = ppq * 4;
 const defaultExampleCount = 24;
 const defaultSeed = 1847;
+const defaultTimeSignature = [4, 4];
 
 const standardDurationLabels = new Map([
   [1920, 'whole'],
   [1440, 'dotted-half'],
-  [1280, 'half-triplet'],
+  [1280, 'whole-triplet'],
   [960, 'half'],
   [720, 'dotted-quarter'],
-  [640, 'quarter-triplet'],
+  [640, 'half-triplet'],
   [480, 'quarter'],
   [360, 'dotted-eighth'],
-  [320, 'eighth-triplet'],
+  [320, 'quarter-triplet'],
   [240, 'eighth'],
   [180, 'dotted-16th'],
-  [160, '16th-triplet'],
+  [160, 'eighth-triplet'],
   [120, '16th'],
   [90, 'dotted-32nd'],
-  [80, '32nd-triplet'],
+  [80, '16th-triplet'],
   [60, '32nd']
 ]);
 const standardDurations = [...standardDurationLabels.keys()].sort((a, b) => b - a);
@@ -33,12 +33,21 @@ const rhythmCandidatePlans = [
   { id: 'grid16-strict', grid: 16, unit: 120, policy: 'strict' },
   { id: 'grid16-bridge-gaps', grid: 16, unit: 120, policy: 'bridge-gaps' },
   { id: 'grid16-trim-overlaps', grid: 16, unit: 120, policy: 'trim-overlaps' },
+  { id: 'grid16-reconcile-jitter', grid: 16, unit: 120, policy: 'reconcile-jitter' },
+  { id: 'grid16-duration-snap-reconcile', grid: 16, unit: 120, policy: 'duration-snap-reconcile' },
+  { id: 'grid16-duration-ceil-reconcile', grid: 16, unit: 120, policy: 'duration-ceil-reconcile' },
   { id: 'grid16-trim-rest-overhang', grid: 16, unit: 120, policy: 'trim-rest-overhang' },
   { id: 'grid24-triplet-strict', grid: 24, unit: 80, policy: 'strict' },
   { id: 'grid24-triplet-bridge', grid: 24, unit: 80, policy: 'bridge-gaps' },
+  { id: 'grid24-triplet-reconcile-jitter', grid: 24, unit: 80, policy: 'reconcile-jitter' },
+  { id: 'grid24-triplet-duration-snap-reconcile', grid: 24, unit: 80, policy: 'duration-snap-reconcile' },
+  { id: 'grid24-triplet-duration-ceil-reconcile', grid: 24, unit: 80, policy: 'duration-ceil-reconcile' },
   { id: 'grid24-triplet-trim-rest-overhang', grid: 24, unit: 80, policy: 'trim-rest-overhang' },
   { id: 'grid32-strict', grid: 32, unit: 60, policy: 'strict' },
   { id: 'grid32-bridge-gaps', grid: 32, unit: 60, policy: 'bridge-gaps' },
+  { id: 'grid32-reconcile-jitter', grid: 32, unit: 60, policy: 'reconcile-jitter' },
+  { id: 'grid32-duration-snap-reconcile', grid: 32, unit: 60, policy: 'duration-snap-reconcile' },
+  { id: 'grid32-duration-ceil-reconcile', grid: 32, unit: 60, policy: 'duration-ceil-reconcile' },
   { id: 'grid32-trim-rest-overhang', grid: 32, unit: 60, policy: 'trim-rest-overhang' },
   { id: 'grid48-fine', grid: 48, unit: 40, policy: 'strict' }
 ];
@@ -49,7 +58,6 @@ const beamingPolicies = [
   { id: 'beam-half-measure', groupTicks: 960, description: 'group beamable notes inside each half measure' },
   { id: 'beam-full-measure', groupTicks: 1920, description: 'group beamable notes across the full measure' }
 ];
-const referenceBeamingPolicy = beamingPolicies.find((policy) => policy.id === 'beam-half-measure') ?? beamingPolicies[0];
 
 const osmdAssetFileName = 'opensheetmusicdisplay.min.js';
 
@@ -147,11 +155,11 @@ const rhythmPatterns = [
   {
     name: 'quarter triplet turn',
     segments: [
-      { duration: 320 },
-      { duration: 320 },
-      { duration: 320 },
       { duration: 480 },
-      { duration: 480 }
+      { duration: 480 },
+      { duration: 320 },
+      { duration: 320 },
+      { duration: 320 }
     ]
   },
   {
@@ -182,6 +190,34 @@ const rhythmPatterns = [
       { duration: 480, chord: [2, 5, 9] },
       { duration: 480 }
     ]
+  },
+  {
+    name: '3/4 eighth pairs',
+    timeSignature: [3, 4],
+    segments: Array.from({ length: 6 }, () => ({ duration: 240 }))
+  },
+  {
+    name: '6/8 eighth groups',
+    timeSignature: [6, 8],
+    segments: Array.from({ length: 6 }, () => ({ duration: 240 }))
+  },
+  {
+    name: '6/8 partial compound sustain',
+    timeSignature: [6, 8],
+    basePitch: 67,
+    segments: [
+      { duration: 960, chord: [0] },
+      { duration: 480, chord: [2] }
+    ]
+  },
+  {
+    name: '9/8 whole compound spans',
+    timeSignature: [9, 8],
+    basePitch: 69,
+    segments: [
+      { duration: 1440, chord: [0] },
+      { duration: 720, chord: [-2] }
+    ]
   }
 ];
 
@@ -197,22 +233,44 @@ async function main() {
   for (let index = 0; index < exampleCount; index += 1) {
     const clean = makeCleanExample(index, rng);
     const messy = humanizeExample(clean, rng);
+    const meter = createMeter(clean.timeSignature);
+    const referenceBeamingPolicy = referenceBeamingPolicyForMeter(meter);
+    const cleanBeamGroups = buildBeamGroups(clean.notes, referenceBeamingPolicy, meter);
     const tripletEvidence = computeTripletEvidence(messy.notes);
     const candidates = candidatePlans.map((plan) => {
       const candidate = generateCandidate(messy, plan);
-      const features = extractFeatures(candidate.notes, candidate.beamGroups, messy.notes, tripletEvidence, plan.beaming.id);
+      const features = extractFeatures(
+        candidate.notes,
+        candidate.beamGroups,
+        messy.notes,
+        tripletEvidence,
+        plan.beaming.id,
+        meter
+      );
       const heuristicScore = scoreFeatures(features);
-      const oracleDistance = compareTracks(candidate.notes, clean.notes) + beamingOraclePenalty(features);
+      const rhythmOracleDistance = compareTracks(candidate.notes, clean.notes);
+      const beamingOracleDistance = compareRenderedBeaming(
+        candidate.notes,
+        candidate.beamGroups,
+        plan.beaming,
+        clean.notes,
+        cleanBeamGroups,
+        referenceBeamingPolicy,
+        meter
+      );
+      const oracleDistance = rhythmOracleDistance + beamingOracleDistance;
 
       return {
         id: plan.id,
         plan,
         notes: candidate.notes,
         beamGroups: candidate.beamGroups,
-        rhythm: formatTrack(candidate.notes),
+        rhythm: formatTrack(candidate.notes, meter),
         beaming: formatBeamGroups(candidate.beamGroups),
         features,
         heuristicScore,
+        rhythmOracleDistance,
+        beamingOracleDistance,
         oracleDistance
       };
     });
@@ -222,6 +280,8 @@ async function main() {
       Math.abs(candidate.oracleDistance - bestOracleDistance) < 0.0001
     ));
     const oracleWinner = oracleWinners[0];
+    const exactRhythmCandidates = candidates.filter((candidate) => candidate.rhythmOracleDistance === 0);
+    const exactNotationCandidates = candidates.filter((candidate) => candidate.oracleDistance === 0);
     const example = {
       id: `example-${String(index + 1).padStart(3, '0')}`,
       pattern: clean.pattern,
@@ -232,6 +292,10 @@ async function main() {
       heuristicWinnerId: heuristicWinner.id,
       oracleWinnerId: oracleWinner.id,
       oracleWinnerIds: oracleWinners.map((candidate) => candidate.id),
+      exactRhythmCandidateIds: exactRhythmCandidates.map((candidate) => candidate.id),
+      exactNotationCandidateIds: exactNotationCandidates.map((candidate) => candidate.id),
+      exactRhythmCandidateGenerated: exactRhythmCandidates.length > 0,
+      exactNotationCandidateGenerated: exactNotationCandidates.length > 0,
       heuristicMatchedOracle: oracleWinners.some((candidate) => candidate.id === heuristicWinner.id)
     };
 
@@ -242,10 +306,13 @@ async function main() {
         exampleId: example.id,
         pattern: example.pattern,
         candidateId: candidate.id,
+        rhythm: candidate.rhythm,
         plan: candidate.plan,
         beaming: candidate.beaming,
         features: candidate.features,
         heuristicScore: round(candidate.heuristicScore, 4),
+        rhythmOracleDistance: round(candidate.rhythmOracleDistance, 4),
+        beamingOracleDistance: round(candidate.beamingOracleDistance, 4),
         oracleDistance: round(candidate.oracleDistance, 4),
         label: oracleWinners.some((winner) => winner.id === candidate.id) ? 1 : 0,
         isHeuristicWinner: candidate.id === heuristicWinner.id
@@ -264,7 +331,11 @@ async function main() {
   }));
 
   const exactMatches = examples.filter((example) => example.heuristicMatchedOracle).length;
+  const exactRhythmCoverage = examples.filter((example) => example.exactRhythmCandidateGenerated).length;
+  const exactNotationCoverage = examples.filter((example) => example.exactNotationCandidateGenerated).length;
   console.log(`Generated ${examples.length} notation-ranker examples.`);
+  console.log(`Generated an exact rhythm candidate for ${exactRhythmCoverage}/${examples.length} examples.`);
+  console.log(`Generated an exact rhythm-and-beaming candidate for ${exactNotationCoverage}/${examples.length} examples.`);
   console.log(`Heuristic matched oracle on ${exactMatches}/${examples.length} examples.`);
   console.log(`Wrote ${path.join(outDir, 'examples.jsonl')}`);
   console.log(`Wrote ${path.join(outDir, 'candidates.jsonl')}`);
@@ -298,8 +369,75 @@ function readPositiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function createMeter(timeSignature = defaultTimeSignature) {
+  const [numerator, denominator] = timeSignature;
+  const simpleBeatTicks = ppq * (4 / denominator);
+  const isCompound = denominator === 8 && numerator >= 6 && numerator % 3 === 0;
+  const beatTicks = isCompound ? simpleBeatTicks * 3 : simpleBeatTicks;
+  const measureTicks = simpleBeatTicks * numerator;
+  const beatBoundaries = [];
+
+  for (let boundary = beatTicks; boundary < measureTicks; boundary += beatTicks) {
+    beatBoundaries.push(boundary);
+  }
+
+  const strongBeatBoundaries = numerator === 4 && denominator === 4
+    ? [measureTicks / 2]
+    : isCompound ? beatBoundaries : [];
+
+  return {
+    numerator,
+    denominator,
+    timeSignature: [numerator, denominator],
+    simpleBeatTicks,
+    beatTicks,
+    measureTicks,
+    isCompound,
+    beatBoundaries,
+    strongBeatBoundaries
+  };
+}
+
+function formatTimeSignature(timeSignature) {
+  return `${timeSignature[0]}/${timeSignature[1]}`;
+}
+
+function resolveBeamingGroupTicks(policy, meter) {
+  if (policy.id === 'unbeamed') {
+    return 0;
+  }
+
+  if (policy.id === 'beam-by-beat') {
+    return meter.beatTicks;
+  }
+
+  if (policy.id === 'beam-half-measure') {
+    return meter.measureTicks / 2;
+  }
+
+  if (policy.id === 'beam-full-measure') {
+    return meter.measureTicks;
+  }
+
+  return policy.groupTicks;
+}
+
+function referenceBeamingPolicyForMeter(meter) {
+  const policyId = meter.numerator === 4 && meter.denominator === 4
+    ? 'beam-half-measure'
+    : 'beam-by-beat';
+
+  return beamingPolicies.find((policy) => policy.id === policyId) ?? beamingPolicies[0];
+}
+
+function referenceBeamingGroupTicks(meter) {
+  return resolveBeamingGroupTicks(referenceBeamingPolicyForMeter(meter), meter);
+}
+
 function makeCleanExample(index, rng) {
   const pattern = rhythmPatterns[index % rhythmPatterns.length];
+  const timeSignature = pattern.timeSignature ?? defaultTimeSignature;
+  const meter = createMeter(timeSignature);
   const basePitch = pattern.basePitch ?? 64 + (index % 5);
   const notes = [];
   let cursor = 0;
@@ -324,17 +462,24 @@ function makeCleanExample(index, rng) {
     cursor += segment.duration;
   }
 
+  if (cursor !== meter.measureTicks) {
+    throw new Error(
+      `Pattern "${pattern.name}" fills ${cursor} ticks, expected ${meter.measureTicks} for ${formatTimeSignature(timeSignature)}.`
+    );
+  }
+
   return {
     pattern: pattern.name,
     humanize: pattern.humanize ?? null,
-    timeSignature: [4, 4],
+    timeSignature,
     ticksPerQuarter: ppq,
     notes: sortNotes(notes),
-    rhythm: formatTrack(notes)
+    rhythm: formatTrack(notes, meter)
   };
 }
 
 function humanizeExample(clean, rng) {
+  const meter = createMeter(clean.timeSignature);
   const notes = clean.notes.map((note, noteIndex) => {
     const releaseOverhangTicks = clean.humanize?.releaseOverhangTicks;
     const isReleaseOverhangNote = releaseOverhangTicks && noteIndex === 0;
@@ -343,11 +488,11 @@ function humanizeExample(clean, rng) {
       ? releaseOverhangTicks + randomInteger(rng, -18, 18)
       : randomInteger(rng, -42, 52);
     const earlyRelease = rng() < 0.28 ? randomInteger(rng, -54, -12) : 0;
-    const start = clamp(note.start + startJitter, 0, measureTicks - 30);
+    const start = clamp(note.start + startJitter, 0, meter.measureTicks - 30);
     const duration = clamp(
       note.duration + durationJitter + (isReleaseOverhangNote ? 0 : earlyRelease),
       30,
-      measureTicks - start + 80
+      meter.measureTicks - start + 80
     );
 
     return {
@@ -360,15 +505,30 @@ function humanizeExample(clean, rng) {
   return {
     ...clean,
     notes: sortNotes(notes),
-    rhythm: formatTrack(notes)
+    rhythm: formatTrack(notes, meter)
   };
 }
 
 function generateCandidate(messy, plan) {
+  const meter = createMeter(messy.timeSignature);
   const rhythmPlan = plan.rhythm;
   const notes = messy.notes.map((note) => {
-    const start = clamp(roundToUnit(note.start, rhythmPlan.unit), 0, measureTicks - rhythmPlan.unit);
-    const end = clamp(roundToUnit(note.start + note.duration, rhythmPlan.unit), start + rhythmPlan.unit, measureTicks);
+    const start = clamp(roundToUnit(note.start, rhythmPlan.unit), 0, meter.measureTicks - rhythmPlan.unit);
+    const end = rhythmPlan.policy === 'duration-snap-reconcile'
+      ? Math.min(
+          meter.measureTicks,
+          start + nearestStandardDuration(note.duration, rhythmPlan.unit, meter.measureTicks - start)
+        )
+      : rhythmPlan.policy === 'duration-ceil-reconcile'
+        ? Math.min(
+            meter.measureTicks,
+            start + nextStandardDuration(note.duration, rhythmPlan.unit, meter.measureTicks - start)
+          )
+      : clamp(
+          roundToUnit(note.start + note.duration, rhythmPlan.unit),
+          start + rhythmPlan.unit,
+          meter.measureTicks
+        );
 
     return {
       ...note,
@@ -376,24 +536,33 @@ function generateCandidate(messy, plan) {
       duration: end - start
     };
   });
-  const cleanedNotes = applyCleanupPolicy(sortNotes(notes), rhythmPlan);
+  const cleanedNotes = applyCleanupPolicy(sortNotes(notes), rhythmPlan, meter);
 
   return {
     notes: cleanedNotes,
-    beamGroups: buildBeamGroups(cleanedNotes, plan.beaming)
+    beamGroups: buildBeamGroups(cleanedNotes, plan.beaming, meter)
   };
 }
 
-function applyCleanupPolicy(notes, plan) {
+function applyCleanupPolicy(notes, plan, meter) {
   if (plan.policy === 'strict') {
     return notes;
   }
 
   const adjusted = notes.map((note) => ({ ...note }));
+
+  if (
+    plan.policy === 'reconcile-jitter' ||
+    plan.policy === 'duration-snap-reconcile' ||
+    plan.policy === 'duration-ceil-reconcile'
+  ) {
+    normalizeChordClusters(adjusted, plan);
+  }
+
   const groups = groupEvents(adjusted);
 
   if (plan.policy === 'trim-rest-overhang') {
-    trimRestOverhangs(adjusted, groups, plan);
+    trimRestOverhangs(adjusted, groups, plan, meter);
   }
 
   for (let index = 0; index < groups.length - 1; index += 1) {
@@ -413,20 +582,130 @@ function applyCleanupPolicy(notes, plan) {
         adjusted[noteIndex].duration = Math.max(plan.unit, next.start - adjusted[noteIndex].start);
       }
     }
+
+    if (
+      (
+        plan.policy === 'reconcile-jitter' ||
+        plan.policy === 'duration-snap-reconcile' ||
+        plan.policy === 'duration-ceil-reconcile'
+      ) &&
+      Math.abs(gap) <= plan.unit
+    ) {
+      for (const noteIndex of group.noteIndexes) {
+        adjusted[noteIndex].duration = Math.max(plan.unit, next.start - adjusted[noteIndex].start);
+      }
+    }
+  }
+
+  if (
+    (
+      plan.policy === 'reconcile-jitter' ||
+      plan.policy === 'duration-snap-reconcile' ||
+      plan.policy === 'duration-ceil-reconcile'
+    ) &&
+    groups.length > 0
+  ) {
+    const finalGroup = groups.at(-1);
+    const finalEnd = Math.max(
+      ...finalGroup.noteIndexes.map((noteIndex) => (
+        adjusted[noteIndex].start + adjusted[noteIndex].duration
+      ))
+    );
+    const trailingGap = meter.measureTicks - finalEnd;
+
+    if (trailingGap > 0 && trailingGap <= plan.unit) {
+      for (const noteIndex of finalGroup.noteIndexes) {
+        adjusted[noteIndex].duration += trailingGap;
+      }
+    }
   }
 
   return sortNotes(adjusted);
 }
 
-function trimRestOverhangs(adjusted, groups, plan) {
+function nearestStandardDuration(duration, unit, maximum) {
+  const compatible = standardDurations.filter((candidate) => (
+    candidate <= maximum &&
+    candidate % unit === 0
+  ));
+
+  return compatible.reduce((best, candidate) => (
+    Math.abs(candidate - duration) < Math.abs(best - duration) ||
+    (
+      Math.abs(candidate - duration) === Math.abs(best - duration) &&
+      candidate > best
+    )
+      ? candidate
+      : best
+  ), Math.min(maximum, unit));
+}
+
+function nextStandardDuration(duration, unit, maximum) {
+  const compatible = standardDurations
+    .filter((candidate) => candidate <= maximum && candidate % unit === 0)
+    .sort((left, right) => left - right);
+
+  return compatible.find((candidate) => candidate >= duration) ??
+    compatible.at(-1) ??
+    Math.min(maximum, unit);
+}
+
+function normalizeChordClusters(notes, plan) {
+  const clusters = [];
+
+  for (const note of sortNotes(notes)) {
+    const cluster = clusters.find((candidate) => (
+      note.start - candidate.start <= plan.unit &&
+      note.duration >= ppq / 2 &&
+      candidate.notes.every((candidateNote) => candidateNote.duration >= ppq / 2)
+    ));
+
+    if (cluster) {
+      cluster.notes.push(note);
+      continue;
+    }
+
+    clusters.push({
+      start: note.start,
+      notes: [note]
+    });
+  }
+
+  for (const cluster of clusters) {
+    if (cluster.notes.length < 2) {
+      continue;
+    }
+
+    const start = mostCommonNumber(cluster.notes.map((note) => note.start));
+    const end = mostCommonNumber(cluster.notes.map((note) => note.start + note.duration));
+
+    for (const note of cluster.notes) {
+      note.start = start;
+      note.duration = Math.max(plan.unit, end - start);
+    }
+  }
+}
+
+function mostCommonNumber(values) {
+  const counts = new Map();
+
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0] - right[0])[0][0];
+}
+
+function trimRestOverhangs(adjusted, groups, plan, meter) {
   const maxOverhang = Math.max(ppq / 2, plan.unit * 2);
 
   for (let index = 0; index < groups.length; index += 1) {
     const group = groups[index];
     const groupStart = Math.min(...group.noteIndexes.map((noteIndex) => adjusted[noteIndex].start));
     const groupEnd = Math.max(...group.noteIndexes.map((noteIndex) => adjusted[noteIndex].start + adjusted[noteIndex].duration));
-    const nextStart = groups[index + 1]?.start ?? measureTicks;
-    const trim = findRestOverhangTrim(groupStart, groupEnd, nextStart, maxOverhang);
+    const nextStart = groups[index + 1]?.start ?? meter.measureTicks;
+    const trim = findRestOverhangTrim(groupStart, groupEnd, nextStart, maxOverhang, meter);
 
     if (!trim) {
       continue;
@@ -438,12 +717,12 @@ function trimRestOverhangs(adjusted, groups, plan) {
   }
 }
 
-function findRestOverhangTrim(start, end, nextStart, maxOverhang = ppq / 2) {
+function findRestOverhangTrim(start, end, nextStart, maxOverhang = ppq / 2, meter = createMeter()) {
   if (nextStart - end < ppq / 2) {
     return null;
   }
 
-  const boundary = previousReadableReleaseBoundary(start, end);
+  const boundary = previousReadableReleaseBoundary(start, end, meter);
 
   if (!boundary) {
     return null;
@@ -469,8 +748,8 @@ function findRestOverhangTrim(start, end, nextStart, maxOverhang = ppq / 2) {
   return { end: boundary, overhang };
 }
 
-function previousReadableReleaseBoundary(start, end) {
-  for (let boundary = measureTicks; boundary > 0; boundary -= ppq) {
+function previousReadableReleaseBoundary(start, end, meter) {
+  for (let boundary = meter.measureTicks; boundary > 0; boundary -= meter.beatTicks) {
     if (boundary > start && boundary < end) {
       return boundary;
     }
@@ -479,7 +758,7 @@ function previousReadableReleaseBoundary(start, end) {
   return null;
 }
 
-function buildBeamGroups(notes, policy) {
+function buildBeamGroups(notes, policy, meter = createMeter()) {
   const events = collapseEvents(notes)
     .map((event, index) => ({
       ...event,
@@ -499,10 +778,11 @@ function buildBeamGroups(notes, policy) {
     }));
   }
 
+  const groupTicks = resolveBeamingGroupTicks(policy, meter);
   const groupsByBucket = new Map();
 
   for (const event of events) {
-    const bucket = Math.floor(event.start / policy.groupTicks);
+    const bucket = Math.floor(event.start / groupTicks);
     const key = `${policy.id}:${bucket}`;
     const group = groupsByBucket.get(key) ?? {
       policyId: policy.id,
@@ -526,18 +806,72 @@ function buildBeamGroups(notes, policy) {
     .sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
+function compareRenderedBeaming(
+  candidateNotes,
+  candidateBeamGroups,
+  candidatePolicy,
+  cleanNotes,
+  cleanBeamGroups,
+  cleanPolicy,
+  meter
+) {
+  const candidateSignature = renderedBeamSignature(
+    candidateNotes,
+    candidateBeamGroups,
+    candidatePolicy,
+    meter
+  );
+  const cleanSignature = renderedBeamSignature(cleanNotes, cleanBeamGroups, cleanPolicy, meter);
+  const mismatches = symmetricDifferenceSize(candidateSignature, cleanSignature);
+
+  return mismatches * 18;
+}
+
+function renderedBeamSignature(notes, beamGroups, policy, meter) {
+  const events = collapseEvents(notes)
+    .map((event) => ({
+      ...event,
+      end: Math.min(meter.measureTicks, event.start + event.duration)
+    }))
+    .filter((event) => event.start < meter.measureTicks && event.end > event.start);
+  const lookup = createRenderedBeamLookup(events, beamGroups, policy, meter);
+
+  return new Set(
+    [...lookup.entries()].map(([key, mode]) => `${key}:${mode}`)
+  );
+}
+
+function symmetricDifferenceSize(left, right) {
+  let size = 0;
+
+  for (const value of left) {
+    if (!right.has(value)) {
+      size += 1;
+    }
+  }
+
+  for (const value of right) {
+    if (!left.has(value)) {
+      size += 1;
+    }
+  }
+
+  return size;
+}
+
 function isBeamableEvent(event) {
-  return event.duration < 480;
+  const durationSpec = musicXmlDurationSpecs.find((spec) => spec.duration === event.duration);
+  return Boolean(durationSpec && isBeamableDurationSpec(durationSpec));
 }
 
 function isTripletLikeEvent(event) {
   return event.start % 120 !== 0 || event.duration % 120 !== 0;
 }
 
-function extractFeatures(candidateNotes, beamGroups, messyNotes, tripletEvidence, beamingPolicyId) {
+function extractFeatures(candidateNotes, beamGroups, messyNotes, tripletEvidence, beamingPolicyId, meter) {
   const events = collapseEvents(candidateNotes);
-  const rhythm = extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEvidence);
-  const beaming = extractBeamingFeatures(beamGroups, beamingPolicyId);
+  const rhythm = extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEvidence, meter);
+  const beaming = extractBeamingFeatures(beamGroups, beamingPolicyId, meter);
   const voices = extractVoiceFeatures(candidateNotes, events);
   const stems = extractStemFeatures(events, voices);
 
@@ -549,9 +883,10 @@ function extractFeatures(candidateNotes, beamGroups, messyNotes, tripletEvidence
   };
 }
 
-function extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEvidence) {
+function extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEvidence, meter) {
   let currentEnd = 0;
   let tinyRestCount = 0;
+  let shortRestCount = 0;
   let overlapCount = 0;
   let restTokenCount = 0;
   let durationTokenCount = 0;
@@ -560,11 +895,28 @@ function extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEviden
   let usesTripletGrid = false;
   let readableBeatTieSplitCount = 0;
   let releaseOverhangTrimOpportunityCount = 0;
+  let releaseOverhangSimplificationCount = 0;
+  let trailingRestDuration = 0;
   const durationValues = new Set();
+  const {
+    completeTripletGroupCount,
+    orphanTripletEventCount
+  } = summarizeTripletRuns(events);
+  const isolatedVeryShortEventCount = events.filter((event, index) => {
+    if (event.duration >= ppq / 2) {
+      return false;
+    }
+
+    const neighbors = [events[index - 1], events[index + 1]].filter(Boolean);
+    return !neighbors.some((neighbor) => (
+      neighbor.duration < ppq / 2 &&
+      (neighbor.start + neighbor.duration === event.start || event.start + event.duration === neighbor.start)
+    ));
+  }).length;
 
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index];
-    const nextStart = events[index + 1]?.start ?? measureTicks;
+    const nextStart = events[index + 1]?.start ?? meter.measureTicks;
 
     if (event.start < currentEnd) {
       overlapCount += 1;
@@ -577,6 +929,10 @@ function extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEviden
 
       if (restDuration < 120) {
         tinyRestCount += 1;
+      }
+
+      if (restDuration <= ppq / 4) {
+        shortRestCount += 1;
       }
     }
 
@@ -592,14 +948,43 @@ function extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEviden
       subSixtyDurationCount += 1;
     }
 
-    readableBeatTieSplitCount += Math.max(0, splitEventDurationForReadableBeats(event.start, event.duration).length - 1);
-    releaseOverhangTrimOpportunityCount += findRestOverhangTrim(event.start, event.start + event.duration, nextStart) ? 1 : 0;
+    readableBeatTieSplitCount += Math.max(
+      0,
+      splitEventDurationForReadableBeats(event.start, event.duration, meter).length - 1
+    );
+    releaseOverhangTrimOpportunityCount += findRestOverhangTrim(
+      event.start,
+      event.start + event.duration,
+      nextStart,
+      ppq / 2,
+      meter
+    ) ? 1 : 0;
+    releaseOverhangSimplificationCount += isReleaseOverhangSimplification(
+      event,
+      nextStart,
+      messyNotes,
+      meter
+    ) ? 1 : 0;
 
     if (event.start % 120 !== 0 || event.duration % 120 !== 0) {
       usesTripletGrid = true;
     }
 
     currentEnd = Math.max(currentEnd, event.start + event.duration);
+  }
+
+  if (currentEnd < meter.measureTicks) {
+    trailingRestDuration = meter.measureTicks - currentEnd;
+    const restTokens = tokenCountForDuration(trailingRestDuration);
+    restTokenCount += Number.isFinite(restTokens) ? restTokens : 6;
+
+    if (trailingRestDuration < 120) {
+      tinyRestCount += 1;
+    }
+
+    if (trailingRestDuration <= ppq / 4) {
+      shortRestCount += 1;
+    }
   }
 
   return {
@@ -609,20 +994,104 @@ function extractRhythmFeatures(candidateNotes, events, messyNotes, tripletEviden
     durationTokenCount,
     restTokenCount,
     tinyRestCount,
+    shortRestCount,
+    trailingRestDuration,
     overlapCount,
     oddDurationCount,
     subSixtyDurationCount,
     readableBeatTieSplitCount,
     releaseOverhangTrimOpportunityCount,
+    releaseOverhangSimplificationCount,
+    completeTripletGroupCount,
+    orphanTripletEventCount,
+    isolatedVeryShortEventCount,
     durationVariety: durationValues.size,
     usesTripletGrid,
     tripletEvidence: round(tripletEvidence, 4)
   };
 }
 
-function extractBeamingFeatures(beamGroups, beamingPolicyId) {
+function summarizeTripletRuns(events) {
+  let completeTripletGroupCount = 0;
+  let orphanTripletEventCount = 0;
+  let run = [];
+
+  function finishRun() {
+    if (run.length === 0) {
+      return;
+    }
+
+    completeTripletGroupCount += Math.floor(run.length / 3);
+    orphanTripletEventCount += run.length % 3;
+    run = [];
+  }
+
+  for (const event of events) {
+    const previous = run.at(-1);
+    const continuesRun = (
+      isSingleTripletDuration(event.duration) &&
+      (
+        !previous ||
+        (
+          previous.start + previous.duration === event.start &&
+          previous.duration === event.duration
+        )
+      )
+    );
+
+    if (!continuesRun) {
+      finishRun();
+    }
+
+    if (isSingleTripletDuration(event.duration)) {
+      run.push(event);
+    }
+  }
+
+  finishRun();
+
+  return {
+    completeTripletGroupCount,
+    orphanTripletEventCount
+  };
+}
+
+function isReleaseOverhangSimplification(event, nextStart, messyNotes, meter) {
+  const candidateEnd = event.start + event.duration;
+
+  if (
+    candidateEnd % meter.beatTicks !== 0 ||
+    nextStart - candidateEnd < meter.beatTicks
+  ) {
+    return false;
+  }
+
+  return event.pitches.some((pitch) => {
+    const matchingNotes = messyNotes
+      .filter((note) => note.pitch === pitch)
+      .sort((left, right) => (
+        Math.abs(left.start - event.start) - Math.abs(right.start - event.start)
+      ));
+    const messyNote = matchingNotes[0];
+
+    if (!messyNote) {
+      return false;
+    }
+
+    const overhang = messyNote.start + messyNote.duration - candidateEnd;
+    return overhang > 0 && overhang <= ppq * 0.75;
+  });
+}
+
+function extractBeamingFeatures(beamGroups, beamingPolicyId, meter) {
   const beamableEventCount = beamGroups.reduce((sum, group) => sum + group.events.length, 0);
   const beamedGroups = beamGroups.filter((group) => group.beamed);
+  const isolatedShortEventCount = beamGroups.filter((group) => !group.beamed).length;
+  const avoidableIsolatedShortEventCount = countAvoidableIsolatedShortEvents(
+    beamGroups,
+    beamingPolicyId,
+    meter
+  );
   let beamCrossesBeatCount = 0;
   let beamCrossesStrongBeatCount = 0;
   let beamCrossesRestCount = 0;
@@ -638,14 +1107,16 @@ function extractBeamingFeatures(beamGroups, beamingPolicyId) {
       continue;
     }
 
-    for (const beat of [480, 960, 1440]) {
+    for (const beat of meter.beatBoundaries) {
       if (group.start < beat && group.end > beat) {
         beamCrossesBeatCount += 1;
       }
     }
 
-    if (group.start < 960 && group.end > 960) {
-      beamCrossesStrongBeatCount += 1;
+    for (const beat of meter.strongBeatBoundaries) {
+      if (group.start < beat && group.end > beat) {
+        beamCrossesStrongBeatCount += 1;
+      }
     }
 
     const orderedEvents = [...group.events].sort((a, b) => a.start - b.start);
@@ -662,12 +1133,13 @@ function extractBeamingFeatures(beamGroups, beamingPolicyId) {
 
     if (isEighthOnlyBeamGroup(orderedEvents)) {
       const groupDuration = group.end - group.start;
+      const referenceGroupTicks = referenceBeamingGroupTicks(meter);
 
-      if (groupDuration < ppq * 2) {
+      if (groupDuration < referenceGroupTicks) {
         eighthOnlyShortBeamGroupCount += 1;
       }
 
-      if (groupDuration > ppq * 2) {
+      if (groupDuration > referenceGroupTicks) {
         eighthOnlyLongBeamGroupCount += 1;
       }
     }
@@ -677,7 +1149,8 @@ function extractBeamingFeatures(beamGroups, beamingPolicyId) {
     policyId: beamingPolicyId,
     beamableEventCount,
     beamedGroupCount: beamedGroups.length,
-    isolatedShortEventCount: beamGroups.filter((group) => !group.beamed).length,
+    isolatedShortEventCount,
+    avoidableIsolatedShortEventCount,
     beamCrossesBeatCount,
     beamCrossesStrongBeatCount,
     beamCrossesRestCount,
@@ -685,6 +1158,37 @@ function extractBeamingFeatures(beamGroups, beamingPolicyId) {
     eighthOnlyShortBeamGroupCount,
     eighthOnlyLongBeamGroupCount
   };
+}
+
+function countAvoidableIsolatedShortEvents(beamGroups, beamingPolicyId, meter) {
+  const events = [...new Map(
+    beamGroups
+      .flatMap((group) => group.events)
+      .map((event) => [eventKey(event), event])
+  ).values()].sort((left, right) => left.start - right.start || left.end - right.end);
+  const isolatedKeys = new Set(
+    beamGroups
+      .filter((group) => !group.beamed)
+      .flatMap((group) => group.events)
+      .map(eventKey)
+  );
+  const requestedPolicy = beamingPolicies.find((policy) => policy.id === beamingPolicyId);
+  const groupingTicks = requestedPolicy?.id === 'unbeamed'
+    ? referenceBeamingGroupTicks(meter)
+    : resolveBeamingGroupTicks(requestedPolicy ?? beamingPolicies[0], meter);
+
+  return events.filter((event, index) => {
+    if (!isolatedKeys.has(eventKey(event))) {
+      return false;
+    }
+
+    const neighbors = [events[index - 1], events[index + 1]].filter(Boolean);
+
+    return neighbors.some((neighbor) => (
+      (neighbor.end === event.start || event.end === neighbor.start) &&
+      Math.floor(neighbor.start / groupingTicks) === Math.floor(event.start / groupingTicks)
+    ));
+  }).length;
 }
 
 function isEighthOnlyBeamGroup(events) {
@@ -747,12 +1251,18 @@ function scoreFeatures(features) {
   score += rhythm.durationTokenCount * 0.42;
   score += rhythm.restTokenCount * 0.32;
   score += rhythm.tinyRestCount * 2.4;
+  score += rhythm.shortRestCount * 1.8;
   score += rhythm.overlapCount * 4.5;
   score += rhythm.oddDurationCount * 3.5;
   score += rhythm.subSixtyDurationCount * 5;
   score += rhythm.releaseOverhangTrimOpportunityCount * 12;
-  score += Math.max(0, rhythm.durationVariety - 3) * 0.35;
-  score += beaming.isolatedShortEventCount * 0.7;
+  score -= rhythm.releaseOverhangSimplificationCount * 8;
+  score -= rhythm.completeTripletGroupCount * 2.75;
+  score += rhythm.orphanTripletEventCount * 1.25;
+  score += rhythm.isolatedVeryShortEventCount * 1.1;
+  score += rhythm.readableBeatTieSplitCount * 0.15;
+  score += Math.max(0, rhythm.durationVariety - 2) * 0.2;
+  score += beaming.avoidableIsolatedShortEventCount * 0.7;
   score += beaming.beamCrossesBeatCount * (rhythm.usesTripletGrid ? 0.2 : 0.75);
   score += beaming.beamCrossesStrongBeatCount * 2.25;
   score += beaming.beamCrossesRestCount * 1.15;
@@ -761,6 +1271,10 @@ function scoreFeatures(features) {
   score += beaming.eighthOnlyLongBeamGroupCount * 1.6;
   score += voices.needsVoiceSplitCount * 1.5;
   score += stems.stemFlipCount * 0.08;
+
+  if (rhythm.readableBeatTieSplitCount > 0 && beaming.policyId === 'unbeamed') {
+    score += 2.5;
+  }
 
   if (rhythm.usesTripletGrid && rhythm.tripletEvidence < 8) {
     score += 1.5;
@@ -771,23 +1285,6 @@ function scoreFeatures(features) {
   }
 
   return round(score, 4);
-}
-
-function beamingOraclePenalty(features) {
-  const { rhythm, beaming } = features;
-  const hasShortEvents = beaming.beamableEventCount > 1;
-  let penalty = 0;
-
-  penalty += hasShortEvents ? beaming.isolatedShortEventCount * 18 : 0;
-  penalty += beaming.beamCrossesStrongBeatCount * 80;
-  penalty += beaming.beamCrossesRestCount * 18;
-  penalty += beaming.beamCrossesBeatCount * (rhythm.usesTripletGrid ? 2 : 8);
-  penalty += beaming.tripletGroupMismatchCount * 22;
-  penalty += beaming.eighthOnlyShortBeamGroupCount * 14;
-  penalty += beaming.eighthOnlyLongBeamGroupCount * 40;
-  penalty += rhythm.releaseOverhangTrimOpportunityCount * 70;
-
-  return penalty;
 }
 
 function computeTripletEvidence(notes) {
@@ -910,7 +1407,7 @@ function collapseEvents(notes) {
   return events.sort((a, b) => a.start - b.start || b.duration - a.duration);
 }
 
-function formatTrack(notes) {
+function formatTrack(notes, meter = createMeter()) {
   const events = collapseEvents(notes);
   const tokens = [];
   let currentEnd = 0;
@@ -928,8 +1425,8 @@ function formatTrack(notes) {
     currentEnd = Math.max(currentEnd, event.start + event.duration);
   }
 
-  if (currentEnd < measureTicks) {
-    tokens.push(`rest:${durationLabel(measureTicks - currentEnd)}`);
+  if (currentEnd < meter.measureTicks) {
+    tokens.push(`rest:${durationLabel(meter.measureTicks - currentEnd)}`);
   }
 
   return tokens.join(' | ');
@@ -955,24 +1452,27 @@ function formatBeamGroups(beamGroups) {
 }
 
 function renderMusicXml(notes, beamGroups, {
+  beamingPolicy = null,
+  timeSignature = defaultTimeSignature,
   title = 'Notation candidate',
   snapToGrid = 0
 } = {}) {
-  const normalizedNotes = normalizeNotesForMusicXml(notes, snapToGrid);
+  const meter = createMeter(timeSignature);
+  const normalizedNotes = normalizeNotesForMusicXml(notes, snapToGrid, meter);
   const events = collapseEvents(normalizedNotes)
     .map((event) => ({
       ...event,
-      end: Math.min(measureTicks, event.start + event.duration),
+      end: Math.min(meter.measureTicks, event.start + event.duration),
       stemDirection: stemDirectionForEvent(event)
     }))
-    .filter((event) => event.start < measureTicks && event.end > event.start);
-  const beamLookup = createBeamLookup(beamGroups);
+    .filter((event) => event.start < meter.measureTicks && event.end > event.start);
+  const beamLookup = createRenderedBeamLookup(events, beamGroups, beamingPolicy, meter);
   const measureItems = [];
   let cursor = 0;
 
   for (const event of events) {
     if (event.start > cursor) {
-      const restItems = renderMusicXmlRest(cursor, event.start - cursor);
+      const restItems = renderMusicXmlRest(cursor, event.start - cursor, meter);
       measureItems.push(...restItems.xml);
       cursor += restItems.duration;
     }
@@ -982,13 +1482,13 @@ function renderMusicXml(notes, beamGroups, {
       cursor = event.start;
     }
 
-    const renderedEvent = renderMusicXmlEvent(event, beamLookup);
+    const renderedEvent = renderMusicXmlEvent(event, beamLookup, meter);
     measureItems.push(...renderedEvent.xml);
     cursor += renderedEvent.duration;
   }
 
-  if (cursor < measureTicks) {
-    const restItems = renderMusicXmlRest(cursor, measureTicks - cursor);
+  if (cursor < meter.measureTicks) {
+    const restItems = renderMusicXmlRest(cursor, meter.measureTicks - cursor, meter);
     measureItems.push(...restItems.xml);
   }
 
@@ -1009,7 +1509,7 @@ function renderMusicXml(notes, beamGroups, {
     '      <attributes>',
     `        <divisions>${ppq}</divisions>`,
     '        <key><fifths>0</fifths></key>',
-    '        <time><beats>4</beats><beat-type>4</beat-type></time>',
+    `        <time><beats>${meter.numerator}</beats><beat-type>${meter.denominator}</beat-type></time>`,
     '        <clef><sign>G</sign><line>2</line></clef>',
     '      </attributes>',
     ...measureItems,
@@ -1020,14 +1520,14 @@ function renderMusicXml(notes, beamGroups, {
   ].join('\n');
 }
 
-function normalizeNotesForMusicXml(notes, snapToGrid) {
+function normalizeNotesForMusicXml(notes, snapToGrid, meter) {
   const snap = snapToGrid > 0
     ? (value) => roundToUnit(value, snapToGrid)
     : (value) => Math.round(value);
 
   return sortNotes(notes.map((note) => {
-    const start = clamp(snap(note.start), 0, measureTicks - 40);
-    const end = clamp(snap(note.start + note.duration), start + 40, measureTicks);
+    const start = clamp(snap(note.start), 0, meter.measureTicks - 40);
+    const end = clamp(snap(note.start + note.duration), start + 40, meter.measureTicks);
 
     return {
       ...note,
@@ -1037,20 +1537,56 @@ function normalizeNotesForMusicXml(notes, snapToGrid) {
   }));
 }
 
-function createBeamLookup(beamGroups) {
+function createRenderedBeamLookup(events, beamGroups, requestedPolicy, meter) {
   const lookup = new Map();
+  const policyId = requestedPolicy?.id ?? beamGroups[0]?.policyId ?? 'unbeamed';
+  const policy = requestedPolicy ?? beamingPolicies.find((candidate) => candidate.id === policyId);
 
-  for (const group of beamGroups) {
-    if (!group.beamed) {
+  const groupTicks = policy ? resolveBeamingGroupTicks(policy, meter) : 0;
+
+  if (!policy || policy.id === 'unbeamed' || groupTicks <= 0) {
+    return lookup;
+  }
+
+  const renderedEvents = [];
+
+  for (const event of events) {
+    let cursor = event.start;
+
+    for (const durationSpec of splitEventDurationForReadableBeats(event.start, event.duration, meter)) {
+      if (isBeamableDurationSpec(durationSpec)) {
+        renderedEvents.push({
+          duration: durationSpec.duration,
+          end: cursor + durationSpec.duration,
+          start: cursor
+        });
+      }
+
+      cursor += durationSpec.duration;
+    }
+  }
+
+  const groupsByBucket = new Map();
+
+  for (const event of renderedEvents) {
+    const bucket = Math.floor(event.start / groupTicks);
+    const key = `${policy.id}:${bucket}`;
+    const group = groupsByBucket.get(key) ?? [];
+    group.push(event);
+    groupsByBucket.set(key, group);
+  }
+
+  for (const group of groupsByBucket.values()) {
+    if (group.length < 2) {
       continue;
     }
 
-    const events = [...group.events].sort((a, b) => a.start - b.start || a.end - b.end);
-
-    events.forEach((event, index) => {
+    group
+      .sort((a, b) => a.start - b.start || a.end - b.end)
+      .forEach((event, index) => {
       const mode = index === 0
         ? 'begin'
-        : index === events.length - 1 ? 'end' : 'continue';
+        : index === group.length - 1 ? 'end' : 'continue';
       lookup.set(eventKey(event), mode);
     });
   }
@@ -1058,8 +1594,8 @@ function createBeamLookup(beamGroups) {
   return lookup;
 }
 
-function renderMusicXmlEvent(event, beamLookup) {
-  const durationSegments = splitEventDurationForReadableBeats(event.start, event.duration);
+function renderMusicXmlEvent(event, beamLookup, meter) {
+  const durationSegments = splitEventDurationForReadableBeats(event.start, event.duration, meter);
   const xml = [];
   let renderedDuration = 0;
 
@@ -1079,7 +1615,11 @@ function renderMusicXmlEvent(event, beamLookup) {
     event.pitches
       .sort((a, b) => a - b)
       .forEach((pitch, pitchIndex) => {
-        const beamMode = isFirstSegment && isLastSegment ? beamLookup.get(eventKey(event)) : null;
+        const segmentStart = event.start + renderedDuration;
+        const beamMode = beamLookup.get(eventKey({
+          duration: segment.duration,
+          start: segmentStart
+        }));
 
         xml.push(renderMusicXmlNote({
           beamMode,
@@ -1100,8 +1640,8 @@ function renderMusicXmlEvent(event, beamLookup) {
   };
 }
 
-function renderMusicXmlRest(start, duration) {
-  const durationSegments = splitEventDurationForReadableBeats(start, duration);
+function renderMusicXmlRest(start, duration, meter) {
+  const durationSegments = splitEventDurationForReadableBeats(start, duration, meter);
 
   return {
     duration: durationSegments.reduce((sum, segment) => sum + segment.duration, 0),
@@ -1112,9 +1652,9 @@ function renderMusicXmlRest(start, duration) {
   };
 }
 
-function splitEventDurationForReadableBeats(start, duration) {
-  if (!crossesReadableBeatBoundary(start, duration)) {
-    return splitDurationForMusicXml(duration);
+function splitEventDurationForReadableBeats(start, duration, meter = createMeter()) {
+  if (!crossesReadableBeatBoundary(start, duration, meter)) {
+    return splitDurationForMusicXml(duration, meter.measureTicks);
   }
 
   const segments = [];
@@ -1122,23 +1662,33 @@ function splitEventDurationForReadableBeats(start, duration) {
   const end = start + duration;
 
   while (cursor < end) {
-    const nextBoundary = Math.min(end, nextReadableBeatBoundary(cursor));
+    const nextBoundary = Math.min(end, nextReadableBeatBoundary(cursor, meter));
     const segmentDuration = nextBoundary - cursor;
-    segments.push(...splitDurationForMusicXml(segmentDuration));
+    segments.push(...splitDurationForMusicXml(segmentDuration, meter.measureTicks));
     cursor = nextBoundary;
   }
 
   return segments;
 }
 
-function crossesReadableBeatBoundary(start, duration) {
-  if (start % ppq === 0) {
+function crossesReadableBeatBoundary(start, duration, meter) {
+  if (
+    duration <= meter.simpleBeatTicks ||
+    isSingleTripletDuration(duration)
+  ) {
+    return false;
+  }
+
+  if (
+    start % meter.beatTicks === 0 &&
+    duration % meter.beatTicks === 0
+  ) {
     return false;
   }
 
   const end = start + duration;
 
-  for (let boundary = ppq; boundary < measureTicks; boundary += ppq) {
+  for (const boundary of meter.beatBoundaries) {
     if (start < boundary && end > boundary) {
       return true;
     }
@@ -1147,14 +1697,21 @@ function crossesReadableBeatBoundary(start, duration) {
   return false;
 }
 
-function nextReadableBeatBoundary(start) {
-  for (let boundary = ppq; boundary < measureTicks; boundary += ppq) {
+function isSingleTripletDuration(duration) {
+  return musicXmlDurationSpecs.some((spec) => (
+    spec.duration === duration &&
+    Boolean(spec.timeModification)
+  ));
+}
+
+function nextReadableBeatBoundary(start, meter) {
+  for (const boundary of meter.beatBoundaries) {
     if (boundary > start) {
       return boundary;
     }
   }
 
-  return measureTicks;
+  return meter.measureTicks;
 }
 
 function renderMusicXmlNote({
@@ -1232,7 +1789,7 @@ function renderMusicXmlBeamTags(durationSpec, beamMode) {
   ));
 }
 
-function splitDurationForMusicXml(duration) {
+function splitDurationForMusicXml(duration, maxDuration = createMeter().measureTicks) {
   const ticks = Math.max(40, Math.round(duration));
 
   if (musicXmlDurationCache.has(ticks)) {
@@ -1246,7 +1803,7 @@ function splitDurationForMusicXml(duration) {
     return bestSegments;
   }
 
-  const roundedTicks = clamp(roundToUnit(ticks, 40), 40, measureTicks);
+  const roundedTicks = clamp(roundToUnit(ticks, 40), 40, maxDuration);
   const roundedSegments = findExactMusicXmlDurationSegments(roundedTicks) ?? [musicXmlDurationSpecs.at(-1)];
   musicXmlDurationCache.set(ticks, roundedSegments);
   return roundedSegments;
@@ -1311,8 +1868,10 @@ function eventKey(event) {
 
 function renderStaffSvg(notes, beamGroups, {
   label = '',
-  messy = false
+  messy = false,
+  timeSignature = defaultTimeSignature
 } = {}) {
+  const meter = createMeter(timeSignature);
   const events = collapseEvents(notes)
     .map((event) => ({
       ...event,
@@ -1339,17 +1898,19 @@ function renderStaffSvg(notes, beamGroups, {
   const flags = [];
   const beamShapes = [];
 
-  for (const beat of [0, 480, 960, 1440, 1920]) {
-    const x = xForTick(beat, left, innerWidth);
-    const isMeasureEdge = beat === 0 || beat === 1920;
-    const isStrongBeat = beat === 0 || beat === 960 || beat === 1920;
+  const guideTicks = [0, ...meter.beatBoundaries, meter.measureTicks];
+
+  for (const [beatIndex, beat] of guideTicks.entries()) {
+    const x = xForTick(beat, left, innerWidth, meter.measureTicks);
+    const isMeasureEdge = beat === 0 || beat === meter.measureTicks;
+    const isStrongBeat = isMeasureEdge || meter.strongBeatBoundaries.includes(beat);
     const stroke = isMeasureEdge ? '#3a342b' : isStrongBeat ? '#b69b55' : '#ded6c7';
     const width = isMeasureEdge ? 2 : 1;
 
     durationShapes.push(`<line x1="${x}" y1="${beatGuideTop}" x2="${x}" y2="${beatGuideBottom}" stroke="${stroke}" stroke-width="${width}" />`);
 
     if (!isMeasureEdge) {
-      durationShapes.push(`<text x="${x + 4}" y="${beatGuideTop - 8}" fill="#8a7d68" font-size="10">${beat / 480 + 1}</text>`);
+      durationShapes.push(`<text x="${x + 4}" y="${beatGuideTop - 8}" fill="#8a7d68" font-size="10">${beatIndex + 1}</text>`);
     }
   }
 
@@ -1359,8 +1920,8 @@ function renderStaffSvg(notes, beamGroups, {
   }
 
   for (const event of events) {
-    const x = xForTick(event.start, left, innerWidth);
-    const endX = xForTick(Math.min(measureTicks, event.end), left, innerWidth);
+    const x = xForTick(event.start, left, innerWidth, meter.measureTicks);
+    const endX = xForTick(Math.min(meter.measureTicks, event.end), left, innerWidth, meter.measureTicks);
     const pitchYs = event.pitches.map((pitch) => yForPitch(pitch, staffTop, staffGap));
     const averageY = pitchYs.reduce((sum, y) => sum + y, 0) / pitchYs.length;
     const stemX = event.stemDirection === 'up' ? x + noteHeadWidth / 2 : x - noteHeadWidth / 2;
@@ -1400,20 +1961,24 @@ function renderStaffSvg(notes, beamGroups, {
 
     const direction = firstEvent.stemDirection;
     const y = direction === 'up'
-      ? Math.min(...orderedEvents.map((event) => stemTipForEvent(event, direction, staffTop, staffGap).y)) - 2
-      : Math.max(...orderedEvents.map((event) => stemTipForEvent(event, direction, staffTop, staffGap).y)) + 2;
-    const x1 = stemTipForEvent(first, direction, staffTop, staffGap).x;
-    const x2 = stemTipForEvent(last, direction, staffTop, staffGap).x;
+      ? Math.min(...orderedEvents.map((event) => (
+          stemTipForEvent(event, direction, staffTop, staffGap, meter.measureTicks).y
+        ))) - 2
+      : Math.max(...orderedEvents.map((event) => (
+          stemTipForEvent(event, direction, staffTop, staffGap, meter.measureTicks).y
+        ))) + 2;
+    const x1 = stemTipForEvent(first, direction, staffTop, staffGap, meter.measureTicks).x;
+    const x2 = stemTipForEvent(last, direction, staffTop, staffGap, meter.measureTicks).x;
 
     beamShapes.push(`<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#171512" stroke-width="6" stroke-linecap="butt" />`);
   }
 
   const title = label
-    ? `<text x="${left}" y="18" fill="#4f473d" font-size="13" font-weight="700">${escapeHtml(label)}</text>`
+    ? `<text x="${left}" y="18" fill="#4f473d" font-size="13" font-weight="700">${escapeHtml(`${label} · ${formatTimeSignature(timeSignature)}`)}</text>`
     : '';
 
   return [
-    `<svg class="staff-svg" viewBox="0 0 ${svgWidth} ${svgHeight}" role="img" aria-label="${escapeHtml(label || 'notation preview')}">`,
+    `<svg class="staff-svg" viewBox="0 0 ${svgWidth} ${svgHeight}" role="img" aria-label="${escapeHtml(`${label || 'notation preview'}, ${formatTimeSignature(timeSignature)}`)}">`,
     '  <rect x="0" y="0" width="900" height="174" rx="8" fill="#fffdfa" />',
     title,
     ...durationShapes,
@@ -1426,7 +1991,7 @@ function renderStaffSvg(notes, beamGroups, {
   ].join('\n');
 }
 
-function xForTick(tick, left, innerWidth) {
+function xForTick(tick, left, innerWidth, measureTicks) {
   return round(left + (tick / measureTicks) * innerWidth, 2);
 }
 
@@ -1440,8 +2005,8 @@ function stemDirectionForEvent(event) {
   return averagePitch < 71 ? 'up' : 'down';
 }
 
-function stemTipForEvent(event, direction, staffTop, staffGap) {
-  const x = xForTick(event.start, 54, 814) + (direction === 'up' ? 5.5 : -5.5);
+function stemTipForEvent(event, direction, staffTop, staffGap, measureTicks) {
+  const x = xForTick(event.start, 54, 814, measureTicks) + (direction === 'up' ? 5.5 : -5.5);
   const averagePitch = event.pitches.reduce((sum, pitch) => sum + pitch, 0) / event.pitches.length;
   const y = yForPitch(averagePitch, staffTop, staffGap) + (direction === 'up' ? -34 : 34);
 
@@ -1495,6 +2060,7 @@ function stripExampleForJsonl(example) {
   return {
     id: example.id,
     pattern: example.pattern,
+    timeSignature: example.clean.timeSignature,
     tripletEvidence: round(example.tripletEvidence, 4),
     clean: {
       notes: example.clean.notes,
@@ -1507,6 +2073,10 @@ function stripExampleForJsonl(example) {
     heuristicWinnerId: example.heuristicWinnerId,
     oracleWinnerId: example.oracleWinnerId,
     oracleWinnerIds: example.oracleWinnerIds,
+    exactRhythmCandidateIds: example.exactRhythmCandidateIds,
+    exactNotationCandidateIds: example.exactNotationCandidateIds,
+    exactRhythmCandidateGenerated: example.exactRhythmCandidateGenerated,
+    exactNotationCandidateGenerated: example.exactNotationCandidateGenerated,
     heuristicMatchedOracle: example.heuristicMatchedOracle
   };
 }
@@ -1526,6 +2096,8 @@ async function copyOsmdAsset(outDir) {
 
 function renderHtmlReport({ examples, seed, exampleCount }) {
   const exactMatches = examples.filter((example) => example.heuristicMatchedOracle).length;
+  const exactRhythmCoverage = examples.filter((example) => example.exactRhythmCandidateGenerated).length;
+  const exactNotationCoverage = examples.filter((example) => example.exactNotationCandidateGenerated).length;
 
   return [
     '<!doctype html>',
@@ -1542,9 +2114,14 @@ function renderHtmlReport({ examples, seed, exampleCount }) {
     '    .example { margin: 0 0 24px; padding: 18px; border: 1px solid #d5cec0; background: #fffdf8; border-radius: 8px; }',
     '    .example-header { display: flex; gap: 8px 18px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }',
     '    .example-header h2 { margin-bottom: 0; }',
+    '    .meter { display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #eee8dc; color: #5f574c; font-size: 0.62em; vertical-align: 0.12em; }',
     '    .example-status { margin: 0; }',
     '    .winner { color: #176c63; font-weight: 800; }',
     '    .miss { color: #a33a2b; font-weight: 800; }',
+    '    .coverage { display: flex; gap: 8px 18px; flex-wrap: wrap; margin: 10px 0; }',
+    '    .coverage span { padding: 5px 8px; border-radius: 6px; background: #eee8dc; font-size: 13px; font-weight: 750; }',
+    '    .coverage .complete { background: #e2f2ee; color: #176c63; }',
+    '    .coverage .incomplete { background: #fae7e2; color: #a33a2b; }',
     '    code { background: #eee8dc; padding: 2px 5px; border-radius: 4px; }',
     '    figure { margin: 0; }',
     '    figcaption { margin: 0 0 6px; color: #5f574c; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }',
@@ -1579,7 +2156,12 @@ function renderHtmlReport({ examples, seed, exampleCount }) {
     '  <main>',
     '    <section class="summary">',
     '      <h1>Notation Ranker Demo</h1>',
-    `      <p>Generated ${exampleCount} synthetic note-track examples with seed <code>${seed}</code>. The heuristic matched the clean-score oracle on <strong>${exactMatches}/${examples.length}</strong> examples.</p>`,
+    `      <p>Generated ${exampleCount} synthetic note-track examples with seed <code>${seed}</code>.</p>`,
+    '      <div class="coverage">',
+    `        <span class="${exactRhythmCoverage === examples.length ? 'complete' : 'incomplete'}">Exact rhythm candidate: ${exactRhythmCoverage}/${examples.length}</span>`,
+    `        <span class="${exactNotationCoverage === examples.length ? 'complete' : 'incomplete'}">Exact rhythm + beaming candidate: ${exactNotationCoverage}/${examples.length}</span>`,
+    `        <span class="${exactMatches === examples.length ? 'complete' : 'incomplete'}">Heuristic matched oracle: ${exactMatches}/${examples.length}</span>`,
+    '      </div>',
     '      <p>This is not a trained model yet. It is a candidate generator plus a transparent baseline scorer. The JSONL output is shaped so a later ML model can learn to rank these candidates.</p>',
     '    </section>',
     ...examples.map(renderExample),
@@ -1609,17 +2191,25 @@ function renderOsmdFigure({
 }
 
 function renderExample(example) {
+  const meter = createMeter(example.clean.timeSignature);
   const statusClass = example.heuristicMatchedOracle ? 'winner' : 'miss';
   const statusText = example.heuristicMatchedOracle ? 'matched oracle' : 'missed oracle';
-  const cleanBeamGroups = buildBeamGroups(example.clean.notes, referenceBeamingPolicy);
+  const referenceBeamingPolicy = referenceBeamingPolicyForMeter(meter);
+  const cleanBeamGroups = buildBeamGroups(example.clean.notes, referenceBeamingPolicy, meter);
   const heuristicWinner = example.candidates.find((candidate) => candidate.id === example.heuristicWinnerId);
   const oracleWinner = example.candidates.find((candidate) => candidate.id === example.oracleWinnerId);
+  const rhythmCoverageClass = example.exactRhythmCandidateGenerated ? 'complete' : 'incomplete';
+  const notationCoverageClass = example.exactNotationCandidateGenerated ? 'complete' : 'incomplete';
 
   return [
     '    <section class="example">',
     '      <div class="example-header">',
-    `        <h2>${escapeHtml(example.id)}: ${escapeHtml(example.pattern)}</h2>`,
+    `        <h2>${escapeHtml(example.id)}: ${escapeHtml(example.pattern)} <span class="meter">${escapeHtml(formatTimeSignature(example.clean.timeSignature))}</span></h2>`,
     `        <p class="example-status ${statusClass}">Heuristic ${statusText}</p>`,
+    '      </div>',
+    '      <div class="coverage">',
+    `        <span class="${rhythmCoverageClass}">${example.exactRhythmCandidateGenerated ? 'Exact rhythm candidate generated' : 'No exact rhythm candidate'}</span>`,
+    `        <span class="${notationCoverageClass}">${example.exactNotationCandidateGenerated ? 'Exact rhythm + beaming candidate generated' : 'No exact rhythm + beaming candidate'}</span>`,
     '      </div>',
     `      <p>Picked <code>${escapeHtml(example.heuristicWinnerId)}</code>; oracle picked <code>${escapeHtml(example.oracleWinnerId)}</code>.</p>`,
     '      <div class="osmd-grid">',
@@ -1627,6 +2217,8 @@ function renderExample(example) {
       caption: 'Clean reference - OSMD MusicXML',
       id: `${example.id}-clean-osmd`,
       musicXml: renderMusicXml(example.clean.notes, cleanBeamGroups, {
+        beamingPolicy: referenceBeamingPolicy,
+        timeSignature: example.clean.timeSignature,
         title: `${example.id} clean reference`
       })
     }),
@@ -1634,7 +2226,9 @@ function renderExample(example) {
       caption: 'Messy input - OSMD MusicXML',
       id: `${example.id}-messy-osmd`,
       musicXml: renderMusicXml(example.messy.notes, [], {
+        beamingPolicy: beamingPolicies[0],
         snapToGrid: 40,
+        timeSignature: example.clean.timeSignature,
         title: `${example.id} messy input`
       })
     }),
@@ -1643,6 +2237,8 @@ function renderExample(example) {
           caption: 'Heuristic winner - OSMD MusicXML',
           id: `${example.id}-heuristic-osmd`,
           musicXml: renderMusicXml(heuristicWinner.notes, heuristicWinner.beamGroups, {
+            beamingPolicy: heuristicWinner.plan.beaming,
+            timeSignature: example.clean.timeSignature,
             title: `${example.id} heuristic ${heuristicWinner.id}`
           })
         })
@@ -1652,6 +2248,8 @@ function renderExample(example) {
           caption: 'Oracle winner - OSMD MusicXML',
           id: `${example.id}-oracle-osmd`,
           musicXml: renderMusicXml(oracleWinner.notes, oracleWinner.beamGroups, {
+            beamingPolicy: oracleWinner.plan.beaming,
+            timeSignature: example.clean.timeSignature,
             title: `${example.id} oracle ${oracleWinner.id}`
           })
         })
@@ -1660,11 +2258,18 @@ function renderExample(example) {
     '      <div class="preview-grid">',
     '        <figure>',
     '          <figcaption>Clean reference</figcaption>',
-    renderStaffSvg(example.clean.notes, cleanBeamGroups, { label: 'clean reference' }),
+    renderStaffSvg(example.clean.notes, cleanBeamGroups, {
+      label: 'clean reference',
+      timeSignature: example.clean.timeSignature
+    }),
     '        </figure>',
     '        <figure>',
     '          <figcaption>Messy input</figcaption>',
-    renderStaffSvg(example.messy.notes, [], { label: 'messy input', messy: true }),
+    renderStaffSvg(example.messy.notes, [], {
+      label: 'messy input',
+      messy: true,
+      timeSignature: example.clean.timeSignature
+    }),
     '        </figure>',
     '      </div>',
     `      <p><strong>Clean:</strong> <span class="rhythm">${escapeHtml(example.clean.rhythm)}</span></p>`,
@@ -1687,7 +2292,7 @@ function renderCandidateDrawer(example) {
     `        <summary><span>Candidates</span><span class="candidate-summary">${escapeHtml(summary)}</span></summary>`,
     '        <div class="candidate-table-wrap">',
     '          <table>',
-    '            <thead><tr><th>Candidate</th><th>Heuristic</th><th>Oracle Distance</th><th>Features</th><th>Visual</th></tr></thead>',
+    '            <thead><tr><th>Candidate</th><th>Heuristic</th><th>Rhythm Distance</th><th>Beam Distance</th><th>Oracle Distance</th><th>Features</th><th>Visual</th></tr></thead>',
     '            <tbody>',
     ...example.candidates
       .slice()
@@ -1703,7 +2308,11 @@ function renderCandidateDrawer(example) {
 function renderCandidateOsmdDetails(example, candidate) {
   const title = `${example.id} ${candidate.id}`;
   const xmlId = domId(`${example.id}-${candidate.id}-candidate-xml`);
-  const musicXml = renderMusicXml(candidate.notes, candidate.beamGroups, { title });
+  const musicXml = renderMusicXml(candidate.notes, candidate.beamGroups, {
+    beamingPolicy: candidate.plan.beaming,
+    timeSignature: example.clean.timeSignature,
+    title
+  });
 
   return [
     '              <details class="xml-render-details">',
@@ -1719,17 +2328,29 @@ function renderCandidateOsmdDetails(example, candidate) {
 function renderCandidateRow(candidate, example) {
   const labels = [
     candidate.id === example.heuristicWinnerId ? 'heuristic' : '',
-    example.oracleWinnerIds.includes(candidate.id) ? 'oracle' : ''
+    example.oracleWinnerIds.includes(candidate.id) ? 'oracle' : '',
+    example.exactNotationCandidateIds.includes(candidate.id) ? 'exact notation' : '',
+    (
+      example.exactRhythmCandidateIds.includes(candidate.id) &&
+      !example.exactNotationCandidateIds.includes(candidate.id)
+    ) ? 'exact rhythm' : ''
   ].filter(Boolean).join(', ');
   const { rhythm, beaming, voices, stems } = candidate.features;
   const features = [
     `rhythm timing ${rhythm.timingDistance}`,
     `dur tokens ${rhythm.durationTokenCount}`,
     `rest tokens ${rhythm.restTokenCount}`,
+    `short rests ${rhythm.shortRestCount}`,
+    `trailing rest ${rhythm.trailingRestDuration}`,
     `beat-tie splits ${rhythm.readableBeatTieSplitCount}`,
     `rest-overhang trims ${rhythm.releaseOverhangTrimOpportunityCount}`,
+    `rest-overhang simplifications ${rhythm.releaseOverhangSimplificationCount}`,
+    `triplet groups ${rhythm.completeTripletGroupCount}`,
+    `orphan triplets ${rhythm.orphanTripletEventCount}`,
+    `isolated very-short ${rhythm.isolatedVeryShortEventCount}`,
     `beam ${beaming.policyId}`,
     `isolated ${beaming.isolatedShortEventCount}`,
+    `avoidable isolated ${beaming.avoidableIsolatedShortEventCount}`,
     `beat-cross ${beaming.beamCrossesBeatCount}`,
     `strong-cross ${beaming.beamCrossesStrongBeatCount}`,
     `short-eighth beams ${beaming.eighthOnlyShortBeamGroupCount}`,
@@ -1744,10 +2365,15 @@ function renderCandidateRow(candidate, example) {
     '          <tr>',
     `            <td><strong>${escapeHtml(candidate.id)}</strong>${labels ? `<br><span class="small">${escapeHtml(labels)}</span>` : ''}</td>`,
     `            <td>${candidate.heuristicScore}</td>`,
+    `            <td>${round(candidate.rhythmOracleDistance, 2)}</td>`,
+    `            <td>${round(candidate.beamingOracleDistance, 2)}</td>`,
     `            <td>${round(candidate.oracleDistance, 2)}</td>`,
     `            <td>${escapeHtml(features)}</td>`,
     '            <td class="candidate-visual">',
-    renderStaffSvg(candidate.notes, candidate.beamGroups, { label: candidate.id }),
+    renderStaffSvg(candidate.notes, candidate.beamGroups, {
+      label: candidate.id,
+      timeSignature: example.clean.timeSignature
+    }),
     renderCandidateOsmdDetails(example, candidate),
     `              <div class="rhythm">${escapeHtml(candidate.rhythm)}</div>`,
     `              <div class="small">${escapeHtml(candidate.beaming)}</div>`,

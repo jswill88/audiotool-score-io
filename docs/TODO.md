@@ -6,7 +6,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### Cloud Run Deployment Checklist
 
-- [x] Park the direct MusicXML POC so the app/API use the MuseScore conversion path only.
+- [x] Add the ranked direct MusicXML engine to the app/API while retaining MuseScore as a comparison fallback.
 - [x] Add API CORS configuration for a split web/API deployment with `CORS_ORIGINS`.
 - [x] Add a Cloud Run API Dockerfile that listens on port `8080` and installs MuseScore with `xvfb`.
 - [x] Add a Cloud Run deployment runbook under `docs/deployment/cloud-run.md`.
@@ -72,6 +72,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] Investigate API timeout/abort handling around Audiotool project inspect/open requests so bad PAT/project probes cannot wedge the API or make `/health` time out.
 - [ ] Have codemap link to referenced files
 - [ ] Expand the notation-ranker experiment to ingest real MusicXML measures, generate candidates from the direct notation code, and train/evaluate a small learned ranker against the heuristic baseline.
+- [ ] Add direct-export key selection and enharmonic respelling: default to C when no key is chosen, prefer key-consistent spellings, use sharps for otherwise ambiguous ascending lines and flats for descending lines, and rewrite pitch spelling without transposing sounding pitches.
 - [ ] Remove the temporary macOS MuseScore app-bundle autodiscovery once local development no longer needs that convenience; production should use container-installed MuseScore.
 - [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
 - [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.
@@ -151,6 +152,11 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [x] Add first-pass 4/4 eighth-note beaming preference so four-eighth half-measure groups score better than two-eighth beat groups when appropriate.
 - [x] Add a `release overhang` notation-ranker example plus `trim-rest-overhang` candidates so small extra note tails before clear rests can simplify to cleaner rests.
 - [x] Add a `center-crossing half` notation-ranker example so beat-aligned unsyncopated half notes in 4/4 are not over-split at the measure center.
+- [x] Correct clean-reference spelling for offbeat quarters, quarter-note triplets, and beams on adjacent eighth-note pieces created by readable tie splitting.
+- [x] Add paired 3/4 and 6/8 notation-ranker report examples with meter-aware bar lengths, beat guides, MusicXML signatures, and contrasting eighth-note beam groups.
+- [x] Improve notation-ranker candidate coverage and diagnostics with duration snapping, jitter reconciliation, chord clustering, direct clean-reference beam comparison, and separate coverage/ranking metrics.
+- [x] Add compound-meter sustain spelling: split partial dotted-quarter boundary crossings in 6/8, preserve aligned whole compound-beat spans in 9/8, and verify the expanded 900-example stress set.
+- [x] Integrate the notation ranker with the direct MusicXML writer and expose it as the app's default MuseScore-free export engine, with MuseScore still selectable for comparison.
 - [x] Put MusicXML-to-Audiotool parts into their own top-level `Parts` panel, matching the separate `Tracks` section in the export workflow.
 - [x] Add `/sign-in` and protected `/app` routes. `/` redirects based on auth state, and the authenticated app header has a logout button that returns to `/sign-in`.
 - [x] Upgrade remaining Audiotool package to TypeScript; shared TS config, `apps/web`, `apps/api`, and both reusable packages are done.

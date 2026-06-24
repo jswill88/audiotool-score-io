@@ -1,6 +1,7 @@
 import type { QuantizationGrid } from '@midi-to-xml/midi-to-musicxml';
 
 export type AudiotoolOutputMode = 'combined' | 'separate' | 'both';
+export type NotationEngine = 'musescore' | 'ranked-direct';
 
 export type AudiotoolBrowserAuth = {
   accessToken: string;
@@ -25,6 +26,7 @@ export type InspectOptions = {
 };
 
 export type ConversionRequestOptions = {
+  engine: NotationEngine;
   mode: AudiotoolOutputMode;
   tracks?: string[];
   title?: string;
@@ -98,5 +100,12 @@ export type MusicXmlFile = {
   kind: string;
   name: string;
   path: string;
+  trackIds?: string[];
+};
+
+export type DirectMusicXmlFile = {
+  kind: string;
+  name: string;
+  xml: string;
   trackIds?: string[];
 };

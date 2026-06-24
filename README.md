@@ -5,7 +5,7 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 ## Workspace layout
 
 - `packages/midi-to-musicxml`: standalone TypeScript MIDI to MusicXML conversion package with optional quantization and MuseScore support.
-- `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track to MIDI package. Audiotool extraction is intentionally separate from MIDI to MusicXML conversion.
+- `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track exporter with both standard MIDI and ranked direct MusicXML output.
 - `packages/score-to-audiotool`: standalone TypeScript MusicXML score importer that turns score parts into editable Audiotool note tracks.
 - `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
 - `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, MusicXML export, MusicXML import, and score viewing.
@@ -151,16 +151,18 @@ curl -X POST http://localhost:3000/audiotool/inspect \
   -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>"}'
 ```
 
-Convert selected Audiotool tracks all the way to MusicXML. Optional `title` and `trackTitles` values override the exported score title and selected track/part names:
+Convert selected Audiotool tracks all the way to MusicXML. Set `"engine":"ranked-direct"` to generate MusicXML without MuseScore, or `"engine":"musescore"` to use the MIDI/MuseScore comparison path. The web app defaults to ranked direct export; the API defaults to MuseScore when `engine` is omitted for backward compatibility. Optional `title` and `trackTitles` values override the exported score title and selected track/part names:
 
 ```bash
 curl -X POST "http://localhost:3000/audiotool/convert?quantize=false" \
   -H "Content-Type: application/json" \
-  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score","title":"Project Sonata","trackTitles":{"<track-id>":"Clarinet Melody"}}' \
+  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score","engine":"ranked-direct","title":"Project Sonata","trackTitles":{"<track-id>":"Clarinet Melody"}}' \
   --output audiotool.musicxml
 ```
 
 Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts.
+
+Ranked direct export evaluates several rhythmic grids automatically when quantization is enabled, so the fixed `grid` option is only used by the MuseScore path. It currently handles note/rest spelling, voices, chords, ties, stems, first-pass beaming, and meter-aware compound rhythms. Key selection and contextual sharp/flat respelling are not implemented yet; direct output currently declares C major and uses sharp pitch-class spellings. MuseScore remains available as a fallback while direct output is evaluated on real projects.
 
 ## MusicXML to Audiotool
 
@@ -190,6 +192,8 @@ curl -X POST http://localhost:3000/audiotool/import \
 For scripts, you can use an `Authorization: Bearer <PAT>` header or set `AUDIOTOOL_PAT`, the same as the existing Audiotool export endpoints.
 
 ## MuseScore configuration
+
+Ranked direct Audiotool export does not require MuseScore. MuseScore is still used by the optional Audiotool export fallback, generic MIDI-to-MusicXML conversion, and the current MusicXML-to-Audiotool importer.
 
 The service searches for `mscore`, `mscore4`, `musescore`, `musescore3`, or `musescore4` in `PATH`. Set `MUSESCORE_BIN=/path/to/musescore` to use a specific executable.
 
