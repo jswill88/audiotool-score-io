@@ -11,8 +11,8 @@ import type {
   AudiotoolMidiFile,
   AudiotoolMidiResult,
   AudiotoolProjectDetails,
-  DirectMusicXmlFile,
   MusicXmlFile,
+  NotationEngine,
   ProjectLike
 } from '../types.js';
 
@@ -25,6 +25,7 @@ export async function createAudiotoolWorkDir() {
 export async function convertMidiFilesToMusicXml({
   midiFiles,
   workDir,
+  engine,
   quantize,
   grid,
   title,
@@ -32,6 +33,7 @@ export async function convertMidiFilesToMusicXml({
 }: {
   midiFiles: AudiotoolMidiFile[];
   workDir: string;
+  engine: NotationEngine;
   quantize: boolean;
   grid: Parameters<typeof convertMidiToMusicXml>[0]['grid'];
   title: string;
@@ -48,6 +50,7 @@ export async function convertMidiFilesToMusicXml({
     await convertMidiToMusicXml({
       inputPath,
       outputPath,
+      engine,
       quantize,
       grid,
       title: midiFile.title || title,
@@ -60,30 +63,6 @@ export async function convertMidiFilesToMusicXml({
       name: `${baseName}.musicxml`,
       path: outputPath,
       trackIds: midiFile.trackIds
-    });
-  }
-
-  return outputs;
-}
-
-export async function writeDirectMusicXmlFiles({
-  files,
-  workDir
-}: {
-  files: DirectMusicXmlFile[];
-  workDir: string;
-}): Promise<MusicXmlFile[]> {
-  const outputs: MusicXmlFile[] = [];
-
-  for (const file of files) {
-    const baseName = sanitizeFileBase(path.parse(file.name).name || file.kind);
-    const outputPath = path.join(workDir, `${baseName}.musicxml`);
-    await fs.writeFile(outputPath, file.xml);
-    outputs.push({
-      kind: file.kind,
-      name: `${baseName}.musicxml`,
-      path: outputPath,
-      trackIds: file.trackIds
     });
   }
 

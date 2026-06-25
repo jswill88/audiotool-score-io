@@ -15,12 +15,20 @@ export async function createTempDir(t) {
 
 export async function writeMidiFile(filePath, notes = [
   { midi: 60, ticks: 0, durationTicks: 480, velocity: 0.8 }
-]) {
+], options = {}) {
   const midi = new Midi();
-  midi.header.setTempo(120);
+  midi.header.setTempo(options.tempo ?? 120);
+
+  if (options.timeSignature) {
+    midi.header.timeSignatures.push({
+      ticks: 0,
+      timeSignature: options.timeSignature
+    });
+    midi.header.update();
+  }
 
   const track = midi.addTrack();
-  track.name = 'Test Piano';
+  track.name = options.trackName ?? 'Test Piano';
   track.instrument.number = 0;
 
   notes.forEach((note) => {

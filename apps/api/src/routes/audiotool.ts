@@ -1,13 +1,8 @@
 import {
-  exportAudiotoolProjectToDirectMusicXml,
   exportAudiotoolProjectToMidi,
   getAudiotoolProjectDetails,
   inspectAudiotoolProjectReference,
   withAudiotoolProject
-} from '@midi-to-xml/audiotool-to-midi';
-import type {
-  AudiotoolDirectMusicXmlResult,
-  AudiotoolMidiResult as PackageAudiotoolMidiResult
 } from '@midi-to-xml/audiotool-to-midi';
 import {
   buildScoreImportPlan,
@@ -25,8 +20,7 @@ import {
   createAudiotoolArchive,
   createAudiotoolWorkDir,
   readProjectTitle,
-  serializeProject,
-  writeDirectMusicXmlFiles
+  serializeProject
 } from '../audiotool/output.js';
 import {
   createRequestAudiotoolSession,
@@ -113,55 +107,34 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
     const options = readConversionRequestOptions(req);
     const details = await getAudiotoolProjectDetails(client, projectReference);
     const projectTitle = options.title ?? readProjectTitle(details.project);
-    const results = await withAudiotoolProject<{
-      directResult: AudiotoolDirectMusicXmlResult | null;
-      midiResult: PackageAudiotoolMidiResult;
-    }>(
+    const midiResult = await withAudiotoolProject<AudiotoolMidiResult>(
       client,
       projectReference,
-      async (document: unknown) => {
-        const exportOptions = {
-          mode: options.mode,
-          tracks: options.tracks,
-          title: projectTitle,
-          trackTitles: options.trackTitles,
-          includeDisabledTracks: options.includeDisabledTracks,
-          includeDisabledRegions: options.includeDisabledRegions,
-          includeSkippedTracks: options.includeSkippedTracks
-        };
-        const midiResult = await exportAudiotoolProjectToMidi(document, exportOptions);
-        const directResult = options.engine === 'ranked-direct'
-          ? await exportAudiotoolProjectToDirectMusicXml(document, {
-              ...exportOptions,
-              quantize: options.quantize,
-              grid: options.grid,
-              rankNotation: options.quantize
-            })
-          : null;
-
-        return { directResult, midiResult };
-      },
+      (document: unknown) => exportAudiotoolProjectToMidi(document, {
+        mode: options.mode,
+        tracks: options.tracks,
+        title: projectTitle,
+        trackTitles: options.trackTitles,
+        includeDisabledTracks: options.includeDisabledTracks,
+        includeDisabledRegions: options.includeDisabledRegions,
+        includeSkippedTracks: options.includeSkippedTracks
+      }),
       options
     );
-    const midiResult: AudiotoolMidiResult = results.midiResult;
 
     if (midiResult.exportedTracks.length === 0) {
       throw new ClientError('No exportable Audiotool note tracks matched the request.');
     }
 
-    const musicXmlFiles = results.directResult
-      ? await writeDirectMusicXmlFiles({
-          files: results.directResult.files,
-          workDir
-        })
-      : await convertMidiFilesToMusicXml({
-          midiFiles: midiResult.files,
-          workDir,
-          quantize: options.quantize,
-          grid: options.grid,
-          title: projectTitle,
-          trackTitles: options.trackTitles
-        });
+    const musicXmlFiles = await convertMidiFilesToMusicXml({
+      midiFiles: midiResult.files,
+      workDir,
+      engine: options.engine,
+      quantize: options.quantize,
+      grid: options.grid,
+      title: projectTitle,
+      trackTitles: options.trackTitles
+    });
 
     if (musicXmlFiles.length === 1 && !options.includeMidi && !options.forceZip) {
       const file = musicXmlFiles[0];

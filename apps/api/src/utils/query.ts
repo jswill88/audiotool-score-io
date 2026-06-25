@@ -1,7 +1,10 @@
 import {
   allowedQuantizationGrids
 } from '@midi-to-xml/midi-to-musicxml';
-import type { QuantizationGrid } from '@midi-to-xml/midi-to-musicxml';
+import type {
+  NotationEngine,
+  QuantizationGrid
+} from '@midi-to-xml/midi-to-musicxml';
 import { apiDefaultQuantizationGrid } from '../config/env.js';
 import { ClientError } from '../errors/client-error.js';
 
@@ -53,4 +56,17 @@ export function parseQuantizationGrid(value?: string): QuantizationGrid {
   }
 
   return parsed as QuantizationGrid;
+}
+
+export function parseNotationEngine(
+  value: string | undefined,
+  fallback: NotationEngine = 'musescore'
+): NotationEngine {
+  const engine = value?.trim().toLowerCase() ?? fallback;
+
+  if (engine === 'musescore' || engine === 'ranked-direct') {
+    return engine;
+  }
+
+  throw new ClientError('Query parameter "engine" must be "musescore" or "ranked-direct".');
 }

@@ -4,6 +4,21 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ## Active
 
+### Soon
+- [ ] UI fixes
+- [ ] Clean up new code
+- [ ] Remove musescore path
+- [ ] Find easier place to deploy newly smaller/faster app
+
+### Direct conversion
+- [ ] Unify MuseScore and ranked-direct quantization: raw MIDI should pass through one shared multi-grid quantizer, then both notation engines should consume the same canonical quantized MIDI.
+- [ ] are some rules not working at different levels? Or do some sections need to be run over a couple of times? (16n -> 8n -> 4n)
+- [x] Convert the approved core rules in `docs/RHYTHM_TEMPLATES.md` into a declarative TypeScript rhythm grammar, meter-aware transformations, and ranked-direct regression tests.
+- [ ] Add coherent quintuplet/septuplet candidate generation and dynamic MusicXML tuplet ratios; the executable grammar currently preserves supported triplets but the quantizer does not yet propose arbitrary tuplets.
+- [x] Emit explicit MusicXML tuplet start/stop notation so quarter-, eighth-, and other supported triplets display their visible `3`, including groups containing rests.
+- [x] Convert to MIDI first, then run the selected notation engine so ranked direct conversion is reusable for uploaded MIDI and other apps.
+- [x] Choose one clef per direct-export track from its median pitch and make stem direction use the active clef's middle line.
+
 ### Cloud Run Deployment Checklist
 
 - [x] Add the ranked direct MusicXML engine to the app/API while retaining MuseScore as a comparison fallback.
@@ -73,6 +88,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] Have codemap link to referenced files
 - [ ] Expand the notation-ranker experiment to ingest real MusicXML measures, generate candidates from the direct notation code, and train/evaluate a small learned ranker against the heuristic baseline.
 - [ ] Add direct-export key selection and enharmonic respelling: default to C when no key is chosen, prefer key-consistent spellings, use sharps for otherwise ambiguous ascending lines and flats for descending lines, and rewrite pitch spelling without transposing sounding pitches.
+- [ ] Add post-quantization grace-note classification on sufficiently fine-grid candidates: treat isolated notes no longer than one eighth of the beat near a principal note as candidates, but preserve repeated short-note runs as measured rhythm.
 - [ ] Remove the temporary macOS MuseScore app-bundle autodiscovery once local development no longer needs that convenience; production should use container-installed MuseScore.
 - [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
 - [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.

@@ -1,11 +1,11 @@
 import type {
-  AudiotoolTimeSignature
+  NotationNote,
+  TimeSignature
 } from './types.js';
-import type { ExpandedNote } from './render.js';
 
 type RankerOptions = {
   ppq: number;
-  timeSignature: AudiotoolTimeSignature;
+  timeSignature: TimeSignature;
 };
 
 type RankerPlan = {
@@ -21,7 +21,7 @@ type RankerPlan = {
     | 'trim-rest-overhang';
 };
 
-type RankerNote = ExpandedNote & {
+type RankerNote = NotationNote & {
   localStart: number;
 };
 
@@ -51,17 +51,18 @@ const plans: RankerPlan[] = [
   { id: 'grid32-duration-snap-reconcile', grid: 32, policy: 'duration-snap-reconcile' },
   { id: 'grid32-duration-ceil-reconcile', grid: 32, policy: 'duration-ceil-reconcile' },
   { id: 'grid32-trim-rest-overhang', grid: 32, policy: 'trim-rest-overhang' },
-  { id: 'grid48-strict', grid: 48, policy: 'strict' }
+  { id: 'grid48-strict', grid: 48, policy: 'strict' },
+  { id: 'grid96-strict', grid: 96, policy: 'strict' }
 ];
 
 export function rankNotesForNotation(
-  notes: ExpandedNote[],
+  notes: NotationNote[],
   { ppq, timeSignature }: RankerOptions
 ) {
   const measureTicks = Math.round(
     ppq * timeSignature.numerator * (4 / timeSignature.denominator)
   );
-  const grouped = new Map<number, ExpandedNote[]>();
+  const grouped = new Map<number, NotationNote[]>();
 
   for (const note of notes) {
     const measureIndex = Math.floor(note.positionTicks / measureTicks);
@@ -364,7 +365,7 @@ function scoreFeatures(features: ReturnType<typeof extractFeatures>) {
   return score;
 }
 
-function createMeter(ppq: number, timeSignature: AudiotoolTimeSignature) {
+function createMeter(ppq: number, timeSignature: TimeSignature) {
   const simpleBeatTicks = ppq * (4 / timeSignature.denominator);
   const isCompound = (
     timeSignature.denominator === 8 &&
@@ -410,7 +411,9 @@ function isTripletDuration(duration: number, simpleBeatTicks: number) {
     simpleBeatTicks * 4 / 3,
     simpleBeatTicks * 2 / 3,
     simpleBeatTicks / 3,
-    simpleBeatTicks / 6
+    simpleBeatTicks / 6,
+    simpleBeatTicks / 12,
+    simpleBeatTicks / 24
   ].some((value) => Math.round(value) === duration);
 }
 
@@ -573,7 +576,8 @@ function createStandardDurations(ppq: number) {
     ppq / 6,
     ppq * 0.125,
     ppq / 12,
-    ppq / 16
+    ppq / 16,
+    ppq / 24
   ].map(Math.round).sort((left, right) => right - left);
 }
 

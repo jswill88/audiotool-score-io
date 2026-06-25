@@ -1,33 +1,30 @@
-import { collectAudiotoolEntities } from './entities.js';
-import {
-  addNotationWarnings,
-  buildPartFileName,
-  collectExpandedNotesForTrack,
-  filterExportableTracks,
-  resolveTrackTitle,
-  type ExpandedNote
-} from './render.js';
-import {
-  createProjectContext,
-  selectTracks
-} from './tracks.js';
+import fs from 'fs/promises';
+import tonejsMidi from '@tonejs/midi';
+import type { Track } from '@tonejs/midi';
 import { rankNotesForNotation } from './notation-ranker.js';
-import { AudiotoolTicks } from './ticks.js';
+import {
+  applyRhythmGrammarToVoice,
+  createRhythmMeter,
+  createTemplateSpellingOverrides,
+  isTripletDuration,
+  rhythmGroupIndexAt,
+  spellRhythmDuration
+} from './rhythm-grammar.js';
 import type {
-  AudiotoolDirectMusicXmlFile,
-  AudiotoolDirectMusicXmlResult,
-  AudiotoolOutputMode,
-  AudiotoolProjectContext,
-  AudiotoolProjectSource,
-  AudiotoolTimeSignature,
-  AudiotoolTrackManifest,
-  AudiotoolWarning,
-  DirectMusicXmlOptions
+  RhythmArticulation,
+  RhythmMeter
+} from './rhythm-grammar.js';
+import type {
+  ConvertMidiToDirectMusicXmlOptions,
+  ConvertMidiToMusicXmlResult,
+  DirectMusicXmlRenderOptions,
+  NotationNote,
+  TimeSignature
 } from './types.js';
 
+const { Midi } = tonejsMidi;
 const defaultDivisions = 960;
 const defaultDirectGrid = 24;
-const minimumDirectDurationTicks = AudiotoolTicks.Beat / 64;
 
 type ScorePart = {
   id: string;
@@ -39,7 +36,9 @@ type ScorePart = {
 type MeasureEvent = {
   start: number;
   duration: number;
+  articulations: Set<RhythmArticulation>;
   pitches: number[];
+  performedDuration: number;
   tieStartPitches: Set<number>;
   tieStopPitches: Set<number>;
 };
@@ -48,16 +47,9 @@ type VoiceEvent = MeasureEvent & {
   voice: number;
 };
 
-type Meter = {
-  beatBoundaries: number[];
-  beatTicks: number;
-  isCompound: boolean;
-  measureTicks: number;
-  numerator: number;
-  simpleBeatTicks: number;
-};
-
-type BeamMode = 'begin' | 'continue' | 'end';
+type BeamMode = 'backward hook' | 'begin' | 'continue' | 'end' | 'forward hook';
+type BeamLookup = Map<string, Map<number, BeamMode>>;
+type TupletMode = 'start' | 'stop';
 
 type DurationNotation = {
   duration: number;
@@ -69,11 +61,12 @@ type DurationNotation = {
   };
 };
 
-type NormalizedNote = ExpandedNote & {
+type NormalizedNote = NotationNote & {
   offTicks: number;
 };
 
 const durationNotations: DurationNotation[] = [
+  { duration: 5760, type: 'whole', dots: 1 },
   { duration: 3840, type: 'whole' },
   { duration: 2880, type: 'half', dots: 1 },
   { duration: 1920, type: 'half' },
@@ -91,135 +84,64 @@ const durationNotations: DurationNotation[] = [
   { duration: 120, type: '32nd' },
   { duration: 90, type: '64th', dots: 1 },
   { duration: 80, type: '32nd', timeModification: { actualNotes: 3, normalNotes: 2 } },
-  { duration: 60, type: '64th' }
+  { duration: 60, type: '64th' },
+  { duration: 40, type: '64th', timeModification: { actualNotes: 3, normalNotes: 2 } }
 ];
 
 const durationByValue = new Map(durationNotations.map((notation) => [notation.duration, notation]));
 
-export async function exportAudiotoolProjectToDirectMusicXml(
-  projectSource: Promise<AudiotoolProjectSource> | AudiotoolProjectSource,
-  options: DirectMusicXmlOptions = {}
-): Promise<AudiotoolDirectMusicXmlResult> {
-  const source = await projectSource;
-  return exportAudiotoolEntitiesToDirectMusicXml(collectAudiotoolEntities(source), options);
-}
-
-export function exportAudiotoolEntitiesToDirectMusicXml(
-  entities: AudiotoolProjectSource,
-  options: DirectMusicXmlOptions = {}
-): AudiotoolDirectMusicXmlResult {
-  const context = createProjectContext(collectAudiotoolEntities(entities), options);
-  const trackSelection = options.tracks ?? options.trackIds;
-  const selectedTracks = selectTracks(context, trackSelection);
-  const warnings = [...context.warnings];
-  const exportedTracks = filterExportableTracks(selectedTracks, {
-    options,
-    trackSelection,
-    warnings
-  });
-
-  addNotationWarnings(exportedTracks, warnings);
-
-  const files = buildDirectMusicXmlFiles({
-    context,
-    exportedTracks,
-    options,
-    warnings
-  });
+export async function convertMidiToDirectMusicXml({
+  inputPath,
+  outputPath,
+  ...options
+}: ConvertMidiToDirectMusicXmlOptions): Promise<ConvertMidiToMusicXmlResult> {
+  const bytes = await fs.readFile(inputPath);
+  const xml = convertMidiBytesToDirectMusicXml(bytes, options);
+  await fs.writeFile(outputPath, xml);
 
   return {
-    mode: normalizeDirectMode(options.mode),
-    files,
-    tracks: selectedTracks,
-    exportedTracks,
-    tempo: context.tempo,
-    timeSignature: context.timeSignature,
-    warnings
+    engine: 'ranked-direct',
+    inputPath,
+    outputPath,
+    quantized: options.quantize !== false
   };
 }
 
-function buildDirectMusicXmlFiles({
-  context,
-  exportedTracks,
-  options,
-  warnings
-}: {
-  context: AudiotoolProjectContext;
-  exportedTracks: AudiotoolTrackManifest[];
-  options: DirectMusicXmlOptions;
-  warnings: AudiotoolWarning[];
-}) {
-  const mode = normalizeDirectMode(options.mode);
-  const files: AudiotoolDirectMusicXmlFile[] = [];
-
-  if (mode === 'combined' || mode === 'both') {
-    files.push({
-      kind: 'score',
-      name: 'audiotool-score.musicxml',
-      title: options.title ?? 'Audiotool Export',
-      trackIds: exportedTracks.map((track) => track.id),
-      xml: buildMusicXml({
-        context,
-        options,
-        title: options.title ?? 'Audiotool Export',
-        tracks: exportedTracks,
-        warnings
-      })
-    });
-  }
-
-  if (mode === 'separate' || mode === 'both') {
-    for (const track of exportedTracks) {
-      files.push({
-        kind: 'part',
-        name: buildPartFileName(track, options).replace(/\.mid$/i, '.musicxml'),
-        title: resolveTrackTitle(track, options),
-        trackIds: [track.id],
-        xml: buildMusicXml({
-          context,
-          options,
-          title: resolveTrackTitle(track, options),
-          tracks: [track],
-          warnings
-        })
-      });
+export function convertMidiBytesToDirectMusicXml(
+  bytes: Uint8Array | ArrayBuffer,
+  options: DirectMusicXmlRenderOptions = {}
+) {
+  const midi = new Midi(bytes);
+  const ppq = midi.header.ppq || 480;
+  const timeSignature = readTimeSignature(midi.header.timeSignatures);
+  const tempoBpm = midi.header.tempos[0]?.bpm ?? 120;
+  const tracks = midi.tracks
+    .map((track, index) => ({ index, track }))
+    .filter(({ track }) => track.notes.length > 0);
+  const divisions = defaultDivisions;
+  const measureDuration = measureDurationDivisions(timeSignature, divisions);
+  const parts = tracks.map(({ index: sourceIndex, track }, partIndex) => buildScorePart(
+    track,
+    partIndex,
+    {
+      divisions,
+      measureDuration,
+      options,
+      partName: options.partNames?.[sourceIndex],
+      ppq,
+      timeSignature
     }
-  }
-
-  return files;
-}
-
-function buildMusicXml({
-  context,
-  options,
-  title,
-  tracks,
-  warnings
-}: {
-  context: AudiotoolProjectContext;
-  options: DirectMusicXmlOptions;
-  title: string;
-  tracks: AudiotoolTrackManifest[];
-  warnings: AudiotoolWarning[];
-}) {
-  const divisions = options.divisions ?? defaultDivisions;
-  const measureDuration = measureDurationDivisions(context.timeSignature, divisions);
-  const parts = tracks.map((track, index) => buildScorePart(track, index, {
-    context,
-    divisions,
-    measureDuration,
-    options,
-    warnings
-  }));
+  ));
+  const title = options.title?.trim();
 
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
     '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">',
     '<score-partwise version="3.1">',
-    `  <work><work-title>${escapeXmlText(title)}</work-title></work>`,
+    ...(title ? [`  <work><work-title>${escapeXmlText(title)}</work-title></work>`] : []),
     '  <identification>',
     '    <encoding>',
-    `      <software>Audiotool Score IO ${options.rankNotation ? 'ranked ' : ''}direct MusicXML</software>`,
+    '      <software>MIDI to MusicXML ranked direct engine</software>',
     '    </encoding>',
     '  </identification>',
     '  <part-list>',
@@ -232,42 +154,49 @@ function buildMusicXml({
     ...parts.map((part) => serializePart(part, {
       divisions,
       measureDuration,
-      tempoBpm: context.tempo.bpm,
-      timeSignature: context.timeSignature
+      tempoBpm,
+      timeSignature
     })),
     '</score-partwise>'
   ].join('\n');
 }
 
 function buildScorePart(
-  track: AudiotoolTrackManifest,
+  track: Track,
   index: number,
   {
-    context,
     divisions,
     measureDuration,
     options,
-    warnings
+    partName,
+    ppq,
+    timeSignature
   }: {
-    context: AudiotoolProjectContext;
     divisions: number;
     measureDuration: number;
-    options: DirectMusicXmlOptions;
-    warnings: AudiotoolWarning[];
+    options: DirectMusicXmlRenderOptions;
+    partName?: string;
+    ppq: number;
+    timeSignature: TimeSignature;
   }
 ): ScorePart {
-  const measureDurationTicks = measureDurationAudiotoolTicks(context.timeSignature);
   const notes = normalizeNotesForNotation(
-    collectExpandedNotesForTrack(track, context, options, warnings),
+    track.notes.map((note) => ({
+      durationTicks: note.durationTicks,
+      pitch: note.midi,
+      positionTicks: note.ticks,
+      velocity: note.velocity
+    })),
     {
-      measureDurationTicks,
       options,
-      timeSignature: context.timeSignature
+      ppq,
+      timeSignature
     }
   );
   const events = splitNotesIntoMeasureEvents(notes, {
     divisions,
-    measureDuration
+    measureDuration,
+    ppq
   });
   const measureCount = Math.max(1, ...events.map((event) => event.measureNumber));
   const measures = Array.from({ length: measureCount }, () => [] as MeasureEvent[]);
@@ -278,82 +207,55 @@ function buildScorePart(
 
   return {
     id: `P${index + 1}`,
-    name: resolveTrackTitle(track, options),
+    name: partName?.trim() || track.name?.trim() || `Track ${index + 1}`,
     clef: chooseClef(notes),
     measures
   };
 }
 
 function normalizeNotesForNotation(
-  notes: ExpandedNote[],
+  notes: NotationNote[],
   {
-    measureDurationTicks,
     options,
+    ppq,
     timeSignature
   }: {
-    measureDurationTicks: number;
-    options: DirectMusicXmlOptions;
-    timeSignature: AudiotoolTimeSignature;
+    options: DirectMusicXmlRenderOptions;
+    ppq: number;
+    timeSignature: TimeSignature;
   }
 ) {
-  if (options.rankNotation) {
+  const minimumDurationTicks = ppq / 64;
+
+  if (options.quantize !== false) {
     const rankedNotes = rankNotesForNotation(notes, {
-      ppq: AudiotoolTicks.Beat,
+      ppq,
       timeSignature
     }).map((note) => ({
       ...note,
       offTicks: note.positionTicks + note.durationTicks
     }));
-    const withoutPitchOverlaps = removeSamePitchOverlaps(rankedNotes);
+    const withoutPitchOverlaps = removeSamePitchOverlaps(rankedNotes, minimumDurationTicks);
 
-    return preserveShortLegatoOverlaps(withoutPitchOverlaps, directGridTicks(options))
-      .filter((note) => note.durationTicks >= minimumDirectDurationTicks)
+    return preserveShortLegatoOverlaps(withoutPitchOverlaps, directGridTicks(options, ppq))
+      .filter((note) => note.durationTicks >= minimumDurationTicks)
       .sort((a, b) => a.positionTicks - b.positionTicks || a.pitch - b.pitch);
   }
 
-  const gridTicks = directGridTicks(options);
+  const gridTicks = directGridTicks(options, ppq);
   const quantizedNotes = notes
-    .map((note) => quantizeNote(note, options, {
-      gridTicks,
-      measureDurationTicks
-    }))
-    .filter((note) => note.durationTicks >= minimumDirectDurationTicks)
+    .filter((note) => note.durationTicks >= minimumDurationTicks)
     .map((note) => ({
       ...note,
       offTicks: note.positionTicks + note.durationTicks
     }));
-  const withoutPitchOverlaps = removeSamePitchOverlaps(quantizedNotes);
+  const withoutPitchOverlaps = removeSamePitchOverlaps(quantizedNotes, minimumDurationTicks);
   return preserveShortLegatoOverlaps(withoutPitchOverlaps, gridTicks)
-    .filter((note) => note.durationTicks >= minimumDirectDurationTicks)
+    .filter((note) => note.durationTicks >= minimumDurationTicks)
     .sort((a, b) => a.positionTicks - b.positionTicks || a.pitch - b.pitch);
 }
 
-function quantizeNote(
-  note: ExpandedNote,
-  options: DirectMusicXmlOptions,
-  {
-    gridTicks,
-    measureDurationTicks
-  }: {
-    gridTicks: number;
-    measureDurationTicks: number;
-  }
-): ExpandedNote {
-  if (options.quantize === false) {
-    return note;
-  }
-
-  const rawMeasureStart = Math.floor(note.positionTicks / measureDurationTicks) * measureDurationTicks;
-  const quantizedStart = Math.max(rawMeasureStart, quantizeTicks(note.positionTicks, gridTicks, 0));
-
-  return {
-    ...note,
-    positionTicks: quantizedStart,
-    durationTicks: quantizeTicks(note.durationTicks, gridTicks, gridTicks)
-  };
-}
-
-function removeSamePitchOverlaps(notes: NormalizedNote[]) {
+function removeSamePitchOverlaps(notes: NormalizedNote[], minimumDurationTicks: number) {
   const normalized: NormalizedNote[] = [];
   const byPitch = new Map<number, NormalizedNote[]>();
 
@@ -383,7 +285,7 @@ function removeSamePitchOverlaps(notes: NormalizedNote[]) {
       previous.offTicks = note.positionTicks;
       previous.durationTicks = previous.offTicks - previous.positionTicks;
 
-      if (previous.durationTicks < minimumDirectDurationTicks) {
+      if (previous.durationTicks < minimumDurationTicks) {
         cleaned.pop();
       }
 
@@ -422,20 +324,25 @@ function preserveShortLegatoOverlaps(notes: NormalizedNote[], gridTicks: number)
 }
 
 function splitNotesIntoMeasureEvents(
-  notes: ExpandedNote[],
+  notes: NotationNote[],
   {
     divisions,
-    measureDuration
+    measureDuration,
+    ppq
   }: {
     divisions: number;
     measureDuration: number;
+    ppq: number;
   }
 ) {
   const grouped = new Map<string, MeasureEvent & { measureNumber: number }>();
 
   for (const note of notes) {
-    const start = audiotoolTicksToDivisions(note.positionTicks, divisions);
-    const duration = Math.max(1, audiotoolTicksToDivisions(note.durationTicks, divisions));
+    const start = sourceTicksToDivisions(note.positionTicks, ppq, divisions);
+    const duration = Math.max(
+      1,
+      sourceTicksToDivisions(note.durationTicks, ppq, divisions)
+    );
     let remaining = duration;
     let cursor = start;
     let segmentIndex = 0;
@@ -450,7 +357,9 @@ function splitNotesIntoMeasureEvents(
         measureNumber,
         start: localStart,
         duration: segmentDuration,
+        articulations: new Set<RhythmArticulation>(),
         pitches: [],
+        performedDuration: segmentDuration,
         tieStartPitches: new Set<number>(),
         tieStopPitches: new Set<number>()
       };
@@ -491,7 +400,7 @@ function serializePart(
     divisions: number;
     measureDuration: number;
     tempoBpm: number;
-    timeSignature: AudiotoolTimeSignature;
+    timeSignature: TimeSignature;
   }
 ) {
   return [
@@ -519,11 +428,11 @@ function serializeMeasure(
     divisions: number;
     measureDuration: number;
     tempoBpm: number;
-    timeSignature: AudiotoolTimeSignature;
+    timeSignature: TimeSignature;
   }
 ) {
   const lines = [`    <measure number="${measureNumber}">`];
-  const meter = createMeter(divisions, timeSignature);
+  const meter = createRhythmMeter(divisions, timeSignature);
 
   if (measureNumber === 1) {
     lines.push(...serializeMeasureHeader(part, {
@@ -549,7 +458,8 @@ function serializeMeasure(
         voiceEvents,
         measureDuration,
         voiceIndex + 1,
-        meter
+        meter,
+        part.clef
       ));
     });
   }
@@ -573,7 +483,7 @@ function serializeMeasureHeader(
   }: {
     divisions: number;
     tempoBpm: number;
-    timeSignature: AudiotoolTimeSignature;
+    timeSignature: TimeSignature;
   }
 ) {
   const clefSign = part.clef === 'bass' ? 'F' : 'G';
@@ -629,34 +539,94 @@ function serializeVoiceEvents(
   events: VoiceEvent[],
   measureDuration: number,
   voice: number,
-  meter: Meter
+  meter: RhythmMeter,
+  clef: ScorePart['clef']
 ) {
   const lines: string[] = [];
   let cursor = 0;
-  const beamLookup = createBeamLookup(events, meter);
+  const spelledEvents = applyRhythmGrammarToVoice(
+    events.map((event) => ({
+      ...event,
+      locksEnd: event.tieStartPitches.size > 0 || event.tieStopPitches.size > 0
+    })),
+    meter,
+    isStandardDuration
+  );
+  const spellingOverrides = createTemplateSpellingOverrides(spelledEvents, meter);
+  const beamLookup = createBeamLookup(
+    spelledEvents,
+    measureDuration,
+    meter,
+    spellingOverrides
+  );
+  const tupletLookup = createTupletLookup(
+    spelledEvents,
+    measureDuration,
+    meter,
+    spellingOverrides
+  );
 
-  for (const event of events) {
+  for (const event of spelledEvents) {
     if (event.start > cursor) {
-      lines.push(...serializeRest(cursor, event.start - cursor, voice, meter));
+      lines.push(...serializeRest(
+        cursor,
+        event.start - cursor,
+        voice,
+        meter,
+        beamLookup,
+        tupletLookup
+      ));
     }
 
-    lines.push(...serializeNoteGroup(event, voice, meter, beamLookup));
+    lines.push(...serializeNoteGroup(
+      event,
+      voice,
+      meter,
+      beamLookup,
+      tupletLookup,
+      spellingOverrides.get(event),
+      clef
+    ));
     cursor = event.start + event.duration;
   }
 
   if (cursor < measureDuration) {
-    lines.push(...serializeRest(cursor, measureDuration - cursor, voice, meter));
+    lines.push(...serializeRest(
+      cursor,
+      measureDuration - cursor,
+      voice,
+      meter,
+      beamLookup,
+      tupletLookup
+    ));
   }
 
   return lines;
 }
 
-function serializeRest(start: number, duration: number, voice: number, meter: Meter) {
-  return splitDurationForReadableBeats(start, duration, meter)
-    .flatMap((chunk) => serializeRestChunk(chunk.duration, voice));
+function serializeRest(
+  start: number,
+  duration: number,
+  voice: number,
+  meter: RhythmMeter,
+  beamLookup = new Map<string, Map<number, BeamMode>>(),
+  tupletLookup = new Map<string, TupletMode[]>()
+) {
+  return spellRhythmDuration(start, duration, meter, { isStandardDuration })
+    .flatMap((chunk) => serializeRestChunk(
+      chunk.duration,
+      voice,
+      beamLookup.get(eventKey(chunk.start, chunk.duration)),
+      tupletLookup.get(eventKey(chunk.start, chunk.duration))
+    ));
 }
 
-function serializeRestChunk(duration: number, voice: number) {
+function serializeRestChunk(
+  duration: number,
+  voice: number,
+  beamModes?: Map<number, BeamMode>,
+  tupletModes: TupletMode[] = []
+) {
   const notation = durationByValue.get(duration) ?? durationNotations[durationNotations.length - 1];
   const lines = [
     '      <note>',
@@ -667,6 +637,12 @@ function serializeRestChunk(duration: number, voice: number) {
   ];
 
   appendDurationNotation(lines, notation);
+  appendBeams(lines, beamModes, notation);
+
+  if (tupletModes.length > 0) {
+    appendNotations(lines, { tupletModes });
+  }
+
   lines.push('      </note>');
   return lines;
 }
@@ -674,12 +650,18 @@ function serializeRestChunk(duration: number, voice: number) {
 function serializeNoteGroup(
   event: VoiceEvent,
   voice: number,
-  meter: Meter,
-  beamLookup: Map<string, BeamMode>
+  meter: RhythmMeter,
+  beamLookup: BeamLookup,
+  tupletLookup: Map<string, TupletMode[]>,
+  spellingOverride: number[] | undefined,
+  clef: ScorePart['clef']
 ) {
-  const chunks = splitDurationForReadableBeats(event.start, event.duration, meter);
+  const chunks = spellRhythmDuration(event.start, event.duration, meter, {
+    isStandardDuration,
+    override: spellingOverride
+  });
   const lines: string[] = [];
-  const stemDirection = stemDirectionForPitches(event.pitches);
+  const stemDirection = stemDirectionForPitches(event.pitches, clef);
 
   chunks.forEach((chunk, chunkIndex) => {
     const isFirstChunk = chunkIndex === 0;
@@ -691,7 +673,10 @@ function serializeNoteGroup(
         const tieStop = event.tieStopPitches.has(pitch) || !isFirstChunk;
         const tieStart = event.tieStartPitches.has(pitch) || !isLastChunk;
         lines.push(...serializePitchedNote({
-          beamMode: pitchIndex === 0
+          articulations: isFirstChunk && pitchIndex === 0
+            ? event.articulations
+            : undefined,
+          beamModes: pitchIndex === 0
             ? beamLookup.get(eventKey(chunk.start, chunk.duration))
             : undefined,
           duration: chunk.duration,
@@ -700,6 +685,9 @@ function serializeNoteGroup(
           stemDirection,
           tieStart,
           tieStop,
+          tupletModes: pitchIndex === 0
+            ? tupletLookup.get(eventKey(chunk.start, chunk.duration))
+            : undefined,
           voice
         }));
       });
@@ -709,22 +697,26 @@ function serializeNoteGroup(
 }
 
 function serializePitchedNote({
-  beamMode,
+  articulations,
+  beamModes,
   duration,
   isChordTone,
   pitch,
   stemDirection,
   tieStart,
   tieStop,
+  tupletModes = [],
   voice
 }: {
-  beamMode?: BeamMode;
+  articulations?: Set<RhythmArticulation>;
+  beamModes?: Map<number, BeamMode>;
   duration: number;
   isChordTone: boolean;
   pitch: number;
   stemDirection: 'down' | 'up';
   tieStart: boolean;
   tieStop: boolean;
+  tupletModes?: TupletMode[];
   voice: number;
 }) {
   const notation = durationByValue.get(duration) ?? durationNotations[durationNotations.length - 1];
@@ -759,26 +751,76 @@ function serializePitchedNote({
   appendDurationNotation(lines, notation);
   lines.push(`        <stem>${stemDirection}</stem>`);
 
-  if (beamMode && isBeamableNotation(notation)) {
-    lines.push(`        <beam number="1">${beamMode}</beam>`);
-  }
+  appendBeams(lines, beamModes, notation);
 
-  if (tieStop || tieStart) {
-    lines.push('        <notations>');
-
-    if (tieStop) {
-      lines.push('          <tied type="stop"/>');
-    }
-
-    if (tieStart) {
-      lines.push('          <tied type="start"/>');
-    }
-
-    lines.push('        </notations>');
+  if (tieStop || tieStart || tupletModes.length > 0 || articulations?.size) {
+    appendNotations(lines, {
+      articulations,
+      tieStart,
+      tieStop,
+      tupletModes
+    });
   }
 
   lines.push('      </note>');
   return lines;
+}
+
+function appendNotations(
+  lines: string[],
+  {
+    articulations = new Set<RhythmArticulation>(),
+    tieStart = false,
+    tieStop = false,
+    tupletModes = []
+  }: {
+    articulations?: Set<RhythmArticulation>;
+    tieStart?: boolean;
+    tieStop?: boolean;
+    tupletModes?: TupletMode[];
+  }
+) {
+  lines.push('        <notations>');
+
+  if (tieStop) {
+    lines.push('          <tied type="stop"/>');
+  }
+
+  if (tieStart) {
+    lines.push('          <tied type="start"/>');
+  }
+
+  for (const mode of tupletModes) {
+    lines.push(mode === 'start'
+      ? '          <tuplet number="1" type="start" bracket="yes" show-number="actual"/>'
+      : '          <tuplet number="1" type="stop"/>');
+  }
+
+  if (articulations.size > 0) {
+    lines.push('          <articulations>');
+
+    if (articulations.has('staccato')) {
+      lines.push('            <staccato/>');
+    }
+
+    lines.push('          </articulations>');
+  }
+
+  lines.push('        </notations>');
+}
+
+function appendBeams(
+  lines: string[],
+  beamModes: Map<number, BeamMode> | undefined,
+  notation: DurationNotation
+) {
+  if (!beamModes || !isBeamableNotation(notation)) {
+    return;
+  }
+
+  for (const [level, mode] of [...beamModes.entries()].sort(([left], [right]) => left - right)) {
+    lines.push(`        <beam number="${level}">${mode}</beam>`);
+  }
 }
 
 function appendDurationNotation(lines: string[], notation: DurationNotation) {
@@ -794,118 +836,157 @@ function appendDurationNotation(lines: string[], notation: DurationNotation) {
   }
 }
 
-function createMeter(
-  divisions: number,
-  timeSignature: AudiotoolTimeSignature
-): Meter {
-  const simpleBeatTicks = divisions * (4 / timeSignature.denominator);
-  const isCompound = (
-    timeSignature.denominator === 8 &&
-    timeSignature.numerator >= 6 &&
-    timeSignature.numerator % 3 === 0
-  );
-  const beatTicks = isCompound ? simpleBeatTicks * 3 : simpleBeatTicks;
-  const measureTicks = Math.round(simpleBeatTicks * timeSignature.numerator);
-  const beatBoundaries: number[] = [];
-
-  for (let boundary = beatTicks; boundary < measureTicks; boundary += beatTicks) {
-    beatBoundaries.push(boundary);
-  }
-
-  return {
-    beatBoundaries,
-    beatTicks,
-    isCompound,
-    measureTicks,
-    numerator: timeSignature.numerator,
-    simpleBeatTicks
-  };
-}
-
-function splitDurationForReadableBeats(
-  start: number,
-  duration: number,
-  meter: Meter
-) {
-  if (!crossesReadableBeatBoundary(start, duration, meter)) {
-    return withChunkStarts(start, splitDuration(duration));
-  }
-
-  const chunks: Array<{ duration: number; start: number }> = [];
-  let cursor = start;
-  const end = start + duration;
-
-  while (cursor < end) {
-    const boundary = meter.beatBoundaries.find((candidate) => candidate > cursor) ??
-      meter.measureTicks;
-    const segmentEnd = Math.min(end, boundary);
-    const segmentDuration = segmentEnd - cursor;
-    chunks.push(...withChunkStarts(cursor, splitDuration(segmentDuration)));
-    cursor = segmentEnd;
-  }
-
-  return chunks;
-}
-
-function crossesReadableBeatBoundary(
-  start: number,
-  duration: number,
-  meter: Meter
-) {
-  if (
-    duration <= meter.simpleBeatTicks ||
-    isSingleTripletDuration(duration)
-  ) {
-    return false;
-  }
-
-  if (
-    start % meter.beatTicks === 0 &&
-    duration % meter.beatTicks === 0
-  ) {
-    return false;
-  }
-
-  const end = start + duration;
-  return meter.beatBoundaries.some((boundary) => (
-    start < boundary && end > boundary
-  ));
-}
-
 function isSingleTripletDuration(duration: number) {
-  return durationNotations.some((notation) => (
-    notation.duration === duration &&
-    Boolean(notation.timeModification)
-  ));
+  return isTripletDuration(duration, defaultDivisions);
 }
 
-function withChunkStarts(start: number, durations: number[]) {
-  let cursor = start;
+function createBeamLookup(
+  events: VoiceEvent[],
+  measureDuration: number,
+  meter: RhythmMeter,
+  spellingOverrides: Map<VoiceEvent, number[]>
+) {
+  const lookup: BeamLookup = new Map();
+  const chunks = createVoiceChunks(events, measureDuration, meter, spellingOverrides)
+    .filter((chunk) => (
+      isBeamableDuration(chunk.duration) &&
+      (
+        chunk.kind === 'note' ||
+        meter.denominator === 8 ||
+        meter.denominator === 16
+      )
+    ));
+  const maximumLevel = Math.max(
+    0,
+    ...chunks.map((chunk) => beamLevelForDuration(chunk.duration))
+  );
 
-  return durations.map((duration) => {
-    const chunk = { duration, start: cursor };
-    cursor += duration;
-    return chunk;
-  });
+  for (let level = 1; level <= maximumLevel; level += 1) {
+    let run: typeof chunks = [];
+
+    function finishRun() {
+      if (run.length > 1) {
+        run.forEach((chunk, index) => {
+          setBeamMode(
+            lookup,
+            chunk,
+            level,
+            index === 0 ? 'begin' : index === run.length - 1 ? 'end' : 'continue'
+          );
+        });
+      } else if (run.length === 1 && level > 1) {
+        const chunk = run[0];
+        const neighboringPrimaryBeam = lookup.get(eventKey(chunk.start, chunk.duration))?.has(1);
+
+        if (neighboringPrimaryBeam) {
+          setBeamMode(lookup, chunk, level, 'forward hook');
+        }
+      }
+
+      run = [];
+    }
+
+    for (const chunk of chunks) {
+      const previous = run.at(-1);
+      const participates = beamLevelForDuration(chunk.duration) >= level;
+      const continues = participates && (
+        !previous ||
+        (
+          previous.start + previous.duration === chunk.start &&
+          rhythmGroupIndexAt(previous.start, meter) === rhythmGroupIndexAt(chunk.start, meter) &&
+          belongsToSameTripletBeamSet(previous, chunk) &&
+          (
+            level === 1 ||
+            Math.floor(previous.start / meter.simpleBeatTicks) ===
+              Math.floor(chunk.start / meter.simpleBeatTicks)
+          )
+        )
+      );
+
+      if (!continues) {
+        finishRun();
+      }
+
+      if (participates) {
+        run.push(chunk);
+      }
+    }
+
+    finishRun();
+  }
+
+  return lookup;
 }
 
-function createBeamLookup(events: VoiceEvent[], meter: Meter) {
-  const lookup = new Map<string, BeamMode>();
-  const groupTicks = referenceBeamGroupTicks(meter);
-  const chunks = events.flatMap((event) => (
-    splitDurationForReadableBeats(event.start, event.duration, meter)
-      .filter((chunk) => isBeamableDuration(chunk.duration))
-  )).sort((left, right) => left.start - right.start || left.duration - right.duration);
+function belongsToSameTripletBeamSet(
+  previous: { duration: number; start: number },
+  current: { duration: number; start: number }
+) {
+  const previousIsTriplet = isSingleTripletDuration(previous.duration);
+  const currentIsTriplet = isSingleTripletDuration(current.duration);
+
+  if (!previousIsTriplet && !currentIsTriplet) {
+    return true;
+  }
+
+  if (
+    !previousIsTriplet ||
+    !currentIsTriplet ||
+    previous.duration !== current.duration
+  ) {
+    return false;
+  }
+
+  const tripletSetDuration = current.duration * 3;
+  return Math.floor(previous.start / tripletSetDuration) ===
+    Math.floor(current.start / tripletSetDuration);
+}
+
+function createTupletLookup(
+  events: VoiceEvent[],
+  measureDuration: number,
+  meter: RhythmMeter,
+  spellingOverrides: Map<VoiceEvent, number[]>
+) {
+  const lookup = new Map<string, TupletMode[]>();
+  const chunks = createVoiceChunks(events, measureDuration, meter, spellingOverrides);
+
   let run: typeof chunks = [];
 
+  function addMode(chunk: (typeof chunks)[number], mode: TupletMode) {
+    const key = eventKey(chunk.start, chunk.duration);
+    lookup.set(key, [...(lookup.get(key) ?? []), mode]);
+  }
+
   function finishRun() {
-    if (run.length > 1) {
-      run.forEach((chunk, index) => {
-        const mode: BeamMode = index === 0
-          ? 'begin'
-          : index === run.length - 1 ? 'end' : 'continue';
-        lookup.set(eventKey(chunk.start, chunk.duration), mode);
-      });
+    let startIndex = 0;
+
+    while (startIndex < run.length) {
+      let total = 0;
+      let minimum = Infinity;
+      let matchedEnd = -1;
+
+      for (let endIndex = startIndex; endIndex < run.length; endIndex += 1) {
+        total += run[endIndex].duration;
+        minimum = Math.min(minimum, run[endIndex].duration);
+
+        if (total === minimum * 3) {
+          matchedEnd = endIndex;
+          break;
+        }
+
+        if (total > minimum * 3) {
+          break;
+        }
+      }
+
+      if (matchedEnd < 0) {
+        break;
+      }
+
+      addMode(run[startIndex], 'start');
+      addMode(run[matchedEnd], 'stop');
+      startIndex = matchedEnd + 1;
     }
 
     run = [];
@@ -913,28 +994,84 @@ function createBeamLookup(events: VoiceEvent[], meter: Meter) {
 
   for (const chunk of chunks) {
     const previous = run.at(-1);
-    const sameGroup = !previous || (
-      previous.start + previous.duration === chunk.start &&
-      Math.floor(previous.start / groupTicks) === Math.floor(chunk.start / groupTicks)
+    const continues = isSingleTripletDuration(chunk.duration) && (
+      !previous ||
+      previous.start + previous.duration === chunk.start
     );
 
-    if (!sameGroup) {
+    if (!continues) {
       finishRun();
     }
 
-    run.push(chunk);
+    if (isSingleTripletDuration(chunk.duration)) {
+      run.push(chunk);
+    }
   }
 
   finishRun();
   return lookup;
 }
 
-function referenceBeamGroupTicks(meter: Meter) {
-  if (!meter.isCompound && meter.numerator === 4) {
-    return meter.measureTicks / 2;
+function createVoiceChunks(
+  events: VoiceEvent[],
+  measureDuration: number,
+  meter: RhythmMeter,
+  spellingOverrides: Map<VoiceEvent, number[]>
+) {
+  const chunks: Array<{ duration: number; kind: 'note' | 'rest'; start: number }> = [];
+  let cursor = 0;
+
+  for (const event of events) {
+    if (event.start > cursor) {
+      chunks.push(...spellRhythmDuration(cursor, event.start - cursor, meter, {
+        isStandardDuration
+      }).map((chunk) => ({ ...chunk, kind: 'rest' as const })));
+    }
+
+    chunks.push(...spellRhythmDuration(event.start, event.duration, meter, {
+      isStandardDuration,
+      override: spellingOverrides.get(event)
+    }).map((chunk) => ({ ...chunk, kind: 'note' as const })));
+    cursor = event.start + event.duration;
   }
 
-  return meter.beatTicks;
+  if (cursor < measureDuration) {
+    chunks.push(...spellRhythmDuration(cursor, measureDuration - cursor, meter, {
+      isStandardDuration
+    }).map((chunk) => ({ ...chunk, kind: 'rest' as const })));
+  }
+
+  return chunks;
+}
+
+function setBeamMode(
+  lookup: BeamLookup,
+  chunk: { duration: number; start: number },
+  level: number,
+  mode: BeamMode
+) {
+  const key = eventKey(chunk.start, chunk.duration);
+  const levels = lookup.get(key) ?? new Map<number, BeamMode>();
+  levels.set(level, mode);
+  lookup.set(key, levels);
+}
+
+function beamLevelForDuration(duration: number) {
+  const type = durationByValue.get(duration)?.type;
+
+  if (type === '64th') {
+    return 4;
+  }
+
+  if (type === '32nd') {
+    return 3;
+  }
+
+  if (type === '16th') {
+    return 2;
+  }
+
+  return type === 'eighth' ? 1 : 0;
 }
 
 function isBeamableDuration(duration: number) {
@@ -949,28 +1086,22 @@ function isBeamableNotation(notation: DurationNotation) {
     notation.type === '64th';
 }
 
-function stemDirectionForPitches(pitches: number[]): 'down' | 'up' {
+function stemDirectionForPitches(
+  pitches: number[],
+  clef: ScorePart['clef']
+): 'down' | 'up' {
   const average = pitches.reduce((sum, pitch) => sum + pitch, 0) /
     Math.max(1, pitches.length);
-  return average < 71 ? 'up' : 'down';
+  const middleLinePitch = clef === 'bass' ? 50 : 71;
+  return average < middleLinePitch ? 'up' : 'down';
 }
 
 function eventKey(start: number, duration: number) {
   return `${start}:${duration}`;
 }
 
-function splitDuration(duration: number) {
-  const chunks: number[] = [];
-  let remaining = Math.max(0, Math.round(duration));
-  const values = durationNotations.map((notation) => notation.duration);
-
-  while (remaining > 0) {
-    const chunk = values.find((value) => value <= remaining) ?? values[values.length - 1];
-    chunks.push(chunk);
-    remaining -= chunk;
-  }
-
-  return chunks.length > 0 ? chunks : [durationNotations[durationNotations.length - 1].duration];
+function isStandardDuration(duration: number) {
+  return durationByValue.has(Math.round(duration));
 }
 
 function midiPitchToMusicXmlPitch(midiPitch: number) {
@@ -997,7 +1128,7 @@ function midiPitchToMusicXmlPitch(midiPitch: number) {
   };
 }
 
-function chooseClef(notes: ExpandedNote[]): ScorePart['clef'] {
+function chooseClef(notes: NotationNote[]): ScorePart['clef'] {
   if (notes.length === 0) {
     return 'treble';
   }
@@ -1007,34 +1138,30 @@ function chooseClef(notes: ExpandedNote[]): ScorePart['clef'] {
   return median < 57 ? 'bass' : 'treble';
 }
 
-function measureDurationDivisions(timeSignature: AudiotoolTimeSignature, divisions: number) {
+function measureDurationDivisions(timeSignature: TimeSignature, divisions: number) {
   return Math.max(1, Math.round(divisions * timeSignature.numerator * (4 / timeSignature.denominator)));
 }
 
-function measureDurationAudiotoolTicks(timeSignature: AudiotoolTimeSignature) {
-  return Math.max(1, Math.round(AudiotoolTicks.Beat * timeSignature.numerator * (4 / timeSignature.denominator)));
+function sourceTicksToDivisions(ticks: number, ppq: number, divisions: number) {
+  return Math.max(0, Math.round((ticks / ppq) * divisions));
 }
 
-function audiotoolTicksToDivisions(ticks: number, divisions: number) {
-  return Math.max(0, Math.round((ticks / AudiotoolTicks.Beat) * divisions));
-}
-
-function directGridTicks(options: DirectMusicXmlOptions) {
+function directGridTicks(options: DirectMusicXmlRenderOptions, ppq: number) {
   const grid = Number.isFinite(options.grid) && Number(options.grid) > 0
     ? Number(options.grid)
     : defaultDirectGrid;
-  return Math.max(1, Math.round(AudiotoolTicks.Beat / (grid / 4)));
+  return Math.max(1, Math.round(ppq / (grid / 4)));
 }
 
-function quantizeTicks(value: number, gridTicks: number, minimum: number) {
-  return Math.max(minimum, Math.round(value / gridTicks) * gridTicks);
-}
+function readTimeSignature(
+  signatures: Array<{ timeSignature: readonly number[] }>
+): TimeSignature {
+  const [numerator, denominator] = signatures[0]?.timeSignature ?? [4, 4];
 
-function normalizeDirectMode(mode: DirectMusicXmlOptions['mode'] = 'combined'): AudiotoolOutputMode {
-  if (mode === 'score') return 'combined';
-  if (mode === 'parts') return 'separate';
-  if (mode === 'combined' || mode === 'separate' || mode === 'both') return mode;
-  return 'combined';
+  return {
+    numerator: Number.isFinite(numerator) && numerator > 0 ? numerator : 4,
+    denominator: Number.isFinite(denominator) && denominator > 0 ? denominator : 4
+  };
 }
 
 function escapeXmlText(value: string) {

@@ -3,7 +3,12 @@ import path from 'path';
 import { convertMidiToMusicXml } from '@midi-to-xml/midi-to-musicxml';
 import { conversionOptions, uploadDir } from '../config/env.js';
 import { cleanupFiles } from '../utils/files.js';
-import { parseQuantizationEnabled, parseQuantizationGrid, queryValue } from '../utils/query.js';
+import {
+  parseNotationEngine,
+  parseQuantizationEnabled,
+  parseQuantizationGrid,
+  queryValue
+} from '../utils/query.js';
 import { sendError } from '../utils/responses.js';
 import { upload } from '../storage/upload.js';
 
@@ -24,10 +29,12 @@ convertRouter.post('/convert', upload.single('file'), async (req, res) => {
       quantize: queryValue(req.query.quantize, 'quantize')
     });
     const quantizationGrid = parseQuantizationGrid(queryValue(req.query.grid, 'grid'));
+    const engine = parseNotationEngine(queryValue(req.query.engine, 'engine'));
 
     await convertMidiToMusicXml({
       inputPath: sourcePath,
       outputPath,
+      engine,
       quantize: shouldQuantize,
       grid: quantizationGrid,
       museScore: conversionOptions

@@ -14,11 +14,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "npm run typecheck && npm run build && find dist test -name '*.js' -print0 | xargs -0 -n1 node --check",
-    "test": "npm run build && node --test \"test/**/*.test.js\"",
+    "test": "npm run build --workspace @midi-to-xml/midi-to-musicxml && npm run build && node --test \"test/**/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@audiotool/nexus": "^0.0.17",
     "@tonejs/midi": "^2.0.28"
+  },
+  "devDependencies": {
+    "@midi-to-xml/midi-to-musicxml": "0.1.0"
   }
 }

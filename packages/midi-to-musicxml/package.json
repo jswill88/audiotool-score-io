@@ -1,7 +1,7 @@
 {
   "name": "@midi-to-xml/midi-to-musicxml",
   "version": "0.1.0",
-  "description": "Convert MIDI files to MusicXML with optional quantization via MuseScore.",
+  "description": "Convert MIDI files to MusicXML with a ranked direct engine or MuseScore.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

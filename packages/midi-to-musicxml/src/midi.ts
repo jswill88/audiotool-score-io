@@ -12,6 +12,7 @@ import {
   writeMusicXmlPartNames,
   writeMusicXmlTitle
 } from './musicxml.js';
+import { convertMidiToDirectMusicXml } from './direct-musicxml.js';
 import { convertWithMuseScore } from './musescore.js';
 import type {
   ConvertMidiToMusicXmlOptions,
@@ -100,6 +101,7 @@ async function cleanupGeneratedDir(dirPath: string | undefined) {
 export async function convertMidiToMusicXml({
   inputPath,
   outputPath,
+  engine = 'musescore',
   quantize = true,
   grid = defaultQuantizationGrid,
   preprocessedPath,
@@ -116,6 +118,21 @@ export async function convertMidiToMusicXml({
   }
 
   await assertValidMidiFile(inputPath);
+
+  if (engine !== 'musescore' && engine !== 'ranked-direct') {
+    throw new MidiValidationError('engine must be "musescore" or "ranked-direct".');
+  }
+
+  if (engine === 'ranked-direct') {
+    return convertMidiToDirectMusicXml({
+      inputPath,
+      outputPath,
+      quantize,
+      grid,
+      title,
+      partNames
+    });
+  }
 
   let generatedPreprocessedPath: string | undefined;
   let generatedPreprocessedDir: string | undefined;
@@ -142,6 +159,7 @@ export async function convertMidiToMusicXml({
     await writeMusicXmlFinalBarline(outputPath);
 
     return {
+      engine: 'musescore',
       inputPath,
       outputPath,
       quantized: quantize,

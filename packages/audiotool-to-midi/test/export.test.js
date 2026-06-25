@@ -6,10 +6,10 @@ import {
   NotationKinds,
   NotationStatuses,
   createMidiFromAudiotoolProject,
-  exportAudiotoolEntitiesToDirectMusicXml,
   exportAudiotoolEntitiesToMidi,
   inspectAudiotoolProject
 } from '../dist/index.js';
+import { convertMidiBytesToDirectMusicXml } from '@midi-to-xml/midi-to-musicxml';
 import {
   basicProject,
   entity,
@@ -19,6 +19,25 @@ import {
   readMidi,
   region
 } from './helpers.js';
+
+function exportAudiotoolEntitiesToDirectMusicXml(entities, options = {}) {
+  const mode = options.mode === 'score'
+    ? 'combined'
+    : options.mode === 'parts' ? 'separate' : options.mode;
+  const midiResult = exportAudiotoolEntitiesToMidi(entities, {
+    ...options,
+    mode
+  });
+
+  return {
+    files: midiResult.files.map((file) => ({
+      xml: convertMidiBytesToDirectMusicXml(file.bytes, {
+        quantize: options.quantize !== false,
+        title: options.title
+      })
+    }))
+  };
+}
 
 describe('audiotool-to-midi project inspection', () => {
   it('lists note tracks in visual order with player labels and note availability', () => {
@@ -231,7 +250,7 @@ describe('audiotool-to-midi project inspection', () => {
   });
 });
 
-describe('audiotool-to-midi direct MusicXML export', () => {
+describe('Audiotool MIDI through the generic direct MusicXML engine', () => {
   it('writes basic part names, chords, rests, and ties without MuseScore', () => {
     const result = exportAudiotoolEntitiesToDirectMusicXml([
       entity('config', 'config-1', {

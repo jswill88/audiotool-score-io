@@ -1467,12 +1467,18 @@ function renderMusicXml(notes, beamGroups, {
     }))
     .filter((event) => event.start < meter.measureTicks && event.end > event.start);
   const beamLookup = createRenderedBeamLookup(events, beamGroups, beamingPolicy, meter);
+  const tupletLookup = createRenderedTupletLookup(events, meter);
   const measureItems = [];
   let cursor = 0;
 
   for (const event of events) {
     if (event.start > cursor) {
-      const restItems = renderMusicXmlRest(cursor, event.start - cursor, meter);
+      const restItems = renderMusicXmlRest(
+        cursor,
+        event.start - cursor,
+        meter,
+        tupletLookup
+      );
       measureItems.push(...restItems.xml);
       cursor += restItems.duration;
     }
@@ -1482,13 +1488,23 @@ function renderMusicXml(notes, beamGroups, {
       cursor = event.start;
     }
 
-    const renderedEvent = renderMusicXmlEvent(event, beamLookup, meter);
+    const renderedEvent = renderMusicXmlEvent(
+      event,
+      beamLookup,
+      tupletLookup,
+      meter
+    );
     measureItems.push(...renderedEvent.xml);
     cursor += renderedEvent.duration;
   }
 
   if (cursor < meter.measureTicks) {
-    const restItems = renderMusicXmlRest(cursor, meter.measureTicks - cursor, meter);
+    const restItems = renderMusicXmlRest(
+      cursor,
+      meter.measureTicks - cursor,
+      meter,
+      tupletLookup
+    );
     measureItems.push(...restItems.xml);
   }
 
@@ -1594,7 +1610,7 @@ function createRenderedBeamLookup(events, beamGroups, requestedPolicy, meter) {
   return lookup;
 }
 
-function renderMusicXmlEvent(event, beamLookup, meter) {
+function renderMusicXmlEvent(event, beamLookup, tupletLookup, meter) {
   const durationSegments = splitEventDurationForReadableBeats(event.start, event.duration, meter);
   const xml = [];
   let renderedDuration = 0;
@@ -1627,7 +1643,10 @@ function renderMusicXmlEvent(event, beamLookup, meter) {
           durationSpec: segment,
           pitch,
           stemDirection: event.stemDirection,
-          tieTypes
+          tieTypes,
+          tupletModes: pitchIndex === 0
+            ? tupletLookup.get(`${segmentStart}:${segment.duration}`) ?? []
+            : []
         }));
       });
 
@@ -1640,16 +1659,107 @@ function renderMusicXmlEvent(event, beamLookup, meter) {
   };
 }
 
-function renderMusicXmlRest(start, duration, meter) {
+function renderMusicXmlRest(start, duration, meter, tupletLookup = new Map()) {
   const durationSegments = splitEventDurationForReadableBeats(start, duration, meter);
+  let cursor = start;
 
   return {
     duration: durationSegments.reduce((sum, segment) => sum + segment.duration, 0),
-    xml: durationSegments.map((segment) => renderMusicXmlNote({
-      durationSpec: segment,
-      rest: true
-    }))
+    xml: durationSegments.map((segment) => {
+      const xml = renderMusicXmlNote({
+        durationSpec: segment,
+        rest: true,
+        tupletModes: tupletLookup.get(`${cursor}:${segment.duration}`) ?? []
+      });
+      cursor += segment.duration;
+      return xml;
+    })
   };
+}
+
+function createRenderedTupletLookup(events, meter) {
+  const chunks = [];
+  let cursor = 0;
+
+  for (const event of events) {
+    if (event.start > cursor) {
+      let restCursor = cursor;
+
+      for (const durationSpec of splitEventDurationForReadableBeats(
+        cursor,
+        event.start - cursor,
+        meter
+      )) {
+        chunks.push({ duration: durationSpec.duration, start: restCursor });
+        restCursor += durationSpec.duration;
+      }
+    }
+
+    let eventCursor = event.start;
+
+    for (const durationSpec of splitEventDurationForReadableBeats(
+      event.start,
+      event.duration,
+      meter
+    )) {
+      chunks.push({ duration: durationSpec.duration, start: eventCursor });
+      eventCursor += durationSpec.duration;
+    }
+
+    cursor = Math.max(cursor, event.end);
+  }
+
+  if (cursor < meter.measureTicks) {
+    let restCursor = cursor;
+
+    for (const durationSpec of splitEventDurationForReadableBeats(
+      cursor,
+      meter.measureTicks - cursor,
+      meter
+    )) {
+      chunks.push({ duration: durationSpec.duration, start: restCursor });
+      restCursor += durationSpec.duration;
+    }
+  }
+
+  const lookup = new Map();
+  let run = [];
+
+  function addMode(chunk, mode) {
+    const key = `${chunk.start}:${chunk.duration}`;
+    lookup.set(key, [...(lookup.get(key) ?? []), mode]);
+  }
+
+  function finishRun() {
+    for (let index = 0; index + 2 < run.length; index += 3) {
+      addMode(run[index], 'start');
+      addMode(run[index + 2], 'stop');
+    }
+
+    run = [];
+  }
+
+  for (const chunk of chunks) {
+    const previous = run.at(-1);
+    const continues = isSingleTripletDuration(chunk.duration) && (
+      !previous ||
+      (
+        previous.start + previous.duration === chunk.start &&
+        previous.duration === chunk.duration
+      )
+    );
+
+    if (!continues) {
+      finishRun();
+    }
+
+    if (isSingleTripletDuration(chunk.duration)) {
+      run.push(chunk);
+    }
+  }
+
+  finishRun();
+  return lookup;
 }
 
 function splitEventDurationForReadableBeats(start, duration, meter = createMeter()) {
@@ -1721,11 +1831,17 @@ function renderMusicXmlNote({
   pitch = 60,
   rest = false,
   stemDirection = 'up',
-  tieTypes = []
+  tieTypes = [],
+  tupletModes = []
 }) {
   const pitchParts = midiPitchToMusicXmlPitch(pitch);
   const tieTags = tieTypes.map((type) => `        <tie type="${type}" />`);
-  const notationTags = tieTypes.map((type) => `          <tied type="${type}" />`);
+  const notationTags = [
+    ...tieTypes.map((type) => `          <tied type="${type}" />`),
+    ...tupletModes.map((mode) => mode === 'start'
+      ? '          <tuplet number="1" type="start" bracket="yes" show-number="actual" />'
+      : '          <tuplet number="1" type="stop" />')
+  ];
   const beamTags = beamMode && isBeamableDurationSpec(durationSpec)
     ? renderMusicXmlBeamTags(durationSpec, beamMode)
     : [];

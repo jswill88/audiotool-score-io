@@ -4,8 +4,8 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 
 ## Workspace layout
 
-- `packages/midi-to-musicxml`: standalone TypeScript MIDI to MusicXML conversion package with optional quantization and MuseScore support.
-- `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track exporter with both standard MIDI and ranked direct MusicXML output.
+- `packages/midi-to-musicxml`: standalone TypeScript MIDI-to-MusicXML package with ranked direct and MuseScore engines.
+- `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track to MIDI exporter.
 - `packages/score-to-audiotool`: standalone TypeScript MusicXML score importer that turns score parts into editable Audiotool note tracks.
 - `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
 - `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, MusicXML export, MusicXML import, and score viewing.
@@ -68,7 +68,7 @@ Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that ar
    Example using `curl`:
 
    ```bash
-   curl -F "file=@song.mid" http://localhost:3000/convert --output song.musicxml
+   curl -F "file=@song.mid" "http://localhost:3000/convert?engine=ranked-direct" --output song.musicxml
    ```
 
 Check runtime readiness, including MuseScore and virtual display availability:
@@ -81,7 +81,19 @@ curl http://localhost:3000/ready
 
 Set `?quantize=false` to bypass MIDI timing quantization altogether. `?preprocess=false` is also supported as a backward-compatible alias.
 
-Set `?grid=8`, `?grid=16`, or another supported grid value to control quantization. Supported values are `4`, `8`, `12`, `16`, `24`, `32`, `48`, and `64`.
+Set `?engine=ranked-direct` for MuseScore-free MIDI-to-MusicXML conversion, or `?engine=musescore` for the original fallback. The default remains MuseScore for backward compatibility.
+
+The ranked direct engine evaluates several rhythmic grids automatically. With MuseScore, set `?grid=8`, `?grid=16`, or another supported value to control preprocessing. Supported values are `4`, `8`, `12`, `16`, `24`, `32`, `48`, and `64`.
+
+The package API exposes the same choice:
+
+```js
+await convertMidiToMusicXml({
+  inputPath: 'song.mid',
+  outputPath: 'song.musicxml',
+  engine: 'ranked-direct'
+});
+```
 
 ## Audiotool to MIDI
 
@@ -154,7 +166,7 @@ curl -X POST http://localhost:3000/audiotool/inspect \
 Convert selected Audiotool tracks all the way to MusicXML. Set `"engine":"ranked-direct"` to generate MusicXML without MuseScore, or `"engine":"musescore"` to use the MIDI/MuseScore comparison path. The web app defaults to ranked direct export; the API defaults to MuseScore when `engine` is omitted for backward compatibility. Optional `title` and `trackTitles` values override the exported score title and selected track/part names:
 
 ```bash
-curl -X POST "http://localhost:3000/audiotool/convert?quantize=false" \
+curl -X POST "http://localhost:3000/audiotool/convert" \
   -H "Content-Type: application/json" \
   -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score","engine":"ranked-direct","title":"Project Sonata","trackTitles":{"<track-id>":"Clarinet Melody"}}' \
   --output audiotool.musicxml
@@ -162,7 +174,7 @@ curl -X POST "http://localhost:3000/audiotool/convert?quantize=false" \
 
 Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts.
 
-Ranked direct export evaluates several rhythmic grids automatically when quantization is enabled, so the fixed `grid` option is only used by the MuseScore path. It currently handles note/rest spelling, voices, chords, ties, stems, first-pass beaming, and meter-aware compound rhythms. Key selection and contextual sharp/flat respelling are not implemented yet; direct output currently declares C major and uses sharp pitch-class spellings. MuseScore remains available as a fallback while direct output is evaluated on real projects.
+Ranked direct export evaluates several rhythmic grids automatically when quantization is enabled, so the fixed `grid` option is only used by the MuseScore path. After quantization, an executable rhythm grammar applies the approved notation rules for ordinary and dotted values, ties, rests, staccato cleanup, beams, triplets, compound meters, odd-meter fallback grouping, and 2/2-as-4/4 spelling. Key selection, contextual sharp/flat respelling, and arbitrary quintuplet/septuplet candidate generation are not implemented yet. Direct output currently declares C major and uses sharp pitch-class spellings. MuseScore remains available as a fallback while direct output is evaluated on real projects.
 
 ## MusicXML to Audiotool
 
@@ -193,7 +205,7 @@ For scripts, you can use an `Authorization: Bearer <PAT>` header or set `AUDIOTO
 
 ## MuseScore configuration
 
-Ranked direct Audiotool export does not require MuseScore. MuseScore is still used by the optional Audiotool export fallback, generic MIDI-to-MusicXML conversion, and the current MusicXML-to-Audiotool importer.
+Ranked direct MIDI conversion—including Audiotool export—does not require MuseScore. MuseScore is still used by the optional fallback engine and the current MusicXML-to-Audiotool importer.
 
 The service searches for `mscore`, `mscore4`, `musescore`, `musescore3`, or `musescore4` in `PATH`. Set `MUSESCORE_BIN=/path/to/musescore` to use a specific executable.
 
