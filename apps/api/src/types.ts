@@ -1,10 +1,4 @@
-import type {
-  NotationEngine,
-  QuantizationGrid
-} from '@midi-to-xml/midi-to-musicxml';
-
 export type AudiotoolOutputMode = 'combined' | 'separate' | 'both';
-export type { NotationEngine };
 
 export type AudiotoolBrowserAuth = {
   accessToken: string;
@@ -29,7 +23,6 @@ export type InspectOptions = {
 };
 
 export type ConversionRequestOptions = {
-  engine: NotationEngine;
   mode: AudiotoolOutputMode;
   tracks?: string[];
   title?: string;
@@ -42,7 +35,6 @@ export type ConversionRequestOptions = {
   start: boolean;
   stop: boolean;
   quantize: boolean;
-  grid: QuantizationGrid;
 };
 
 export type ScoreImportRequestOptions = {

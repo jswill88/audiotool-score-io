@@ -28,7 +28,7 @@ export {
   createMidiFromAudiotoolEntities,
   exportAudiotoolEntitiesToMidi,
   exportAudiotoolProjectToMidi
-} from './render.js';
+} from './render/index.js';
 export {
   NotationKinds,
   NotationStatuses,
@@ -88,16 +88,3 @@ export type {
   TrackSelection,
   UnknownRecord
 } from './types.js';
-
-export { exportAudiotoolProjectToMidi as extractAudiotoolProjectToMidi } from './render.js';
-
-import type { Midi } from '@tonejs/midi';
-import type { AudiotoolProjectSource, ExportOptions } from './types.js';
-
-export async function createMidiFromAudiotoolProject(
-  projectSource: AudiotoolProjectSource,
-  options: ExportOptions = {}
-): Promise<Midi> {
-  const { createMidiFromAudiotoolEntities } = await import('./render.js');
-  return createMidiFromAudiotoolEntities(projectSource, options);
-}

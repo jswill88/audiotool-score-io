@@ -1,36 +1,10 @@
 import fs from 'fs/promises';
-import os from 'os';
-import path from 'path';
-import tonejsMidi from '@tonejs/midi';
-import {
-  allowedQuantizationGrids,
-  defaultQuantizationGrid
-} from './defaults.js';
 import { MidiValidationError } from './errors.js';
-import {
-  writeMusicXmlFinalBarline,
-  writeMusicXmlPartNames,
-  writeMusicXmlTitle
-} from './musicxml.js';
-import { convertMidiToDirectMusicXml } from './direct-musicxml.js';
-import { convertWithMuseScore } from './musescore.js';
+import { convertMidiToDirectMusicXml } from './direct-musicxml/index.js';
 import type {
   ConvertMidiToMusicXmlOptions,
-  ConvertMidiToMusicXmlResult,
-  QuantizationGrid
+  ConvertMidiToMusicXmlResult
 } from './types.js';
-
-const { Midi } = tonejsMidi;
-
-function quantizeTick(value: number, grid: number, minimum = 0) {
-  return Math.max(minimum, Math.round(value / grid) * grid);
-}
-
-export function assertAllowedQuantizationGrid(grid: number): asserts grid is QuantizationGrid {
-  if (!Number.isInteger(grid) || !allowedQuantizationGrids.has(grid as QuantizationGrid)) {
-    throw new MidiValidationError('Quantization grid must be one of 4, 8, 12, 16, 24, 32, 48, or 64.');
-  }
-}
 
 export async function assertValidMidiFile(filePath: string) {
   const handle = await fs.open(filePath, 'r');
@@ -47,65 +21,10 @@ export async function assertValidMidiFile(filePath: string) {
   }
 }
 
-export async function preprocessMidi(
-  inputPath: string,
-  outputPath: string,
-  quantizationGrid: QuantizationGrid = defaultQuantizationGrid
-) {
-  assertAllowedQuantizationGrid(quantizationGrid);
-
-  const buffer = await fs.readFile(inputPath);
-  const midi = new Midi(buffer);
-  const ppq = midi.header.ppq || 480;
-  const gridTicks = Math.max(1, Math.round(ppq / (quantizationGrid / 4)));
-
-  midi.tracks.forEach((track) => {
-    track.notes.forEach((note) => {
-      note.ticks = quantizeTick(note.ticks, gridTicks, 0);
-      note.durationTicks = quantizeTick(note.durationTicks, gridTicks, gridTicks);
-    });
-    track.notes.sort((a, b) => a.ticks - b.ticks);
-  });
-
-  if (Array.isArray(midi.header.tempos)) {
-    midi.header.tempos = midi.header.tempos.map((tempo) => ({
-      bpm: tempo.bpm,
-      ticks: quantizeTick(tempo.ticks, gridTicks, 0)
-    }));
-  }
-
-  const outputBytes = midi.toArray();
-  await fs.writeFile(outputPath, Buffer.from(outputBytes));
-}
-
-async function cleanupGeneratedFile(filePath: string | undefined) {
-  if (!filePath) return;
-
-  try {
-    await fs.unlink(filePath);
-  } catch {
-    // Ignore cleanup errors for generated intermediates.
-  }
-}
-
-async function cleanupGeneratedDir(dirPath: string | undefined) {
-  if (!dirPath) return;
-
-  try {
-    await fs.rmdir(dirPath);
-  } catch {
-    // Ignore cleanup errors for generated intermediate directories.
-  }
-}
-
 export async function convertMidiToMusicXml({
   inputPath,
   outputPath,
-  engine = 'musescore',
   quantize = true,
-  grid = defaultQuantizationGrid,
-  preprocessedPath,
-  museScore = {},
   title,
   partNames
 }: ConvertMidiToMusicXmlOptions): Promise<ConvertMidiToMusicXmlResult> {
@@ -119,54 +38,17 @@ export async function convertMidiToMusicXml({
 
   await assertValidMidiFile(inputPath);
 
-  if (engine !== 'musescore' && engine !== 'ranked-direct') {
-    throw new MidiValidationError('engine must be "musescore" or "ranked-direct".');
-  }
+  await convertMidiToDirectMusicXml({
+    inputPath,
+    outputPath,
+    quantize,
+    title,
+    partNames
+  });
 
-  if (engine === 'ranked-direct') {
-    return convertMidiToDirectMusicXml({
-      inputPath,
-      outputPath,
-      quantize,
-      grid,
-      title,
-      partNames
-    });
-  }
-
-  let generatedPreprocessedPath: string | undefined;
-  let generatedPreprocessedDir: string | undefined;
-  let resolvedPreprocessedPath: string | undefined;
-  let convertPath = inputPath;
-
-  try {
-    if (quantize) {
-      if (preprocessedPath) {
-        resolvedPreprocessedPath = preprocessedPath;
-      } else {
-        generatedPreprocessedDir = await fs.mkdtemp(path.join(os.tmpdir(), 'midi-to-musicxml-'));
-        resolvedPreprocessedPath = path.join(generatedPreprocessedDir, 'preprocessed.mid');
-      }
-
-      generatedPreprocessedPath = preprocessedPath ? undefined : resolvedPreprocessedPath;
-      await preprocessMidi(inputPath, resolvedPreprocessedPath, grid);
-      convertPath = resolvedPreprocessedPath;
-    }
-
-    await convertWithMuseScore(convertPath, outputPath, museScore);
-    await writeMusicXmlTitle(outputPath, title);
-    await writeMusicXmlPartNames(outputPath, partNames);
-    await writeMusicXmlFinalBarline(outputPath);
-
-    return {
-      engine: 'musescore',
-      inputPath,
-      outputPath,
-      quantized: quantize,
-      preprocessedPath: quantize ? resolvedPreprocessedPath : undefined
-    };
-  } finally {
-    await cleanupGeneratedFile(generatedPreprocessedPath);
-    await cleanupGeneratedDir(generatedPreprocessedDir);
-  }
+  return {
+    inputPath,
+    outputPath,
+    quantized: quantize
+  };
 }

@@ -10,10 +10,8 @@ export type AppStatus = {
 };
 
 export type OutputMode = 'score' | 'parts' | 'both';
-export type NotationEngine = 'musescore' | 'ranked-direct';
 export type AppWorkflow = 'export' | 'import';
 export type ViewerTab = 'score' | 'xml';
-export type QuantizationGrid = 4 | 8 | 12 | 16 | 24 | 32 | 48 | 64;
 
 export type ServerAuth = TokenData & {
   clientId: string;

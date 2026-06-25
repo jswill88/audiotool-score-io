@@ -4,7 +4,7 @@ A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
 
 ## Workspace layout
 
-- `packages/midi-to-musicxml`: standalone TypeScript MIDI-to-MusicXML package with ranked direct and MuseScore engines.
+- `packages/midi-to-musicxml`: standalone TypeScript MIDI-to-MusicXML package with automatic multi-grid quantization and direct notation generation.
 - `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track to MIDI exporter.
 - `packages/score-to-audiotool`: standalone TypeScript MusicXML score importer that turns score parts into editable Audiotool note tracks.
 - `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
@@ -68,10 +68,10 @@ Requires Node.js 22 or newer. The Audiotool SDK uses modern Promise APIs that ar
    Example using `curl`:
 
    ```bash
-   curl -F "file=@song.mid" "http://localhost:3000/convert?engine=ranked-direct" --output song.musicxml
+   curl -F "file=@song.mid" "http://localhost:3000/convert" --output song.musicxml
    ```
 
-Check runtime readiness, including MuseScore and virtual display availability:
+Check runtime readiness:
 
 ```bash
 curl http://localhost:3000/ready
@@ -79,19 +79,18 @@ curl http://localhost:3000/ready
 
 ### Quantization options
 
-Set `?quantize=false` to bypass MIDI timing quantization altogether. `?preprocess=false` is also supported as a backward-compatible alias.
+Set `?quantize=false` to bypass MIDI timing quantization altogether.
 
-Set `?engine=ranked-direct` for MuseScore-free MIDI-to-MusicXML conversion, or `?engine=musescore` for the original fallback. The default remains MuseScore for backward compatibility.
+When quantization is enabled, the shared multi-grid quantizer produces canonical MIDI before direct MusicXML generation. It evaluates several ordinary and triplet grids automatically.
 
-The ranked direct engine evaluates several rhythmic grids automatically. With MuseScore, set `?grid=8`, `?grid=16`, or another supported value to control preprocessing. Supported values are `4`, `8`, `12`, `16`, `24`, `32`, `48`, and `64`.
+The package also exports `quantizeMidiForNotation` and `quantizeMidiBytesForNotation` for callers that want the canonical MIDI directly.
 
 The package API exposes the same choice:
 
 ```js
 await convertMidiToMusicXml({
   inputPath: 'song.mid',
-  outputPath: 'song.musicxml',
-  engine: 'ranked-direct'
+  outputPath: 'song.musicxml'
 });
 ```
 
@@ -163,24 +162,24 @@ curl -X POST http://localhost:3000/audiotool/inspect \
   -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>"}'
 ```
 
-Convert selected Audiotool tracks all the way to MusicXML. Set `"engine":"ranked-direct"` to generate MusicXML without MuseScore, or `"engine":"musescore"` to use the MIDI/MuseScore comparison path. The web app defaults to ranked direct export; the API defaults to MuseScore when `engine` is omitted for backward compatibility. Optional `title` and `trackTitles` values override the exported score title and selected track/part names:
+Convert selected Audiotool tracks all the way to MusicXML. Optional `title` and `trackTitles` values override the exported score title and selected track/part names:
 
 ```bash
 curl -X POST "http://localhost:3000/audiotool/convert" \
   -H "Content-Type: application/json" \
-  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score","engine":"ranked-direct","title":"Project Sonata","trackTitles":{"<track-id>":"Clarinet Melody"}}' \
+  -d '{"project":"https://beta.audiotool.com/studio?project=<project-id>","tracks":["<track-id>"],"mode":"score","title":"Project Sonata","trackTitles":{"<track-id>":"Clarinet Melody"}}' \
   --output audiotool.musicxml
 ```
 
 Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts.
 
-Ranked direct export evaluates several rhythmic grids automatically when quantization is enabled, so the fixed `grid` option is only used by the MuseScore path. After quantization, an executable rhythm grammar applies the approved notation rules for ordinary and dotted values, ties, rests, staccato cleanup, beams, triplets, compound meters, odd-meter fallback grouping, and 2/2-as-4/4 spelling. Key selection, contextual sharp/flat respelling, and arbitrary quintuplet/septuplet candidate generation are not implemented yet. Direct output currently declares C major and uses sharp pitch-class spellings. MuseScore remains available as a fallback while direct output is evaluated on real projects.
+The direct converter applies an executable rhythm grammar to canonical MIDI, with approved notation rules for ordinary and dotted values, ties, rests, staccato cleanup, beams, triplets, compound meters, odd-meter fallback grouping, and 2/2-as-4/4 spelling. Key selection, contextual sharp/flat respelling, and arbitrary quintuplet/septuplet candidate generation are not implemented yet. Output currently declares C major and uses sharp pitch-class spellings.
 
 ## MusicXML to Audiotool
 
 The authenticated web app also has a `MusicXML -> Audiotool` workflow. Upload a `.musicxml`, `.xml`, or `.mxl` score, analyze its parts, choose which parts to import, edit the imported track names, and create a new Audiotool project.
 
-The first importer version maps selected score parts to one Audiotool note track each, using basic Gakki instruments and mixer channels. It imports note pitch, timing, duration, velocity, the first tempo, and the first time signature. Notation-only details such as slurs, dynamics, articulations, lyrics, repeats, voice splitting, and percussion notation are reported as warnings and are not preserved yet.
+The importer reads MusicXML directly with lightweight Node libraries, including compressed `.mxl` files. It maps selected score parts to one Audiotool note track each, using basic Gakki instruments and mixer channels. It imports pitched notes and chords, ties, written-to-sounding transposition, timing expressed through MusicXML voices/backup/forward events, the first tempo, and the first time signature. Notation-only details such as slurs, dynamics, articulations, lyrics, repeats, grace notes, separate voice assignment, and percussion notation are reported as warnings and are not preserved yet.
 
 Analyze an upload without creating a project:
 
@@ -203,22 +202,14 @@ curl -X POST http://localhost:3000/audiotool/import \
 
 For scripts, you can use an `Authorization: Bearer <PAT>` header or set `AUDIOTOOL_PAT`, the same as the existing Audiotool export endpoints.
 
-## MuseScore configuration
+## Runtime configuration
 
-Ranked direct MIDI conversion—including Audiotool export—does not require MuseScore. MuseScore is still used by the optional fallback engine and the current MusicXML-to-Audiotool importer.
-
-The service searches for `mscore`, `mscore4`, `musescore`, `musescore3`, or `musescore4` in `PATH`. Set `MUSESCORE_BIN=/path/to/musescore` to use a specific executable.
-
-MuseScore may need a display even when used from the CLI. On Linux with no `DISPLAY`, the service automatically wraps conversion in `xvfb-run -a`. The Docker image installs `xvfb` and `xauth` for this path.
+MIDI conversion and MusicXML import run entirely in Node. No desktop notation executable, virtual display, or Python runtime is required.
 
 Useful environment variables:
 
-- `MUSESCORE_USE_XVFB=auto|always|never` controls virtual-display usage. Default: `auto`.
-- `XVFB_RUN_BIN=/path/to/xvfb-run` points at a custom wrapper.
 - `MAX_UPLOAD_BYTES=52428800` controls the upload limit. Default: 50 MB.
 - `JSON_BODY_LIMIT=1mb` controls JSON request size. Default: 1 MB.
-- `CONVERSION_TIMEOUT_MS=120000` controls the MuseScore timeout. Default: 120 seconds.
-- `DEFAULT_QUANTIZATION_GRID=24` controls quantization when `?grid=` is not supplied.
 - `VITE_AUDIOTOOL_CLIENT_ID` enables browser OAuth login for the web app.
 - `VITE_AUDIOTOOL_REDIRECT_URL` overrides the OAuth redirect URL. Leave blank to use the browser's current origin.
 - `VITE_AUDIOTOOL_SCOPE=project:write` controls requested Audiotool OAuth scopes. The browser app opens/syncs projects through Nexus, which currently requires `project:write`.
@@ -265,7 +256,7 @@ Optional host port overrides:
 API_PORT=3100 WEB_PORT=8180 docker compose up --build
 ```
 
-Compose reads values from `.env` for settings such as `AUDIOTOOL_PAT`, `DEFAULT_QUANTIZATION_GRID`, and upload limits. The API container includes MuseScore, `xvfb`, and `xauth`, so headless MusicXML conversion can run with `MUSESCORE_USE_XVFB=auto`.
+Compose reads values from `.env` for settings such as `AUDIOTOOL_PAT` and upload limits. The API container is a Node-only image.
 
 Stop both containers:
 
@@ -273,22 +264,9 @@ Stop both containers:
 docker compose down
 ```
 
-### Oracle A1 capacity helper
+### Cloud Run + Cloudflare Pages deployment
 
-For the Oracle Cloud Free Tier deployment, the current E2 micro VM is memory-constrained. The repo includes a local OCI CLI helper that repeatedly tries to create a stronger `VM.Standard.A1.Flex` instance when Oracle capacity becomes available:
-
-```bash
-cp scripts/oracle/a1-capacity-hunter.env.example scripts/oracle/a1-capacity-hunter.env
-$EDITOR scripts/oracle/a1-capacity-hunter.env
-OCI_DRY_RUN=true scripts/oracle/a1-capacity-hunter.sh
-scripts/oracle/a1-capacity-hunter.sh
-```
-
-See [`docs/deployment/oracle-a1.md`](docs/deployment/oracle-a1.md) for required OCIDs and migration steps.
-
-### Cloud Run API deployment
-
-For a split deployment with the MuseScore-backed API on Cloud Run and the browser app hosted separately, see [`docs/deployment/cloud-run.md`](docs/deployment/cloud-run.md). The Cloud Run image uses `apps/api/Dockerfile.cloudrun`, listens on port `8080`, installs MuseScore plus `xvfb`, and relies on `CORS_ORIGINS` for browser access from the web app origin.
+The recommended production setup puts the lightweight Node API on Cloud Run and the static React app on Cloudflare Pages. See [`docs/deployment/cloud-run.md`](docs/deployment/cloud-run.md) for the ownership checklist, exact Cloudflare build settings, one-command API deployment, automatic Artifact Registry image cleanup, verification, and rollback steps.
 
 ### API-only image
 

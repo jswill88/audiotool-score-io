@@ -47,29 +47,3 @@ export async function readMidiNotes(filePath) {
     velocity: note.velocity
   }));
 }
-
-export async function writeExecutable(filePath, content) {
-  await fs.writeFile(filePath, content, { mode: 0o755 });
-  await fs.chmod(filePath, 0o755);
-}
-
-export async function writeFakeMuseScore(filePath, logPath) {
-  await writeExecutable(filePath, `#!/bin/sh
-output=""
-input=""
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    -o)
-      shift
-      output="$1"
-      ;;
-    *)
-      input="$1"
-      ;;
-  esac
-  shift
-done
-printf "%s" "$input" > "${logPath}"
-printf "%s\\n" "<?xml version=\\"1.0\\"?><score-partwise version=\\"3.1\\"><movement-title>MuseScore Draft</movement-title><part-list><score-part id=\\"P1\\"><part-name>Piano, Track 1 - Lead</part-name><part-abbreviation>Pno.</part-abbreviation></score-part></part-list><part id=\\"P1\\"><measure number=\\"1\\"></measure></part></score-partwise>" > "$output"
-`);
-}

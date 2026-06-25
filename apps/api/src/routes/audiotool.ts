@@ -31,7 +31,6 @@ import {
   readScoreImportRequestOptions,
   throwIfAudiotoolServiceError
 } from '../audiotool/request.js';
-import { conversionOptions } from '../config/env.js';
 import { ClientError } from '../errors/client-error.js';
 import type { AudiotoolMidiResult } from '../types.js';
 import { scoreUpload } from '../storage/upload.js';
@@ -129,9 +128,7 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
     const musicXmlFiles = await convertMidiFilesToMusicXml({
       midiFiles: midiResult.files,
       workDir,
-      engine: options.engine,
       quantize: options.quantize,
-      grid: options.grid,
       title: projectTitle,
       trackTitles: options.trackTitles
     });
@@ -148,7 +145,6 @@ audiotoolRouter.post('/audiotool/convert', async (req, res) => {
 
     const archive = await createAudiotoolArchive({
       details,
-      engine: options.engine,
       midiResult,
       musicXmlFiles,
       includeMidi: options.includeMidi,
@@ -182,8 +178,7 @@ audiotoolRouter.post('/audiotool/import', scoreUpload.single('file'), async (req
       const plan = await buildScoreImportPlan({
         inputPath: sourcePath,
         sourceName: req.file.originalname,
-        title: options.title,
-        museScore: conversionOptions
+        title: options.title
       });
 
       return res.json({ plan: serializeScoreImportPlan(plan) });
@@ -198,8 +193,7 @@ audiotoolRouter.post('/audiotool/import', scoreUpload.single('file'), async (req
       selectedPartIds: options.selectedPartIds,
       partTitles: options.partTitles,
       projectTemplateName: options.projectTemplateName,
-      maxImportedNotes: options.maxImportedNotes,
-      museScore: conversionOptions
+      maxImportedNotes: options.maxImportedNotes
     });
 
     res.json({

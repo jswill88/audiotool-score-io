@@ -3,45 +3,20 @@ import fs from 'fs/promises';
 import path from 'path';
 import { test } from 'node:test';
 import {
-  applyMusicXmlFinalBarline,
-  applyMusicXmlPartNames,
-  applyMusicXmlTitle,
-  assertAllowedQuantizationGrid,
   assertValidMidiFile,
   convertMidiBytesToDirectMusicXml,
   convertMidiToDirectMusicXml,
   convertMidiToMusicXml,
-  defaultMuseScoreCandidates,
-  defaultQuantizationGrid,
   meterGroupCounts,
   MidiValidationError,
-  preprocessMidi,
+  quantizeMidiForNotation,
   rhythmGrammar
 } from '@midi-to-xml/midi-to-musicxml';
 import {
   createTempDir,
   readMidiNotes,
-  writeFakeMuseScore,
   writeMidiFile
 } from './helpers.js';
-
-test('assertAllowedQuantizationGrid accepts supported grids and rejects unsupported grids', () => {
-  assert.doesNotThrow(() => assertAllowedQuantizationGrid(48));
-  assert.doesNotThrow(() => assertAllowedQuantizationGrid(12));
-
-  assert.throws(
-    () => assertAllowedQuantizationGrid(10),
-    MidiValidationError
-  );
-});
-
-test('defaultQuantizationGrid is 24', () => {
-  assert.equal(defaultQuantizationGrid, 24);
-});
-
-test('defaultMuseScoreCandidates include macOS app bundle executables', () => {
-  assert(defaultMuseScoreCandidates.includes('/Applications/MuseScore 4.app/Contents/MacOS/mscore'));
-});
 
 test('assertValidMidiFile accepts MIDI headers and rejects non-MIDI files', async (t) => {
   const dir = await createTempDir(t);
@@ -58,30 +33,33 @@ test('assertValidMidiFile accepts MIDI headers and rejects non-MIDI files', asyn
   );
 });
 
-test('preprocessMidi snaps note starts and durations to the requested grid', async (t) => {
+test('quantizeMidiForNotation chooses a canonical multi-grid rhythm', async (t) => {
   const dir = await createTempDir(t);
-  const inputPath = path.join(dir, 'input.mid');
-  const outputPath = path.join(dir, 'quantized.mid');
+  const inputPath = path.join(dir, 'humanized.mid');
+  const outputPath = path.join(dir, 'canonical.mid');
 
   await writeMidiFile(inputPath, [
-    { midi: 60, ticks: 7, durationTicks: 14, velocity: 0.8 },
-    { midi: 64, ticks: 123, durationTicks: 70, velocity: 0.8 }
+    { midi: 60, ticks: 8, durationTicks: 465, velocity: 0.8 },
+    { midi: 62, ticks: 478, durationTicks: 492, velocity: 0.8 },
+    { midi: 64, ticks: 966, durationTicks: 470, velocity: 0.8 },
+    { midi: 65, ticks: 1434, durationTicks: 500, velocity: 0.8 }
   ]);
 
-  await preprocessMidi(inputPath, outputPath, 16);
+  await quantizeMidiForNotation(inputPath, outputPath);
 
-  const notes = await readMidiNotes(outputPath);
-  assert.deepEqual(notes.map((note) => ({
+  assert.deepEqual((await readMidiNotes(outputPath)).map((note) => ({
     midi: note.midi,
     ticks: note.ticks,
     durationTicks: note.durationTicks
   })), [
-    { midi: 60, ticks: 0, durationTicks: 120 },
-    { midi: 64, ticks: 120, durationTicks: 120 }
+    { midi: 60, ticks: 0, durationTicks: 480 },
+    { midi: 62, ticks: 480, durationTicks: 480 },
+    { midi: 64, ticks: 960, durationTicks: 480 },
+    { midi: 65, ticks: 1440, durationTicks: 480 }
   ]);
 });
 
-test('ranked direct conversion writes MusicXML from MIDI without MuseScore', async (t) => {
+test('direct conversion writes MusicXML from MIDI', async (t) => {
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'input.mid');
   const outputPath = path.join(dir, 'output.musicxml');
@@ -101,7 +79,7 @@ test('ranked direct conversion writes MusicXML from MIDI without MuseScore', asy
   });
   const xml = await fs.readFile(outputPath, 'utf8');
 
-  assert.equal(result.engine, 'ranked-direct');
+  assert.equal(result.quantized, true);
   assert.match(xml, /<work-title>Direct MIDI<\/work-title>/);
   assert.match(xml, /<part-name>Test Piano<\/part-name>/);
   assert.equal((xml.match(/<type>quarter<\/type>/g) ?? []).length, 4);
@@ -126,7 +104,7 @@ test('ranked direct stem direction uses the bass-clef middle line', async (t) =>
   assert.match(noteBlocksForStep(xml, 'F')[0], /<octave>3<\/octave>[\s\S]*?<stem>down<\/stem>/);
 });
 
-test('convertMidiToMusicXml dispatches to the ranked direct engine', async (t) => {
+test('convertMidiToMusicXml uses the direct engine', async (t) => {
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'input.mid');
   const outputPath = path.join(dir, 'output.musicxml');
@@ -134,13 +112,12 @@ test('convertMidiToMusicXml dispatches to the ranked direct engine', async (t) =
   await writeMidiFile(inputPath);
 
   const result = await convertMidiToMusicXml({
-    engine: 'ranked-direct',
     inputPath,
     outputPath
   });
 
-  assert.equal(result.engine, 'ranked-direct');
-  assert.match(await fs.readFile(outputPath, 'utf8'), /ranked direct engine/);
+  assert.equal(result.quantized, true);
+  assert.match(await fs.readFile(outputPath, 'utf8'), /direct engine/);
 });
 
 test('ranked direct MIDI spelling splits a 6/8 half note at the compound pulse', async (t) => {
@@ -484,6 +461,135 @@ test('grammar trims release overhangs and consolidates the resulting rest', asyn
   assert.match(notes.find((note) => note.includes('<rest/>')), /<duration>960<\/duration>/);
 });
 
+test('grammar trims a release overhang into a dotted-eighth interior rest', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'interior-release-overhang.mid');
+  await writeMidiFile(inputPath, [
+    {
+      midi: 60,
+      ticks: 0,
+      durationTicks: 600,
+      velocity: 0.8
+    },
+    {
+      midi: 62,
+      ticks: 840,
+      durationTicks: 600,
+      velocity: 0.8
+    }
+  ], {
+    timeSignature: [3, 4]
+  });
+
+  const xml = convertMidiBytesToDirectMusicXml(await fs.readFile(inputPath));
+  const notes = noteBlocks(xml);
+  const cNotes = noteBlocksForStep(xml, 'C');
+  const dNotes = noteBlocksForStep(xml, 'D');
+  const rests = notes.filter((note) => note.includes('<rest/>'));
+
+  assert.deepEqual(cNotes.map(noteDuration), [960]);
+  assert.match(cNotes[0], /<type>quarter<\/type>/);
+  assert.doesNotMatch(cNotes[0], /<tie type=/);
+  assert.equal(rests.length, 1);
+  assert.match(rests[0], /<duration>720<\/duration>[\s\S]*?<type>eighth<\/type>[\s\S]*?<dot\/>/);
+  assert.deepEqual(dNotes.map(noteDuration), [240, 960]);
+  assert.match(dNotes[0], /<tie type="start"\/>[\s\S]*?<type>16th<\/type>/);
+  assert.match(dNotes[1], /<tie type="stop"\/>[\s\S]*?<type>quarter<\/type>/);
+});
+
+test('release-overhang trimming applies to the same pattern in 4/4', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'four-four-interior-release-overhang.mid');
+  await writeMidiFile(inputPath, [
+    {
+      midi: 60,
+      ticks: 0,
+      durationTicks: 600,
+      velocity: 0.8
+    },
+    {
+      midi: 62,
+      ticks: 840,
+      durationTicks: 600,
+      velocity: 0.8
+    }
+  ], {
+    timeSignature: [4, 4]
+  });
+
+  const xml = convertMidiBytesToDirectMusicXml(await fs.readFile(inputPath));
+  const cNotes = noteBlocksForStep(xml, 'C');
+  const dNotes = noteBlocksForStep(xml, 'D');
+  const rests = noteBlocks(xml).filter((note) => note.includes('<rest/>'));
+
+  assert.deepEqual(cNotes.map(noteDuration), [960]);
+  assert.match(cNotes[0], /<type>quarter<\/type>/);
+  assert.match(
+    rests[0],
+    /<duration>720<\/duration>[\s\S]*?<type>eighth<\/type>[\s\S]*?<dot\/>/
+  );
+  assert.deepEqual(dNotes.map(noteDuration), [240, 960]);
+});
+
+test('grammar absorbs a sixteenth rest after a dotted-eighth barline continuation', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'incoming-tie-release-gap.mid');
+  await writeMidiFile(inputPath, [
+    {
+      midi: 60,
+      ticks: 1800,
+      durationTicks: 480,
+      velocity: 0.8
+    },
+    {
+      midi: 62,
+      ticks: 2400,
+      durationTicks: 480,
+      velocity: 0.8
+    }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(inputPath)
+  );
+  const cNotes = noteBlocksForStep(xml, 'C');
+  const secondMeasure = measureBlock(xml, 2);
+  const secondMeasureRests = noteBlocks(secondMeasure)
+    .filter((note) => note.includes('<rest/>'));
+
+  assert.equal(cNotes.length, 2);
+  assert.match(cNotes[0], /<duration>240<\/duration>[\s\S]*?<tie type="start"\/>[\s\S]*?<type>16th<\/type>/);
+  assert.match(cNotes[1], /<duration>960<\/duration>[\s\S]*?<tie type="stop"\/>[\s\S]*?<type>quarter<\/type>/);
+  assert.doesNotMatch(cNotes[1], /<type>eighth<\/type>[\s\S]*?<dot\/>/);
+  assert(!secondMeasureRests.some((rest) => noteDuration(rest) === 240));
+});
+
+test('grammar absorbs a sixteenth rest after a same-measure dotted eighth', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'same-measure-release-gap.mid');
+  await writeMidiFile(inputPath, [
+    {
+      midi: 60,
+      ticks: 0,
+      durationTicks: 360,
+      velocity: 0.8
+    },
+    {
+      midi: 62,
+      ticks: 480,
+      durationTicks: 480,
+      velocity: 0.8
+    }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(await fs.readFile(inputPath));
+  const cNotes = noteBlocksForStep(xml, 'C');
+
+  assert.deepEqual(cNotes.map(noteDuration), [960]);
+  assert.match(cNotes[0], /<type>quarter<\/type>/);
+  assert.doesNotMatch(cNotes[0], /<tie type=/);
+});
+
 test('grammar simplifies only the approved one-note trailing triplet rests', async (t) => {
   const dir = await createTempDir(t);
   const oneNotePath = path.join(dir, 'one-triplet-note.mid');
@@ -563,222 +669,23 @@ test('grammar preserves a dotted whole note in 12/8', async (t) => {
   assert.match(noteBlocksForStep(xml, 'C')[0], /<type>whole<\/type>[\s\S]*?<dot\/>/);
 });
 
-test('applyMusicXmlTitle writes a work title and removes movement titles', () => {
-  const xml = applyMusicXmlTitle(
-    '<?xml version="1.0"?><score-partwise version="3.1"><movement-title>Draft</movement-title><part-list /></score-partwise>',
-    'Moon & Stars <Demo>'
-  );
-
-  assert.match(xml, /<work-title>Moon &amp; Stars &lt;Demo&gt;<\/work-title>/);
-  assert.doesNotMatch(xml, /<movement-title>/);
-});
-
-test('applyMusicXmlTitle removes movement titles when no title is requested', () => {
-  const xml = applyMusicXmlTitle(
-    '<?xml version="1.0"?><score-partwise version="3.1"><movement-title>Draft</movement-title><part-list /></score-partwise>',
-    ''
-  );
-
-  assert.doesNotMatch(xml, /<movement-title>/);
-  assert.doesNotMatch(xml, /<work-title>/);
-});
-
-test('applyMusicXmlFinalBarline ends each part with a final barline', () => {
-  const xml = applyMusicXmlFinalBarline(`
-    <score-partwise version="3.1">
-      <part-list />
-      <part id="P1">
-        <measure number="1"></measure>
-        <measure number="2">
-          <barline location="right"><bar-style>regular</bar-style></barline>
-        </measure>
-      </part>
-      <part id="P2">
-        <measure number="1"></measure>
-      </part>
-    </score-partwise>
-  `);
-
-  assert.equal(xml.match(/<bar-style>light-heavy<\/bar-style>/g)?.length, 2);
-  assert.match(xml, /<part id="P1">[\s\S]*<measure number="2">[\s\S]*<bar-style>light-heavy<\/bar-style>[\s\S]*<\/measure>/);
-  assert.match(xml, /<part id="P2">[\s\S]*<measure number="1">[\s\S]*<bar-style>light-heavy<\/bar-style>[\s\S]*<\/measure>/);
-});
-
-test('applyMusicXmlPartNames formats multi-part Audiotool labels as names with track numbers', () => {
-  const xml = applyMusicXmlPartNames(`
-    <score-partwise version="3.1">
-      <part-list>
-        <score-part id="P1">
-          <part-name>Piano, Track 1 - Lead</part-name>
-          <part-abbreviation>Pno.</part-abbreviation>
-        </score-part>
-        <score-part id="P2">
-          <part-name>Grand Piano</part-name>
-          <part-abbreviation>Pno.</part-abbreviation>
-        </score-part>
-      </part-list>
-    </score-partwise>
-  `);
-
-  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
-  assert.doesNotMatch(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>[\s\S]*<\/score-part>\s*<score-part id="P2">/);
-  assert.match(xml, /<part-name>Grand Piano<\/part-name>/);
-  assert.doesNotMatch(xml, /<words\b[^>]*>Lead \(1\)<\/words>/);
-});
-
-test('applyMusicXmlPartNames strips non-piano MuseScore MIDI prefixes from Audiotool labels', () => {
-  const xml = applyMusicXmlPartNames(`
-    <score-partwise version="3.1">
-      <part-list>
-        <score-part id="P1">
-          <part-name>Lead 1 (square), Track 1 - Lead</part-name>
-          <part-abbreviation>Ld.</part-abbreviation>
-        </score-part>
-        <score-part id="P2">
-          <part-name>Grand Piano</part-name>
-          <part-abbreviation>Pno.</part-abbreviation>
-        </score-part>
-      </part-list>
-    </score-partwise>
-  `);
-
-  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
-  assert.doesNotMatch(xml, /Lead 1 \(square\), Track 1 - Lead/);
-  assert.doesNotMatch(xml, /<part-abbreviation>Ld\.<\/part-abbreviation>/);
-  assert.match(xml, /<part-name>Grand Piano<\/part-name>/);
-  assert.match(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>/);
-});
-
-test('applyMusicXmlPartNames uses requested part names without shifting missing overrides', () => {
-  const xml = applyMusicXmlPartNames(`
-    <score-partwise version="3.1">
-      <part-list>
-        <score-part id="P1">
-          <part-name>Piano, Track 1 - Lead</part-name>
-          <part-abbreviation>Pno.</part-abbreviation>
-        </score-part>
-        <score-part id="P2">
-          <part-name>Piano, Track 2 - Pad</part-name>
-          <part-abbreviation>Pno.</part-abbreviation>
-        </score-part>
-        <score-part id="P3">
-          <part-name>Lead 1 (square), Track 3 - Hook</part-name>
-          <part-abbreviation>Ld.</part-abbreviation>
-        </score-part>
-      </part-list>
-    </score-partwise>
-  `, ['Clarinet Melody', '', 'Tenor Line']);
-
-  assert.match(xml, /<part-name>Clarinet Melody<\/part-name>/);
-  assert.match(xml, /<part-name>Pad \(2\)<\/part-name>/);
-  assert.match(xml, /<part-name>Tenor Line<\/part-name>/);
-  assert.doesNotMatch(xml, /<part-name>Hook \(3\)<\/part-name>/);
-  assert.doesNotMatch(xml, /<part-abbreviation>/);
-});
-
-test('applyMusicXmlPartNames keeps single-part Audiotool labels in the default part-name position', () => {
-  const xml = applyMusicXmlPartNames(`
-    <score-partwise version="3.1">
-      <part-list>
-        <score-part id="P1">
-          <part-name>Piano, Track 1 - Lead</part-name>
-          <part-abbreviation>Pno.</part-abbreviation>
-        </score-part>
-      </part-list>
-      <part id="P1">
-        <measure number="1"></measure>
-      </part>
-    </score-partwise>
-  `);
-
-  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
-  assert.doesNotMatch(xml, /<part-name\b[^>]*print-object="no"[^>]*>/);
-  assert.doesNotMatch(xml, /<words\b[^>]*>Lead \(1\)<\/words>/);
-  assert.doesNotMatch(xml, /Piano, Track 1 - Lead/);
-  assert.doesNotMatch(xml, /<part-abbreviation>Pno\.<\/part-abbreviation>/);
-});
-
-test('applyMusicXmlPartNames removes old generated single-part headings', () => {
-  const xml = applyMusicXmlPartNames(`
-    <score-partwise version="3.1">
-      <part-list>
-        <score-part id="P1">
-          <part-name print-object="no">Track 1 - Lead</part-name>
-        </score-part>
-      </part-list>
-      <part id="P1">
-        <measure number="1">
-          <direction placement="above">
-            <direction-type>
-              <words font-size="14" font-weight="bold">Track 1 - Lead</words>
-            </direction-type>
-          </direction>
-        </measure>
-      </part>
-    </score-partwise>
-  `);
-
-  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
-  assert.doesNotMatch(xml, /<part-name\b[^>]*print-object="no"[^>]*>/);
-  assert.doesNotMatch(xml, /<words\b[^>]*>Track 1 - Lead<\/words>/);
-});
-
-test('applyMusicXmlPartNames removes generated single-part headings with instrument prefixes', () => {
-  const xml = applyMusicXmlPartNames(`
-    <score-partwise version="3.1">
-      <part-list>
-        <score-part id="P1">
-          <part-name>Lead 1 (square), Track 1 - Lead</part-name>
-          <part-abbreviation>Ld.</part-abbreviation>
-        </score-part>
-      </part-list>
-      <part id="P1">
-        <measure number="1">
-          <direction placement="above">
-            <direction-type>
-              <words font-size="14" font-weight="bold">Lead 1 (square), Track 1 - Lead</words>
-            </direction-type>
-          </direction>
-        </measure>
-      </part>
-    </score-partwise>
-  `);
-
-  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
-  assert.doesNotMatch(xml, /Lead 1 \(square\), Track 1 - Lead/);
-  assert.doesNotMatch(xml, /<part-abbreviation>Ld\.<\/part-abbreviation>/);
-});
-
-test('convertMidiToMusicXml can bypass quantization and send the original MIDI to MuseScore', async (t) => {
+test('convertMidiToMusicXml can bypass quantization', async (t) => {
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'input.mid');
   const outputPath = path.join(dir, 'output.musicxml');
-  const logPath = path.join(dir, 'musescore-input.log');
-  const museScoreBin = path.join(dir, 'fake-mscore');
 
   await writeMidiFile(inputPath);
-  await writeFakeMuseScore(museScoreBin, logPath);
 
   const result = await convertMidiToMusicXml({
     inputPath,
     outputPath,
-    quantize: false,
-    museScore: {
-      museScoreBin,
-      virtualDisplayMode: 'never'
-    }
+    quantize: false
   });
 
   assert.equal(result.quantized, false);
-  assert.equal(result.preprocessedPath, undefined);
-  assert.equal(await fs.readFile(logPath, 'utf8'), inputPath);
   const xml = await fs.readFile(outputPath, 'utf8');
   assert.match(xml, /score-partwise/);
-  assert.match(xml, /<part-name>Lead \(1\)<\/part-name>/);
-  assert.doesNotMatch(xml, /<part-name\b[^>]*print-object="no"[^>]*>/);
-  assert.doesNotMatch(xml, /<words\b[^>]*>Lead \(1\)<\/words>/);
-  assert.doesNotMatch(xml, /Piano, Track 1 - Lead/);
-  assert.doesNotMatch(xml, /<movement-title>/);
+  assert.match(xml, /<part-name>Test Piano<\/part-name>/);
   assert.match(xml, /<bar-style>light-heavy<\/bar-style>/);
 });
 
@@ -786,66 +693,32 @@ test('convertMidiToMusicXml can write a requested MusicXML title', async (t) => 
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'input.mid');
   const outputPath = path.join(dir, 'output.musicxml');
-  const logPath = path.join(dir, 'musescore-input.log');
-  const museScoreBin = path.join(dir, 'fake-mscore');
 
   await writeMidiFile(inputPath);
-  await writeFakeMuseScore(museScoreBin, logPath);
 
   await convertMidiToMusicXml({
     inputPath,
     outputPath,
     quantize: false,
-    title: 'Project Sonata',
-    museScore: {
-      museScoreBin,
-      virtualDisplayMode: 'never'
-    }
+    title: 'Project Sonata'
   });
 
   const xml = await fs.readFile(outputPath, 'utf8');
   assert.match(xml, /<work-title>Project Sonata<\/work-title>/);
-  assert.doesNotMatch(xml, /<movement-title>/);
-});
-
-test('convertMidiToMusicXml uses a provided preprocessed path when quantization is enabled', async (t) => {
-  const dir = await createTempDir(t);
-  const inputPath = path.join(dir, 'input.mid');
-  const outputPath = path.join(dir, 'output.musicxml');
-  const preprocessedPath = path.join(dir, 'preprocessed.mid');
-  const logPath = path.join(dir, 'musescore-input.log');
-  const museScoreBin = path.join(dir, 'fake-mscore');
-
-  await writeMidiFile(inputPath, [
-    { midi: 60, ticks: 7, durationTicks: 14, velocity: 0.8 }
-  ]);
-  await writeFakeMuseScore(museScoreBin, logPath);
-
-  const result = await convertMidiToMusicXml({
-    inputPath,
-    outputPath,
-    preprocessedPath,
-    grid: 16,
-    museScore: {
-      museScoreBin,
-      virtualDisplayMode: 'never'
-    }
-  });
-
-  assert.equal(result.quantized, true);
-  assert.equal(result.preprocessedPath, preprocessedPath);
-  assert.equal(await fs.readFile(logPath, 'utf8'), preprocessedPath);
-  assert.deepEqual((await readMidiNotes(preprocessedPath)).map((note) => ({
-    ticks: note.ticks,
-    durationTicks: note.durationTicks
-  })), [
-    { ticks: 0, durationTicks: 120 }
-  ]);
 });
 
 function noteBlocksForStep(xml, step) {
-  return (xml.match(/<note>[\s\S]*?<\/note>/g) ?? [])
+  return noteBlocks(xml)
     .filter((note) => note.includes(`<step>${step}</step>`));
+}
+
+function noteBlocks(xml) {
+  return xml.match(/<note>[\s\S]*?<\/note>/g) ?? [];
+}
+
+function measureBlock(xml, number) {
+  return (xml.match(/<measure\b[\s\S]*?<\/measure>/g) ?? [])
+    .find((measure) => measure.includes(`<measure number="${number}">`)) ?? '';
 }
 
 function noteDurationsForStep(xml, step) {

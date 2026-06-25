@@ -1,7 +1,5 @@
-import { useId } from 'react';
 import {
   AlertTriangle,
-  ChevronDown,
   FileCode,
   ListMusic,
   Loader2,
@@ -15,30 +13,21 @@ import { ProjectMeta } from './ProjectMeta';
 import { TrackList } from './TrackList';
 import type {
   AppStatus,
-  NotationEngine,
   OutputMode,
   ProjectManifest,
-  QuantizationGrid,
   SelectedProject
 } from '../../types';
 import './TracksPanel.css';
 
-const gridOptions = [4, 8, 12, 16, 24, 32, 48, 64] as const satisfies readonly QuantizationGrid[];
 const modeOptions = [
   ['score', 'Score'],
   ['parts', 'Parts'],
   ['both', 'Both']
 ] as const satisfies ReadonlyArray<readonly [OutputMode, string]>;
-const engineOptions = [
-  ['ranked-direct', 'Direct'],
-  ['musescore', 'MuseScore']
-] as const satisfies ReadonlyArray<readonly [NotationEngine, string]>;
 
 type TracksPanelProps = {
   canConvert: boolean;
   defaultScoreTitle: string;
-  engine: NotationEngine;
-  grid: QuantizationGrid;
   manifest: ProjectManifest | null;
   mode: OutputMode;
   onConvert: () => void | Promise<void>;
@@ -51,8 +40,6 @@ type TracksPanelProps = {
   scoreTitle: string;
   selectedProject: SelectedProject | null;
   selectedTrackIds: string[];
-  setGrid: (grid: QuantizationGrid) => void;
-  setEngine: (engine: NotationEngine) => void;
   setMode: (mode: OutputMode) => void;
   setQuantize: (quantize: boolean) => void;
   status: AppStatus;
@@ -62,8 +49,6 @@ type TracksPanelProps = {
 export function TracksPanel({
   canConvert,
   defaultScoreTitle,
-  engine,
-  grid,
   manifest,
   mode,
   onConvert,
@@ -76,16 +61,11 @@ export function TracksPanel({
   scoreTitle,
   selectedProject,
   selectedTrackIds,
-  setGrid,
-  setEngine,
   setMode,
   setQuantize,
   status,
   trackTitles
 }: TracksPanelProps) {
-  const gridLabelId = useId();
-  const gridHelpId = useId();
-  const engineHelpId = useId();
   const trackError = status?.phase === 'error' && status?.area === 'tracks'
     ? status.message
     : '';
@@ -151,18 +131,6 @@ export function TracksPanel({
           options={modeOptions}
           onChange={setMode}
         />
-        <div className="engine-option" aria-describedby={engineHelpId}>
-          <span className="option-label">Engine</span>
-          <SegmentedControl
-            ariaLabel="Notation engine"
-            value={engine}
-            options={engineOptions}
-            onChange={setEngine}
-          />
-          <span className="visually-hidden" id={engineHelpId}>
-            Direct generates MusicXML without MuseScore. MuseScore uses MIDI conversion as a comparison baseline.
-          </span>
-        </div>
         <label className="check-row compact">
           <input
             type="checkbox"
@@ -171,27 +139,10 @@ export function TracksPanel({
           />
           <span>Quantize</span>
         </label>
-        <label className="select-label">
+        <div className="select-label" aria-label="Automatic multi-grid quantization">
           <Settings2 size={15} aria-hidden="true" />
-          <span className="visually-hidden" id={gridLabelId}>Quantization grid</span>
-          <select
-            value={grid}
-            aria-describedby={gridHelpId}
-            aria-labelledby={gridLabelId}
-            disabled={!quantize || engine === 'ranked-direct'}
-            onChange={(event) => setGrid(Number(event.target.value) as QuantizationGrid)}
-          >
-            {gridOptions.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </select>
-          <span className="visually-hidden" id={gridHelpId}>
-            {engine === 'ranked-direct'
-              ? 'The direct ranker chooses among several rhythmic grids automatically.'
-              : 'Select the rhythmic grid used when quantize is enabled.'}
-          </span>
-          <ChevronDown size={14} aria-hidden="true" />
-        </label>
+          <span>Auto grid</span>
+        </div>
         <button
           className="primary-button"
           type="button"

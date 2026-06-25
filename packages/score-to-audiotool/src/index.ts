@@ -3,8 +3,7 @@ export {
   ScoreToAudiotoolError
 } from './errors.js';
 export {
-  buildScoreImportPlan,
-  buildScoreImportPlanFromMidiFile
+  buildScoreImportPlan
 } from './score.js';
 export {
   createAudiotoolProjectFromScore,
@@ -16,7 +15,6 @@ export type {
   AudiotoolImportClient,
   AudiotoolProjectLike,
   AudiotoolTransactionLike,
-  BuildScoreImportPlanFromMidiOptions,
   BuildScoreImportPlanOptions,
   CreateAudiotoolProjectFromScoreOptions,
   CreateAudiotoolProjectFromScoreResult,

@@ -1,10 +1,8 @@
 import type {
   ConversionResult,
   InspectProjectResponse,
-  NotationEngine,
   OutputMode,
   ProjectListResponse,
-  QuantizationGrid,
   ScoreImportResult,
   ScoreImportPlan,
   ServerAuth
@@ -31,9 +29,7 @@ export async function convertAudiotoolProject({
   project,
   tracks,
   mode,
-  engine,
   quantize,
-  grid,
   title,
   trackTitles
 }: {
@@ -41,9 +37,7 @@ export async function convertAudiotoolProject({
   project: string;
   tracks: string[];
   mode: OutputMode;
-  engine: NotationEngine;
   quantize: boolean;
-  grid: QuantizationGrid;
   title?: string;
   trackTitles?: Record<string, string>;
 }): Promise<ConversionResult> {
@@ -57,9 +51,7 @@ export async function convertAudiotoolProject({
       project,
       tracks,
       mode,
-      engine,
       quantize,
-      grid,
       title,
       trackTitles
     })

@@ -3,16 +3,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import AdmZip from 'adm-zip';
 import { convertMidiToMusicXml } from '@midi-to-xml/midi-to-musicxml';
-import {
-  conversionOptions,
-  uploadDir
-} from '../config/env.js';
+import { uploadDir } from '../config/env.js';
 import type {
   AudiotoolMidiFile,
   AudiotoolMidiResult,
   AudiotoolProjectDetails,
   MusicXmlFile,
-  NotationEngine,
   ProjectLike
 } from '../types.js';
 
@@ -25,17 +21,13 @@ export async function createAudiotoolWorkDir() {
 export async function convertMidiFilesToMusicXml({
   midiFiles,
   workDir,
-  engine,
   quantize,
-  grid,
   title,
   trackTitles
 }: {
   midiFiles: AudiotoolMidiFile[];
   workDir: string;
-  engine: NotationEngine;
   quantize: boolean;
-  grid: Parameters<typeof convertMidiToMusicXml>[0]['grid'];
   title: string;
   trackTitles?: Record<string, string>;
 }): Promise<MusicXmlFile[]> {
@@ -50,12 +42,9 @@ export async function convertMidiFilesToMusicXml({
     await convertMidiToMusicXml({
       inputPath,
       outputPath,
-      engine,
       quantize,
-      grid,
       title: midiFile.title || title,
-      partNames: readPartNames(midiFile.trackIds, trackTitles),
-      museScore: conversionOptions
+      partNames: readPartNames(midiFile.trackIds, trackTitles)
     });
 
     outputs.push({
@@ -71,7 +60,6 @@ export async function convertMidiFilesToMusicXml({
 
 export async function createAudiotoolArchive({
   details,
-  engine,
   midiResult,
   musicXmlFiles,
   includeMidi,
@@ -79,7 +67,6 @@ export async function createAudiotoolArchive({
   trackTitles
 }: {
   details: AudiotoolProjectDetails;
-  engine: 'musescore' | 'ranked-direct';
   midiResult: AudiotoolMidiResult;
   musicXmlFiles: MusicXmlFile[];
   includeMidi: boolean;
@@ -91,7 +78,6 @@ export async function createAudiotoolArchive({
     project: serializeProject(details.project),
     reference: details.reference,
     title,
-    engine,
     tempo: midiResult.tempo,
     timeSignature: midiResult.timeSignature,
     tracks: midiResult.tracks,

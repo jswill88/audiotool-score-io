@@ -5,7 +5,6 @@ import {
   AudiotoolTicks,
   NotationKinds,
   NotationStatuses,
-  createMidiFromAudiotoolProject,
   exportAudiotoolEntitiesToMidi,
   inspectAudiotoolProject
 } from '../dist/index.js';
@@ -251,7 +250,7 @@ describe('audiotool-to-midi project inspection', () => {
 });
 
 describe('Audiotool MIDI through the generic direct MusicXML engine', () => {
-  it('writes basic part names, chords, rests, and ties without MuseScore', () => {
+  it('writes basic part names, chords, rests, and ties through direct conversion', () => {
     const result = exportAudiotoolEntitiesToDirectMusicXml([
       entity('config', 'config-1', {
         bpm: 108,
@@ -378,7 +377,7 @@ describe('Audiotool MIDI through the generic direct MusicXML engine', () => {
     assert.doesNotMatch(xml, /<tie type=/);
   });
 
-  it('ranks humanized quarter notes onto clean notation without MuseScore', () => {
+  it('ranks humanized quarter notes onto clean direct notation', () => {
     const result = exportAudiotoolEntitiesToDirectMusicXml(
       directNotationProject({
         denominator: 4,
@@ -784,14 +783,6 @@ describe('audiotool-to-midi export', () => {
       () => exportAudiotoolEntitiesToMidi(basicProject(), { mode: 'merged-staff' }),
       AudiotoolProjectError
     );
-  });
-
-  it('keeps the legacy createMidiFromAudiotoolProject entry point working', async () => {
-    const midi = await createMidiFromAudiotoolProject(basicProject(), {
-      tracks: ['track-1']
-    });
-
-    assert.equal(noteSummaries(midi).length, 1);
   });
 });
 

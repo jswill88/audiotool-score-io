@@ -7,7 +7,6 @@ import {
 import { ClientError } from '../errors/client-error.js';
 import {
   parseQuantizationEnabled,
-  parseQuantizationGrid,
   queryValue
 } from '../utils/query.js';
 import type {
@@ -18,7 +17,6 @@ import type {
   AudiotoolProjectListResult,
   ConversionRequestOptions,
   InspectOptions,
-  NotationEngine,
   ProjectListOptions,
   ScoreImportRequestOptions
 } from '../types.js';
@@ -59,7 +57,6 @@ export function readProjectListOptions(req: Request): ProjectListOptions {
 
 export function readConversionRequestOptions(req: Request): ConversionRequestOptions {
   return {
-    engine: readNotationEngine(req.body?.engine ?? req.query.engine),
     mode: readAudiotoolOutputMode(req.body?.mode ?? req.body?.outputMode ?? req.query.mode),
     tracks: readTrackSelection(req.body?.tracks ?? req.body?.trackIds),
     title: stringifyOptional(req.body?.title)?.trim() || undefined,
@@ -83,24 +80,12 @@ export function readConversionRequestOptions(req: Request): ConversionRequestOpt
     forceZip: readBooleanBody(req.body?.forceZip, false, 'forceZip'),
     start: readBooleanBody(req.body?.start, true, 'start'),
     stop: readBooleanBody(req.body?.stop, true, 'stop'),
-    quantize: parseQuantizationEnabled({
-      preprocess: stringifyOptional(req.body?.preprocess ?? queryValue(req.query.preprocess, 'preprocess')),
-      quantize: stringifyOptional(req.body?.quantize ?? queryValue(req.query.quantize, 'quantize'))
-    }),
-    grid: parseQuantizationGrid(
-      stringifyOptional(req.body?.grid ?? queryValue(req.query.grid, 'grid'))
+    quantize: parseQuantizationEnabled(
+      stringifyOptional(
+        req.body?.quantize ?? queryValue(req.query.quantize, 'quantize')
+      )
     )
   };
-}
-
-function readNotationEngine(value: unknown = 'musescore'): NotationEngine {
-  const engine = stringifyOptional(value)?.trim().toLowerCase() ?? 'musescore';
-
-  if (engine === 'musescore' || engine === 'ranked-direct') {
-    return engine;
-  }
-
-  throw new ClientError('"engine" must be "musescore" or "ranked-direct".');
 }
 
 export function readScoreImportRequestOptions(req: Request): ScoreImportRequestOptions {

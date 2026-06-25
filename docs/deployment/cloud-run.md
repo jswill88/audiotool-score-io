@@ -1,188 +1,279 @@
-# Cloud Run API Deployment
+# Cloud Run API + Cloudflare Pages Deployment
 
-This runbook deploys the MuseScore-backed API to Cloud Run and points a separately hosted browser app at it.
+This is the primary production plan:
 
-The cost posture is "stay inside the free tier for normal light use," not a hard guarantee of $0. Cloud Run has a monthly free tier for request-based services, but Artifact Registry storage is only free for the first 0.5 GiB per month and this MuseScore image is currently about 879 MB when built locally. Keep `min-instances=0`, cap instances, and prune old images.
+- Cloud Run hosts the Node API and scales to zero.
+- Cloudflare Pages hosts the static React/Vite app.
+- Artifact Registry stores API images and automatically deletes old versions.
+- Cloudflare automatically rebuilds the web app when `main` changes.
 
-Official references:
+The API has no database or persistent filesystem requirement. Uploaded files are temporary.
 
-- Cloud Run pricing: https://cloud.google.com/run/pricing
-- Cloud Run cost optimization: https://docs.cloud.google.com/run/docs/tips/services-cost-optimization
-- Artifact Registry pricing: https://cloud.google.com/artifact-registry/pricing
+## Who Does What
 
-## Shape
+### You must do
 
-- API: Cloud Run service from `apps/api/Dockerfile.cloudrun`.
-- Web: static build hosted separately, with `VITE_API_BASE_URL` set to the Cloud Run API URL.
-- Browser CORS: API allows only origins listed in `CORS_ORIGINS`.
-- MuseScore: installed in the API image; `MUSESCORE_USE_XVFB=auto` keeps headless conversion working.
+These steps require account ownership, billing consent, or browser authorization:
 
-## One-Time Setup
+1. Choose or create the Google Cloud project and enable billing.
+2. Create a Google Cloud budget alert.
+3. Connect the GitHub repository to Cloudflare Pages.
+4. Approve Google Cloud and Docker authentication prompts.
+5. Register the final Cloudflare URL in the Audiotool developer application.
+6. Perform the final real Audiotool OAuth test.
 
-Install and authenticate the Google Cloud CLI, then choose a project with billing enabled.
+### Codex can do
+
+Once you have authenticated locally and supplied the values below, you can ask Codex to:
+
+1. Check/install the required CLIs.
+2. Run the API deployment script.
+3. Create the Artifact Registry repository.
+4. Apply the automatic image cleanup policy.
+5. Build, push, and deploy the API.
+6. Verify health, readiness, CORS, MIDI conversion, and MusicXML import.
+7. Help enter or verify the Cloudflare build settings.
+8. Add push-to-main API deployment automation later.
+
+Do not send passwords, billing details, refresh tokens, or private keys in chat. Browser login and CLI authentication should happen directly on your machine.
+
+## Values To Decide
+
+Defaults are already encoded in the deployment script except for the three required values:
 
 ```bash
-gcloud auth login
-gcloud auth application-default login
-gcloud config set project <project-id>
-```
+export PROJECT_ID=<google-cloud-project-id>
+export WEB_ORIGIN=https://<cloudflare-pages-project>.pages.dev
+export AUDIOTOOL_CLIENT_ID=<audiotool-client-id>
 
-Set deployment variables:
-
-```bash
-export PROJECT_ID=<project-id>
+# Optional overrides:
 export REGION=us-west1
 export REPOSITORY=audiotool-score-io
 export SERVICE=audiotool-score-api
-export WEB_ORIGIN=https://<your-web-origin>
+```
+
+`WEB_ORIGIN` must not end with `/`. The Audiotool redirect URI will use the same value with a trailing `/`.
+
+## Step 1: Prepare Accounts
+
+### Google Cloud — you
+
+1. Create or select a Google Cloud project.
+2. Enable billing.
+3. Create a small budget alert.
+4. Install the Google Cloud CLI if it is not installed.
+5. Authenticate:
+
+```bash
+gcloud auth login
+```
+
+The deploy script enables the required Cloud Run and Artifact Registry APIs.
+
+### Cloudflare — you
+
+1. Create or sign in to a Cloudflare account.
+2. Open **Workers & Pages**.
+3. Create a Pages application connected to this GitHub repository.
+4. Choose a stable project name. This produces a URL such as:
+
+```text
+https://audiotool-score-io.pages.dev
+```
+
+You need this URL before deploying Cloud Run because the API CORS policy permits the production web origin explicitly.
+
+## Step 2: Bootstrap Cloudflare Pages
+
+Use these Pages build settings:
+
+| Setting | Value |
+|---|---|
+| Production branch | `main` |
+| Root directory | repository root / blank |
+| Build command | `npm run build --workspace @midi-to-xml/web` |
+| Build output directory | `apps/web/dist` |
+
+Add these production environment variables:
+
+```text
+NODE_VERSION=22
+VITE_AUDIOTOOL_CLIENT_ID=<audiotool-client-id>
+VITE_AUDIOTOOL_SCOPE=project:write
+```
+
+Leave `VITE_API_BASE_URL` and `VITE_AUDIOTOOL_REDIRECT_URL` unset for this first bootstrap build. The first build exists to reserve the Pages URL.
+
+Cloudflare Pages automatically treats the build as a single-page application because the output has no top-level `404.html`. Direct visits to `/sign-in` and `/app` therefore resolve to the React app without a custom redirect file.
+
+After the first deployment, record the exact production origin without a trailing slash:
+
+```bash
+export WEB_ORIGIN=https://audiotool-score-io.pages.dev
+```
+
+## Step 3: Deploy The Cloud Run API
+
+From the repository root, set the required values:
+
+```bash
+export PROJECT_ID=<google-cloud-project-id>
+export WEB_ORIGIN=https://<cloudflare-pages-project>.pages.dev
 export AUDIOTOOL_CLIENT_ID=<audiotool-client-id>
-export IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/api:$(git rev-parse --short HEAD)"
 ```
 
-Enable the needed APIs:
+Then run:
 
 ```bash
-gcloud services enable run.googleapis.com artifactregistry.googleapis.com
+npm run deploy:cloud-run
 ```
 
-Create the Artifact Registry Docker repository:
+This script:
 
-```bash
-gcloud artifacts repositories create "$REPOSITORY" \
-  --repository-format=docker \
-  --location="$REGION" \
-  --description="Audiotool Score IO containers"
+1. Selects the Google Cloud project.
+2. Enables Cloud Run and Artifact Registry.
+3. Creates the Docker repository if it does not exist.
+4. Activates [`artifact-registry-cleanup-policy.json`](artifact-registry-cleanup-policy.json).
+5. Builds and pushes the API image.
+6. Deploys Cloud Run with:
+   - 1 CPU
+   - 1 GiB RAM
+   - concurrency 4
+   - minimum instances 0
+   - maximum instances 2
+   - five-minute request timeout
+7. Checks `/health` and `/ready`.
+8. Prints the final Cloudflare environment variables.
+
+The cleanup policy deletes API images older than 14 days but always keeps the five newest versions. Artifact Registry runs it automatically in the background.
+
+You can delegate this entire step to Codex after `gcloud auth login` has been completed and the three required environment values are known. The underlying script is [`scripts/deploy/cloud-run.sh`](../../scripts/deploy/cloud-run.sh).
+
+## Step 4: Finish Cloudflare Configuration
+
+The deployment script prints values resembling:
+
+```text
+VITE_API_BASE_URL=https://audiotool-score-api-....run.app
+VITE_AUDIOTOOL_CLIENT_ID=...
+VITE_AUDIOTOOL_REDIRECT_URL=https://audiotool-score-io.pages.dev/
+VITE_AUDIOTOOL_SCOPE=project:write
 ```
 
-Configure Docker auth for the repository:
+In Cloudflare Pages:
 
-```bash
-gcloud auth configure-docker "$REGION-docker.pkg.dev"
+1. Open the project.
+2. Go to **Settings → Environment variables**.
+3. Add those values to the production environment.
+4. Trigger a new production deployment.
+
+Cloudflare will automatically deploy future frontend changes pushed to `main`.
+
+## Step 5: Update Audiotool
+
+In the Audiotool developer application, add this exact redirect URI:
+
+```text
+https://<cloudflare-pages-project>.pages.dev/
 ```
 
-## Build And Push
+The trailing slash matters.
 
-Build locally and push directly to Artifact Registry. This avoids needing Cloud Build for the first deployment.
+If you later add a custom domain:
 
-```bash
-docker buildx build \
-  --platform linux/amd64 \
-  -f apps/api/Dockerfile.cloudrun \
-  -t "$IMAGE" \
-  --push \
-  .
-```
+1. Change `WEB_ORIGIN` to the custom origin.
+2. Run `npm run deploy:cloud-run` again to update API CORS.
+3. Update `VITE_AUDIOTOOL_REDIRECT_URL` in Cloudflare.
+4. Add the custom-domain redirect URI in Audiotool.
 
-## Deploy API
+## Step 6: Production Verification
 
-This deploy keeps idle cost at zero, allows one instance at a time, and serializes MuseScore conversions. Raise `--max-instances` only after you are comfortable with the billing tradeoff.
-
-```bash
-gcloud run deploy "$SERVICE" \
-  --image "$IMAGE" \
-  --region "$REGION" \
-  --allow-unauthenticated \
-  --cpu=1 \
-  --memory=2Gi \
-  --concurrency=1 \
-  --min-instances=0 \
-  --max-instances=1 \
-  --timeout=300 \
-  --cpu-throttling \
-  --set-env-vars "MUSESCORE_USE_XVFB=auto,XVFB_RUN_BIN=xvfb-run,MAX_UPLOAD_BYTES=30000000,JSON_BODY_LIMIT=1mb,CONVERSION_TIMEOUT_MS=120000,DEFAULT_QUANTIZATION_GRID=24,CORS_ORIGINS=$WEB_ORIGIN,AUDIOTOOL_CLIENT_ID=$AUDIOTOOL_CLIENT_ID"
-```
-
-Read the API URL:
-
-```bash
-export API_URL="$(gcloud run services describe "$SERVICE" \
-  --region "$REGION" \
-  --format='value(status.url)')"
-echo "$API_URL"
-```
-
-Check the deployed service:
+### Codex can verify
 
 ```bash
 curl -sS "$API_URL/health"
 curl -sS "$API_URL/ready"
 ```
 
-`/ready` should report MuseScore as ready. If it does not, inspect logs:
-
-```bash
-gcloud run services logs read "$SERVICE" --region "$REGION" --limit=100
-```
-
-## Build Web For The API URL
-
-Wherever the web app is hosted, build it with the Cloud Run API URL:
-
-```bash
-VITE_API_BASE_URL="$API_URL" \
-VITE_AUDIOTOOL_CLIENT_ID="$AUDIOTOOL_CLIENT_ID" \
-VITE_AUDIOTOOL_REDIRECT_URL="$WEB_ORIGIN/" \
-VITE_AUDIOTOOL_SCOPE=project:write \
-npm run build --workspace @midi-to-xml/web
-```
-
-Deploy `apps/web/dist` to the static host.
-
-Then update the Audiotool developer app redirect URI to exactly:
+Expected:
 
 ```text
-$WEB_ORIGIN/
+ok
+{"status":"ready","converter":"direct"}
 ```
 
-## Verification
+Codex can also verify the production CORS preflight and run synthetic MIDI/MusicXML smoke tests.
 
-Open the web app at `$WEB_ORIGIN` and verify:
+### You verify
+
+Open the Cloudflare URL and test:
 
 1. Sign in with Audiotool.
 2. Load projects.
 3. Inspect a project.
 4. Convert one selected note track.
-5. Convert multiple selected note tracks.
-6. Download the MusicXML or zip.
-7. Analyze a MusicXML upload.
-8. Import selected parts back to Audiotool.
+5. Convert multiple tracks.
+6. Download MusicXML or a zip.
+7. Analyze a MusicXML and an MXL upload.
+8. Import selected parts into Audiotool.
 
-## Cost Guardrails
+The real OAuth consent and project access test must be done in your browser/account.
 
-- Keep `--min-instances=0`; otherwise Cloud Run can bill while idle.
-- Keep request-based CPU allocation with `--cpu-throttling`.
-- Keep `--max-instances=1` until you decide a higher cap is worth the spend.
-- Keep `--concurrency=1` while MuseScore is the conversion engine.
-- Keep `MAX_UPLOAD_BYTES` below Cloud Run's request size limit and low enough to discourage expensive uploads.
-- Delete old Artifact Registry image versions after each few deployments.
-- Create a Google Cloud budget alert. Budget alerts are warnings, not hard spending caps.
+## Ongoing Deployments
 
-Useful image cleanup commands:
+### Frontend
+
+Cloudflare Pages deploys automatically on pushes to `main`.
+
+### API
+
+Until CI deployment is added, run:
 
 ```bash
-gcloud artifacts docker images list "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/api" \
+export PROJECT_ID=<google-cloud-project-id>
+export WEB_ORIGIN=https://<production-web-origin>
+export AUDIOTOOL_CLIENT_ID=<audiotool-client-id>
+npm run deploy:cloud-run
+```
+
+The script tags each image with the current Git commit and updates Cloud Run.
+
+After the first deployment works, Codex can add a GitHub Actions workflow using Google Workload Identity Federation. That avoids storing a Google service-account key in GitHub.
+
+## Rollback
+
+List recent images:
+
+```bash
+gcloud artifacts docker images list \
+  "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/api" \
   --include-tags
 ```
 
-Delete old digests from the list above when they are no longer deployed:
+Deploy a previous image tag:
 
 ```bash
-gcloud artifacts docker images delete <image-digest-url> --quiet
-```
-
-## Updating The API Later
-
-```bash
-export IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/api:$(git rev-parse --short HEAD)"
-
-docker buildx build \
-  --platform linux/amd64 \
-  -f apps/api/Dockerfile.cloudrun \
-  -t "$IMAGE" \
-  --push \
-  .
-
 gcloud run deploy "$SERVICE" \
-  --image "$IMAGE" \
-  --region "$REGION"
+  --project="$PROJECT_ID" \
+  --region="$REGION" \
+  --image="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/api:<old-commit-tag>"
 ```
+
+The cleanup policy keeps the five newest versions available for rollback.
+
+## Cost Controls
+
+- Cloud Run minimum instances stays at zero.
+- Cloud Run uses request-based CPU allocation.
+- Maximum instances is capped at two.
+- Artifact Registry cleanup is automatic.
+- Cloudflare serves static assets without running an application server.
+- Create a Google Cloud budget alert even if expected usage is within the free tier.
+
+Official references:
+
+- [Cloud Run pricing](https://cloud.google.com/run/pricing)
+- [Cloud Run request timeouts](https://docs.cloud.google.com/run/docs/configuring/request-timeout)
+- [Artifact Registry cleanup policies](https://docs.cloud.google.com/artifact-registry/docs/repositories/cleanup-policy)
+- [Cloudflare Pages build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/)
+- [Cloudflare Pages SPA behavior](https://developers.cloudflare.com/pages/configuration/serving-pages/)

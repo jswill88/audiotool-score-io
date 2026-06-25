@@ -1,7 +1,5 @@
-import type { MuseScoreOptions } from '@midi-to-xml/midi-to-musicxml';
-
 export type ScoreImportWarningCode =
-  | 'empty-midi-track'
+  | 'empty-score-part'
   | 'tempo-changes-flattened'
   | 'time-signature-changes-flattened'
   | 'percussion-basic-import'
@@ -51,14 +49,6 @@ export type ScoreImportPlan = {
 };
 
 export type BuildScoreImportPlanOptions = {
-  inputPath: string;
-  sourceName?: string;
-  title?: string;
-  midiPath?: string;
-  museScore?: MuseScoreOptions;
-};
-
-export type BuildScoreImportPlanFromMidiOptions = {
   inputPath: string;
   sourceName?: string;
   title?: string;

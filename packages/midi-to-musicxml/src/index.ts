@@ -1,24 +1,19 @@
 export {
-  allowedQuantizationGrids,
-  allowedVirtualDisplayModes,
-  defaultConversionTimeoutMs,
-  defaultMuseScoreCandidates,
-  defaultQuantizationGrid
-} from './defaults.js';
-export {
   MidiToMusicXmlError,
   MidiValidationError
 } from './errors.js';
 export {
-  assertAllowedQuantizationGrid,
   assertValidMidiFile,
-  convertMidiToMusicXml,
-  preprocessMidi
+  convertMidiToMusicXml
 } from './midi.js';
 export {
   convertMidiBytesToDirectMusicXml,
   convertMidiToDirectMusicXml
-} from './direct-musicxml.js';
+} from './direct-musicxml/index.js';
+export {
+  quantizeMidiBytesForNotation,
+  quantizeMidiForNotation
+} from './quantizer.js';
 export {
   applyRhythmGrammarToVoice,
   createRhythmMeter,
@@ -27,35 +22,14 @@ export {
   rhythmGrammar,
   rhythmGroupIndexAt,
   spellRhythmDuration
-} from './rhythm-grammar.js';
-export {
-  applyMusicXmlFinalBarline,
-  applyMusicXmlPartNames,
-  applyMusicXmlTitle,
-  writeMusicXmlFinalBarline,
-  writeMusicXmlPartNames,
-  writeMusicXmlTitle
-} from './musicxml.js';
-export {
-  buildMuseScoreCommand,
-  convertWithMuseScore,
-  readMuseScoreStatus,
-  resolveMuseScoreBinary,
-  resolveVirtualDisplayWrapper
-} from './musescore.js';
+} from './rhythm/index.js';
 export type {
   ConvertMidiToMusicXmlOptions,
   ConvertMidiToMusicXmlResult,
   ConvertMidiToDirectMusicXmlOptions,
   DirectMusicXmlRenderOptions,
-  MuseScoreCommand,
-  MuseScoreOptions,
-  MuseScoreStatus,
-  NotationEngine,
   NotationNote,
-  QuantizationGrid,
-  TimeSignature,
-  VirtualDisplayMode
+  TimeSignature
 } from './types.js';
 export type {
   RhythmArticulation,
@@ -66,4 +40,4 @@ export type {
   RhythmMeter,
   RhythmTemplate,
   RhythmVoiceEvent
-} from './rhythm-grammar.js';
+} from './rhythm/index.js';

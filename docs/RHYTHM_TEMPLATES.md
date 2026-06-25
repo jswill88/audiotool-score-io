@@ -7,7 +7,7 @@ rhythms.
 ## Implementation Status
 
 The approved core rules in this worksheet are implemented as executable
-TypeScript in `packages/midi-to-musicxml/src/rhythm-grammar.ts`. The
+TypeScript under `packages/midi-to-musicxml/src/rhythm/`. The
 ranked-direct converter applies that grammar after quantization, and
 `packages/midi-to-musicxml/test/midi.test.js` contains regression examples for
 the main exception, rest, beaming, compound-meter, odd-meter, and triplet
@@ -723,15 +723,24 @@ sixteenth, thirty-second, or another smaller subdivision.
 Apply this rule when:
 
 1. Removing the final tied fragment leaves a standard, readable note value.
-2. The removed fragment combines with the following rest to form a complete
-   beat or another clearer rest subdivision.
-3. There is no following attack suggesting that the longer duration is
-   intentional.
+2. The removed fragment combines with the following rest to form a standard,
+   clearer rest value. The resulting rest may be shorter than a complete beat.
+3. A following attack may remain when the trimmed result exposes that attack
+   with a cleaner rest subdivision:
+
+   ```text
+   Input:     A 4n ~ A 16n | 8R | B 16n ~ B 4n
+   Preferred: A 4n | dotted 8R | B 16n ~ B 4n
+   ```
+
 4. The fragment is only a release overhang, not an essential syncopation,
    tuplet member, or sustained note crossing into the next phrase.
 
-This rule scales by diminution and augmentation wherever the same beat
-relationship is preserved.
+This is a general cleanup rule, not a 3/4-only template. Apply it in 2/4, 3/4,
+4/4, longer `/4` meters, and other meters wherever the same beat relationship
+and normal overhang-removal conditions are preserved. It may also scale by
+diminution and augmentation when the corresponding subdivision boundary is
+part of the active meter hierarchy.
 
 #### Rest Template 002 — Fill a Short Release Gap
 
@@ -764,6 +773,18 @@ Apply this rule when:
 
 This rule may diminish to smaller subdivisions, but it does **not** augment
 across complete beats.
+
+An incoming tie from the preceding measure does not prevent this cleanup. Keep
+the incoming tie, but allow its continuation to absorb a short release rest:
+
+```text
+Input:     A 16n ~ A dotted 8n | 16R
+Preferred: A 16n ~ A 4n
+```
+
+The first sixteenth remains in the preceding measure. Only the continuation's
+release within the current measure is extended. An outgoing tie into the next
+measure still fixes the endpoint and must not be removed.
 
 If the written note becomes at least twice as long as the performed note, add a
 staccato articulation to preserve the short release:

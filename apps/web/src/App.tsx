@@ -117,8 +117,6 @@ function AppWorkspace({
             <TracksPanel
               canConvert={exportWorkflow.canConvert}
               defaultScoreTitle={exportWorkflow.defaultScoreTitle}
-              engine={exportWorkflow.engine}
-              grid={exportWorkflow.grid}
               manifest={exportWorkflow.manifest}
               mode={exportWorkflow.mode}
               onConvert={exportWorkflow.onConvert}
@@ -131,8 +129,6 @@ function AppWorkspace({
               scoreTitle={exportWorkflow.scoreTitle}
               selectedProject={exportWorkflow.selectedProject}
               selectedTrackIds={exportWorkflow.selectedTrackIds}
-              setGrid={exportWorkflow.setGrid}
-              setEngine={exportWorkflow.setEngine}
               setMode={exportWorkflow.setMode}
               setQuantize={exportWorkflow.setQuantize}
               status={status}
