@@ -8,6 +8,7 @@ export type RhythmTemplate = {
   meter: `${number}/${number}`;
   input: number[];
   spelling: number[][];
+  match?: 'measure-or-group';
   beamAsOneGroup?: boolean;
   description: string;
 };

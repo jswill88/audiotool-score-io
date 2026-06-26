@@ -24,12 +24,13 @@ export function createBeamLookup(
   spellingOverrides: Map<VoiceEvent, number[]>
 ) {
   const lookup: BeamLookup = new Map();
-  const chunks = createVoiceChunks(
+  const allChunks = createVoiceChunks(
     events,
     measureDuration,
     meter,
     spellingOverrides
-  ).filter((chunk) => (
+  );
+  const chunks = allChunks.filter((chunk) => (
     isBeamableDuration(chunk.duration) &&
     (
       chunk.kind === 'note' ||
@@ -83,6 +84,7 @@ export function createBeamLookup(
           rhythmGroupIndexAt(previous.start, meter) ===
             rhythmGroupIndexAt(chunk.start, meter) &&
           belongsToSameTripletBeamSet(previous, chunk) &&
+          canContinuePrimaryBeam(previous, chunk, meter, allChunks, level) &&
           (
             level === 1 ||
             Math.floor(previous.start / meter.simpleBeatTicks) ===
@@ -104,6 +106,46 @@ export function createBeamLookup(
   }
 
   return lookup;
+}
+
+function canContinuePrimaryBeam(
+  previous: VoiceChunk,
+  current: VoiceChunk,
+  meter: RhythmMeter,
+  allChunks: VoiceChunk[],
+  level: number
+) {
+  if (level !== 1 || meter.denominator !== 4) {
+    return true;
+  }
+
+  const boundary = current.start;
+
+  if (
+    boundary <= 0 ||
+    boundary >= meter.measureTicks ||
+    boundary % meter.simpleBeatTicks !== 0
+  ) {
+    return true;
+  }
+
+  const group = meter.groupRanges.find((range) => (
+    boundary > range.start && boundary < range.end
+  ));
+
+  if (!group || group.end - group.start <= meter.simpleBeatTicks) {
+    return true;
+  }
+
+  const groupChunks = allChunks.filter((chunk) => (
+    chunk.start >= group.start &&
+    chunk.start + chunk.duration <= group.end
+  ));
+  const eighthTicks = Math.round(meter.quarterTicks / 2);
+
+  return groupChunks.length > 0 && groupChunks.every((chunk) => (
+    chunk.kind === 'note' && chunk.duration === eighthTicks
+  ));
 }
 
 function belongsToSameTripletBeamSet(

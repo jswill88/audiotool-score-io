@@ -8,6 +8,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] UI fixes
 - [x] Clean up new code and audit large production modules, stale compatibility paths, and unused TypeScript symbols.
 - [ ] pdf support
+- [x] Add conservative 8va/8vb MusicXML octave-shift sections for contiguous extreme high/low note runs.
 - [x] Restore visible keyboard tabbing through Audiotool track selection/name editing and MusicXML part selection/name editing; move focus to Tracks after project inspection and Parts after score analysis.
 - [x] Keep MIDI → MusicXML conversion in its own reusable package.
   - [ ] can there be a musicxml -> musicxml version, that cleans up dirty musicxml with the quantization option and rules?
@@ -38,14 +39,14 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 Detailed instructions and ownership are in [`docs/deployment/cloud-run.md`](deployment/cloud-run.md).
 
 - [x] **Codex:** Prepare the lightweight Cloud Run Docker image, API CORS support, deployment script, automatic Artifact Registry cleanup policy, and Cloudflare build settings.
-- [ ] **You:** Create/select the Google Cloud project, enable billing, create a budget alert, and complete `gcloud auth login`.
+- [x] **You:** Create/select the Google Cloud project, enable billing, create a budget alert, and complete `gcloud auth login`.
 - [x] **You:** Connect the GitHub repository to Cloudflare Pages, use the documented monorepo build settings, and record the stable `https://audiotool-score-io.pages.dev` production origin.
-- [ ] **You:** Confirm the Audiotool client ID.
-- [ ] **Codex:** Run `npm run deploy:cloud-run` after the Google account is authenticated and `PROJECT_ID`, `WEB_ORIGIN`, and `AUDIOTOOL_CLIENT_ID` are available.
-- [ ] **You or Codex with Cloudflare CLI access:** Add the final Cloud Run URL to the Cloudflare Pages production environment variables and trigger the production rebuild; the deployed Pages bundle did not visibly include the Cloud Run URL during the June 26, 2026 smoke check.
+- [x] **You:** Confirm the Audiotool client ID.
+- [x] **Codex:** Run `npm run deploy:cloud-run` after the Google account is authenticated and `PROJECT_ID`, `WEB_ORIGIN`, and `AUDIOTOOL_CLIENT_ID` are available.
+- [x] **You or Codex with Cloudflare CLI access:** Add the final Cloud Run URL to the Cloudflare Pages production environment variables and trigger the production rebuild; the deployed Pages bundle did not visibly include the Cloud Run URL during the June 26, 2026 smoke check.
 - [x] **You:** Register the final Cloudflare production URL as an Audiotool redirect URI.
 - [x] **Codex:** Verify Cloud Run health/readiness, production CORS, direct MIDI conversion, and MusicXML/MXL import.
-- [ ] **Together:** Verify the real browser flow: sign in, load projects, inspect tracks, export MusicXML, analyze a score upload, and import selected parts.
+- [x] **Together:** Verify the real browser flow: sign in, load projects, inspect tracks, export MusicXML, analyze a score upload, and import selected parts.
 - [ ] **Optional after launch — Codex:** Add keyless GitHub Actions API deployment using Google Workload Identity Federation.
 
 ### README Recruiter/Employer Polish

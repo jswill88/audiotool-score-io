@@ -12,12 +12,15 @@ import {
   createBeamLookup,
   createTupletLookup
 } from './grouping.js';
+import { createOctaveShiftRanges } from './octave-shifts.js';
 import {
   serializeNoteGroup,
   serializeRest
 } from './serialize-notes.js';
 import type {
   MeasureEvent,
+  OctaveShiftRange,
+  OctaveShiftType,
   ScorePart,
   VoiceEvent
 } from './types.js';
@@ -85,6 +88,8 @@ function serializeMeasure(
   if (voices.length === 0) {
     lines.push(...serializeRest(0, measureDuration, 1, meter));
   } else {
+    const useOctaveShifts = voices.length === 1;
+
     voices.forEach((voiceEvents, voiceIndex) => {
       if (voiceIndex > 0) {
         lines.push('      <backup>');
@@ -97,7 +102,8 @@ function serializeMeasure(
         measureDuration,
         voiceIndex + 1,
         meter,
-        part.clef
+        part.clef,
+        useOctaveShifts
       ));
     });
   }
@@ -178,7 +184,8 @@ function serializeVoiceEvents(
   measureDuration: number,
   voice: number,
   meter: RhythmMeter,
-  clef: ScorePart['clef']
+  clef: ScorePart['clef'],
+  useOctaveShifts: boolean
 ) {
   const lines: string[] = [];
   let cursor = 0;
@@ -209,6 +216,11 @@ function serializeVoiceEvents(
     meter,
     spellingOverrides
   );
+  const octaveShiftRanges = useOctaveShifts
+    ? createOctaveShiftRanges(spelledEvents, clef)
+    : [];
+  const octaveShiftStarts = rangesByPosition(octaveShiftRanges, 'start');
+  const octaveShiftStops = rangesByPosition(octaveShiftRanges, 'end');
 
   for (const event of spelledEvents) {
     if (event.start > cursor) {
@@ -222,6 +234,10 @@ function serializeVoiceEvents(
       ));
     }
 
+    for (const range of octaveShiftStarts.get(event.start) ?? []) {
+      lines.push(...serializeOctaveShiftDirection(range.type));
+    }
+
     lines.push(...serializeNoteGroup(
       event,
       voice,
@@ -232,6 +248,10 @@ function serializeVoiceEvents(
       clef
     ));
     cursor = event.start + event.duration;
+
+    for (const range of octaveShiftStops.get(cursor) ?? []) {
+      lines.push(...serializeOctaveShiftDirection('stop', range.type));
+    }
   }
 
   if (cursor < measureDuration) {
@@ -246,4 +266,35 @@ function serializeVoiceEvents(
   }
 
   return lines;
+}
+
+function rangesByPosition(
+  ranges: OctaveShiftRange[],
+  key: 'end' | 'start'
+) {
+  const byPosition = new Map<number, OctaveShiftRange[]>();
+
+  for (const range of ranges) {
+    byPosition.set(range[key], [
+      ...(byPosition.get(range[key]) ?? []),
+      range
+    ]);
+  }
+
+  return byPosition;
+}
+
+function serializeOctaveShiftDirection(
+  type: OctaveShiftType | 'stop',
+  shiftedType: OctaveShiftType = type === 'stop' ? 'down' : type
+) {
+  const placement = shiftedType === 'up' ? 'below' : 'above';
+
+  return [
+    `      <direction placement="${placement}">`,
+    '        <direction-type>',
+    `          <octave-shift type="${type}" size="8"/>`,
+    '        </direction-type>',
+    '      </direction>'
+  ];
 }

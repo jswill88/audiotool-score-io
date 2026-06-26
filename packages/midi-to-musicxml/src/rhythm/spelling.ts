@@ -2,6 +2,7 @@ import { rhythmGrammar } from './rules.js';
 import type {
   RhythmChunk,
   RhythmMeter,
+  RhythmTemplate,
   RhythmVoiceEvent,
   StandardDurationPredicate
 } from './types.js';
@@ -20,30 +21,28 @@ export function createTemplateSpellingOverrides<T extends RhythmVoiceEvent>(
     return contiguous;
   }) && cursor === meter.measureTicks;
 
-  if (!fillsMeasureWithoutRests) {
-    return overrides;
-  }
-
-  const template = rhythmGrammar.templates.find((candidate) => (
-    candidate.meter === meterName &&
-    candidate.input.length === durations.length &&
-    candidate.input.every((duration, index) => (
-      approximatelyEqual(duration, durations[index])
-    ))
-  ));
-
-  if (!template) {
-    return overrides;
-  }
-
-  events.forEach((event, index) => {
-    overrides.set(
-      event,
-      template.spelling[index].map((duration) => (
-        Math.round(duration * meter.quarterTicks)
+  if (fillsMeasureWithoutRests) {
+    const template = rhythmGrammar.templates.find((candidate) => (
+      candidate.meter === meterName &&
+      candidate.input.length === durations.length &&
+      candidate.input.every((duration, index) => (
+        approximatelyEqual(duration, durations[index])
       ))
-    );
-  });
+    ));
+
+    if (template) {
+      events.forEach((event, index) => {
+        overrides.set(
+          event,
+          template.spelling[index].map((duration) => (
+            Math.round(duration * meter.quarterTicks)
+          ))
+        );
+      });
+    }
+  }
+
+  applyGroupTemplateOverrides(events, meter, overrides);
   return overrides;
 }
 
@@ -151,6 +150,88 @@ function isGroupBoundary(value: number, meter: RhythmMeter) {
   return value === 0 ||
     value === meter.measureTicks ||
     meter.groupBoundaries.includes(value);
+}
+
+function applyGroupTemplateOverrides<T extends RhythmVoiceEvent>(
+  events: T[],
+  meter: RhythmMeter,
+  overrides: Map<T, number[]>
+) {
+  const templates = rhythmGrammar.templates.filter((template) => (
+    template.match === 'measure-or-group' &&
+    templateDenominator(template) === meter.denominator
+  ));
+
+  for (const template of templates) {
+    const span = templateSpanTicks(template, meter);
+    const ranges = [
+      ...(span === meter.measureTicks ? [{ start: 0, end: meter.measureTicks }] : []),
+      ...meter.groupRanges.filter((range) => range.end - range.start === span)
+    ];
+
+    for (const range of ranges) {
+      const window = contiguousEventsInRange(events, range);
+
+      if (!window || !matchesTemplate(window, template, meter)) {
+        continue;
+      }
+
+      window.forEach((event, index) => {
+        overrides.set(
+          event,
+          template.spelling[index].map((duration) => (
+            Math.round(duration * meter.quarterTicks)
+          ))
+        );
+      });
+    }
+  }
+}
+
+function contiguousEventsInRange<T extends RhythmVoiceEvent>(
+  events: T[],
+  range: { end: number; start: number }
+) {
+  const startIndex = events.findIndex((event) => event.start === range.start);
+
+  if (startIndex < 0) {
+    return null;
+  }
+
+  const window: T[] = [];
+  let cursor = range.start;
+
+  for (let index = startIndex; index < events.length && cursor < range.end; index += 1) {
+    const event = events[index];
+
+    if (event.start !== cursor || event.start + event.duration > range.end) {
+      return null;
+    }
+
+    window.push(event);
+    cursor = event.start + event.duration;
+  }
+
+  return cursor === range.end ? window : null;
+}
+
+function matchesTemplate(
+  events: RhythmVoiceEvent[],
+  template: RhythmTemplate,
+  meter: RhythmMeter
+) {
+  return template.input.length === events.length &&
+    template.input.every((duration, index) => (
+      approximatelyEqual(duration, events[index].duration / meter.quarterTicks)
+    ));
+}
+
+function templateSpanTicks(template: RhythmTemplate, meter: RhythmMeter) {
+  return Math.round(sum(template.input) * meter.quarterTicks);
+}
+
+function templateDenominator(template: RhythmTemplate) {
+  return Number(template.meter.split('/')[1]);
 }
 
 function splitConventionalDuration(duration: number, quarterTicks: number) {

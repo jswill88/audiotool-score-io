@@ -2,6 +2,8 @@ import type { RhythmGrammar } from './types.js';
 
 const quarter = 1;
 const eighth = 0.5;
+const sixteenth = 0.25;
+const dottedEighth = 0.75;
 const quarterTriplet = 2 / 3;
 const halfTriplet = 4 / 3;
 
@@ -11,6 +13,11 @@ export const rhythmGrammar: RhythmGrammar = {
       id: 'separate-complete-triplet-sets',
       confidence: 'high',
       description: 'Restart the beam for each complete three-note triplet set.'
+    },
+    {
+      id: 'two-beat-primary-beams-only-for-plain-eighth-groups',
+      confidence: 'high',
+      description: 'In simple /4 meters, carry a primary beam across a two-beat group only when the whole group is plain eighth notes.'
     }
   ],
   templates: [
@@ -78,6 +85,15 @@ export const rhythmGrammar: RhythmGrammar = {
       input: [eighth, eighth, eighth, eighth],
       spelling: [[eighth], [eighth], [eighth], [eighth]],
       description: 'Use four eighths with one beam group per beat.'
+    },
+    {
+      id: '2-4-sixteenth-eighth-eighth-dotted-eighth',
+      confidence: 'high',
+      meter: '2/4',
+      input: [sixteenth, eighth, eighth, dottedEighth],
+      spelling: [[sixteenth], [eighth], [sixteenth, sixteenth], [sixteenth, eighth]],
+      match: 'measure-or-group',
+      description: 'Split the later offbeat values to expose the quarter-note beat and diminished offbeat sustain.'
     },
     {
       id: '2-4-three-quarter-triplets',

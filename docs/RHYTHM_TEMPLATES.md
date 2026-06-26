@@ -243,6 +243,25 @@ Tuplet:    one complete 3:2 group spanning the 2/4 measure
 The first note occupies one triplet unit and the second occupies the remaining
 two triplet units. Display one visible `3` for the complete group.
 
+## Sixteenth-Level 2/4 Exceptions
+
+These templates extend the approved diminished one-beat patterns when a full
+2/4 measure or equivalent two-beat group uses sixteenth-level attacks. They are
+scoped exceptions, not a general instruction to split every offbeat value.
+
+### Template 012 — Sixteenth, Eighth, Eighth, Dotted Eighth
+
+**Confidence:** High
+
+```text
+Input duration pattern: A 16n | B 8n | C 8n | D dotted 8n
+Preferred spelling:      A 16n | B 8n | C 16n ~ C 16n | D 16n ~ D 8n
+```
+
+Split the later offbeat values so the quarter-note beat boundary is visible and
+the final dotted-eighth sustain follows the approved diminished offbeat
+spelling.
+
 ## Diminished One-Beat Equivalents
 
 These are the same relative patterns with every duration halved. They occupy
@@ -398,6 +417,18 @@ Beam continuous eighth notes in groups of four per half-measure:
 
 ```text
 [A 8n B 8n C 8n D 8n] | [E 8n F 8n G 8n H 8n]
+```
+
+Use that two-beat primary beam only when the whole two-beat group is plain
+eighth notes. If the group contains rests, dotted values, or sixteenth-note
+subdivision, restart the primary beam at each quarter-note beat. Unsyncopated
+pairs of sixteenth notes should still beam together inside their beat.
+
+For example:
+
+```text
+Input:   16R | A dotted 8n | B 16n | C 8n | D 16n
+Beaming: A has its own unbeamed stem; [B 16n C 8n D 16n] beam together
 ```
 
 Then add the minor variations that cannot be obtained by simple concatenation:

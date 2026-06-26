@@ -27,6 +27,9 @@ Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shar
 - `POST /convert` converts uploaded MIDI directly. `quantize=false` bypasses canonical quantization.
 - `/ready` returns `{"status":"ready","converter":"direct"}` and has no external-binary readiness dependency.
 - Audiotool track rows and MusicXML import part rows expose named native checkboxes in the keyboard tab order. Track export names use a full-width edit button before entering the text field, and both lists show visible per-control focus. A completed project inspection moves focus into Tracks once, and completed MusicXML analysis moves focus into Parts once; merely refreshing projects or choosing a score file does not.
+- A scoped 2/4/equivalent-group sixteenth-level exception spells `16n | 8n | 8n | dotted 8n` as `16n | 8n | 16n ~ 16n | 16n ~ 8n` to reveal the quarter-note beat and apply the diminished offbeat sustain rule.
+- In simple `/4` meters, two-beat primary beams are reserved for groups made entirely of plain eighth notes; groups containing rests, dotted values, or sixteenths restart the primary beam at each quarter-note beat while preserving unsyncopated sixteenth pairs inside the beat.
+- The direct MusicXML writer emits conservative measure-local 8va/8vb octave-shift directions for contiguous runs of at least two note events more than an octave above or below the chosen staff; mixed-range chords, isolated leaps, multi-voice measures, and cross-measure spans are left unmarked for now.
 - Key selection and contextual sharp/flat respelling remain future work. Output currently declares C major and uses sharp pitch-class spellings.
 - Coherent quintuplet/septuplet candidate generation remains future work; supported triplets are written with explicit MusicXML tuplet notation.
 

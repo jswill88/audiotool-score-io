@@ -104,6 +104,51 @@ test('ranked direct stem direction uses the bass-clef middle line', async (t) =>
   assert.match(noteBlocksForStep(xml, 'F')[0], /<octave>3<\/octave>[\s\S]*?<stem>down<\/stem>/);
 });
 
+test('direct conversion adds octave-shift directions for extreme note runs', async (t) => {
+  const dir = await createTempDir(t);
+  const highPath = path.join(dir, 'high-run.mid');
+  const lowPath = path.join(dir, 'low-run.mid');
+  const isolatedPath = path.join(dir, 'isolated-high-note.mid');
+
+  await writeMidiFile(highPath, [
+    { midi: 96, ticks: 0, durationTicks: 480, velocity: 0.8 },
+    { midi: 98, ticks: 480, durationTicks: 480, velocity: 0.8 },
+    { midi: 60, ticks: 960, durationTicks: 480, velocity: 0.8 }
+  ]);
+  await writeMidiFile(lowPath, [
+    { midi: 24, ticks: 0, durationTicks: 480, velocity: 0.8 },
+    { midi: 26, ticks: 480, durationTicks: 480, velocity: 0.8 },
+    { midi: 48, ticks: 960, durationTicks: 480, velocity: 0.8 }
+  ]);
+  await writeMidiFile(isolatedPath, [
+    { midi: 96, ticks: 0, durationTicks: 480, velocity: 0.8 },
+    { midi: 60, ticks: 480, durationTicks: 480, velocity: 0.8 }
+  ]);
+
+  const highXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(highPath),
+    { quantize: false }
+  );
+  const lowXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(lowPath),
+    { quantize: false }
+  );
+  const isolatedXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(isolatedPath),
+    { quantize: false }
+  );
+
+  assert.match(
+    highXml,
+    /<octave-shift type="down" size="8"\/>[\s\S]*?<step>C<\/step>[\s\S]*?<octave>7<\/octave>[\s\S]*?<step>D<\/step>[\s\S]*?<octave>7<\/octave>[\s\S]*?<octave-shift type="stop" size="8"\/>/
+  );
+  assert.match(
+    lowXml,
+    /<octave-shift type="up" size="8"\/>[\s\S]*?<step>C<\/step>[\s\S]*?<octave>1<\/octave>[\s\S]*?<step>D<\/step>[\s\S]*?<octave>1<\/octave>[\s\S]*?<octave-shift type="stop" size="8"\/>/
+  );
+  assert.doesNotMatch(isolatedXml, /<octave-shift/);
+});
+
 test('convertMidiToMusicXml uses the direct engine', async (t) => {
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'input.mid');
@@ -258,8 +303,10 @@ test('six eighth-note triplets use a separate beam for each triplet set', async 
 
 test('rhythm grammar exposes approved templates and deterministic odd-meter groups', () => {
   assert(rhythmGrammar.templates.some((template) => template.id === '3-4-eighth-quarter-offbeat-dotted-quarter'));
+  assert(rhythmGrammar.templates.some((template) => template.id === '2-4-sixteenth-eighth-eighth-dotted-eighth'));
   assert(rhythmGrammar.cleanupRules.some((rule) => rule.id === 'staccato-on-double-extension'));
   assert(rhythmGrammar.beamingRules.some((rule) => rule.id === 'separate-complete-triplet-sets'));
+  assert(rhythmGrammar.beamingRules.some((rule) => rule.id === 'two-beat-primary-beams-only-for-plain-eighth-groups'));
   assert.deepEqual(meterGroupCounts(5, 4), [3, 2]);
   assert.deepEqual(meterGroupCounts(7, 4), [4, 3]);
   assert.deepEqual(meterGroupCounts(11, 4), [4, 4, 3]);
@@ -290,6 +337,86 @@ test('grammar spells the confirmed 3/4 eighth-quarter-dotted-quarter exception',
   assert.deepEqual(noteDurationsForStep(xml, 'E'), [480, 960]);
   assert.equal(noteBlocksForStep(xml, 'D').filter((note) => note.includes('<tie type=')).length, 2);
   assert.equal(noteBlocksForStep(xml, 'E').filter((note) => note.includes('<tie type=')).length, 2);
+});
+
+test('grammar spells the approved sixteenth-eighth syncopation exception', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'two-four-sixteenth-eighth-syncopation.mid');
+  const fourFourPath = path.join(dir, 'four-four-sixteenth-eighth-syncopation.mid');
+  await writeMidiFile(inputPath, [
+    { midi: 60, ticks: 0, durationTicks: 120, velocity: 0.8 },
+    { midi: 62, ticks: 120, durationTicks: 240, velocity: 0.8 },
+    { midi: 64, ticks: 360, durationTicks: 240, velocity: 0.8 },
+    { midi: 65, ticks: 600, durationTicks: 360, velocity: 0.8 }
+  ], {
+    timeSignature: [2, 4]
+  });
+  await writeMidiFile(fourFourPath, [
+    { midi: 60, ticks: 0, durationTicks: 120, velocity: 0.8 },
+    { midi: 62, ticks: 120, durationTicks: 240, velocity: 0.8 },
+    { midi: 64, ticks: 360, durationTicks: 240, velocity: 0.8 },
+    { midi: 65, ticks: 600, durationTicks: 360, velocity: 0.8 },
+    { midi: 67, ticks: 960, durationTicks: 480, velocity: 0.8 },
+    { midi: 69, ticks: 1440, durationTicks: 480, velocity: 0.8 }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(inputPath),
+    { quantize: false }
+  );
+  const fourFourXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(fourFourPath),
+    { quantize: false }
+  );
+
+  assert.deepEqual(noteDurationsForStep(xml, 'C'), [240]);
+  assert.deepEqual(noteDurationsForStep(xml, 'D'), [480]);
+  assert.deepEqual(noteDurationsForStep(xml, 'E'), [240, 240]);
+  assert.deepEqual(noteDurationsForStep(xml, 'F'), [240, 480]);
+  assert.equal(noteBlocksForStep(xml, 'E').filter((note) => note.includes('<tie type=')).length, 2);
+  assert.equal(noteBlocksForStep(xml, 'F').filter((note) => note.includes('<tie type=')).length, 2);
+  assert.deepEqual(noteDurationsForStep(fourFourXml, 'E'), [240, 240]);
+  assert.deepEqual(noteDurationsForStep(fourFourXml, 'F'), [240, 480]);
+});
+
+test('grammar uses two-beat primary beams only for plain eighth groups in 4/4', async (t) => {
+  const dir = await createTempDir(t);
+  const plainEighthPath = path.join(dir, 'four-four-plain-eighth-beams.mid');
+  const mixedSubdivisionPath = path.join(dir, 'four-four-mixed-subdivision-beams.mid');
+  await writeMidiFile(plainEighthPath, [
+    { midi: 60, ticks: 0, durationTicks: 240, velocity: 0.8 },
+    { midi: 62, ticks: 240, durationTicks: 240, velocity: 0.8 },
+    { midi: 64, ticks: 480, durationTicks: 240, velocity: 0.8 },
+    { midi: 65, ticks: 720, durationTicks: 240, velocity: 0.8 },
+    { midi: 67, ticks: 960, durationTicks: 480, velocity: 0.8 },
+    { midi: 69, ticks: 1440, durationTicks: 480, velocity: 0.8 }
+  ]);
+  await writeMidiFile(mixedSubdivisionPath, [
+    { midi: 60, ticks: 120, durationTicks: 360, velocity: 0.8 },
+    { midi: 62, ticks: 480, durationTicks: 120, velocity: 0.8 },
+    { midi: 64, ticks: 600, durationTicks: 240, velocity: 0.8 },
+    { midi: 65, ticks: 840, durationTicks: 120, velocity: 0.8 },
+    { midi: 67, ticks: 960, durationTicks: 480, velocity: 0.8 },
+    { midi: 69, ticks: 1440, durationTicks: 480, velocity: 0.8 }
+  ]);
+
+  const plainEighthXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(plainEighthPath),
+    { quantize: false }
+  );
+  const mixedSubdivisionXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(mixedSubdivisionPath),
+    { quantize: false }
+  );
+
+  assert.match(noteBlocksForStep(plainEighthXml, 'C')[0], /<beam number="1">begin<\/beam>/);
+  assert.match(noteBlocksForStep(plainEighthXml, 'D')[0], /<beam number="1">continue<\/beam>/);
+  assert.match(noteBlocksForStep(plainEighthXml, 'E')[0], /<beam number="1">continue<\/beam>/);
+  assert.match(noteBlocksForStep(plainEighthXml, 'F')[0], /<beam number="1">end<\/beam>/);
+  assert.doesNotMatch(noteBlocksForStep(mixedSubdivisionXml, 'C')[0], /<beam number=/);
+  assert.match(noteBlocksForStep(mixedSubdivisionXml, 'D')[0], /<beam number="1">begin<\/beam>/);
+  assert.match(noteBlocksForStep(mixedSubdivisionXml, 'E')[0], /<beam number="1">continue<\/beam>/);
+  assert.match(noteBlocksForStep(mixedSubdivisionXml, 'F')[0], /<beam number="1">end<\/beam>/);
 });
 
 test('grammar uses a half note inside the confirmed 4/4 long offbeat sustain', async (t) => {
