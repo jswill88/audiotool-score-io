@@ -44,6 +44,7 @@ export function useExportWorkflow({
   const [scoreTitle, setScoreTitle] = useState('');
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
   const [trackTitles, setTrackTitles] = useState<Record<string, string>>({});
+  const [shouldFocusTracks, setShouldFocusTracks] = useState(false);
   const [mode, setMode] = useState<OutputMode>('score');
   const [quantize, setQuantize] = useState(true);
   const [activeResult, setActiveResult] = useState<ActiveConversionResult | null>(null);
@@ -132,6 +133,7 @@ export function useExportWorkflow({
     setScoreTitle('');
     setSelectedTrackIds([]);
     setTrackTitles({});
+    setShouldFocusTracks(false);
     setActiveResult(null);
     setActiveFileName('');
 
@@ -160,6 +162,7 @@ export function useExportWorkflow({
       setScoreTitle(readScoreTitle({ reference, details: data.details }));
       setSelectedTrackIds(defaultTracks.map((track) => track.id));
       setTrackTitles(createDefaultTrackTitles(tracks));
+      setShouldFocusTracks(true);
       setStatus({
         phase: 'success',
         message: `${tracks.length} tracks inspected${skippedTracks.length > 0 ? `, ${skippedTracks.length} skipped by default` : ''}`,
@@ -265,6 +268,10 @@ export function useExportWorkflow({
     setSelectedTrackIds([]);
   }, []);
 
+  const onTracksFocusHandled = useCallback(() => {
+    setShouldFocusTracks(false);
+  }, []);
+
   return {
     activeFile,
     activeFileName,
@@ -280,6 +287,7 @@ export function useExportWorkflow({
     onSelectAllTracks,
     onTrackTitleChange,
     onTrackToggle,
+    onTracksFocusHandled,
     projectInput,
     projects,
     quantize,
@@ -290,6 +298,7 @@ export function useExportWorkflow({
     setMode,
     setProjectInput,
     setQuantize,
+    shouldFocusTracks,
     trackTitles,
     visibleResult
   };

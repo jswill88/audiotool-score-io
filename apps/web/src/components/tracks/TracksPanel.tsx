@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   AlertTriangle,
   FileCode,
@@ -36,12 +37,14 @@ type TracksPanelProps = {
   onSelectAllTracks: () => void;
   onTrackTitleChange: (trackId: string, title: string) => void;
   onTrackToggle: (trackId: string) => void;
+  onTracksFocusHandled: () => void;
   quantize: boolean;
   scoreTitle: string;
   selectedProject: SelectedProject | null;
   selectedTrackIds: string[];
   setMode: (mode: OutputMode) => void;
   setQuantize: (quantize: boolean) => void;
+  shouldFocusTracks: boolean;
   status: AppStatus;
   trackTitles: Record<string, string>;
 };
@@ -57,15 +60,18 @@ export function TracksPanel({
   onSelectAllTracks,
   onTrackTitleChange,
   onTrackToggle,
+  onTracksFocusHandled,
   quantize,
   scoreTitle,
   selectedProject,
   selectedTrackIds,
   setMode,
   setQuantize,
+  shouldFocusTracks,
   status,
   trackTitles
 }: TracksPanelProps) {
+  const panelRef = useRef<HTMLElement>(null);
   const trackError = status?.phase === 'error' && status?.area === 'tracks'
     ? status.message
     : '';
@@ -79,8 +85,20 @@ export function TracksPanel({
   const allSelectableTracksSelected = hasSelectableTracks && selectedTrackCount === selectableTrackCount;
   const someSelectableTracksSelected = selectedTrackCount > 0 && selectedTrackCount < selectableTrackCount;
 
+  useEffect(() => {
+    if (manifest && shouldFocusTracks) {
+      panelRef.current?.focus();
+      onTracksFocusHandled();
+    }
+  }, [manifest, onTracksFocusHandled, shouldFocusTracks]);
+
   return (
-    <section className="panel tracks-panel">
+    <section
+      aria-label="Tracks"
+      className="panel tracks-panel"
+      ref={panelRef}
+      tabIndex={-1}
+    >
       <div className="panel-header">
         <SectionTitle icon={<ListMusic size={17} />} title="Tracks" />
         <ProjectMeta

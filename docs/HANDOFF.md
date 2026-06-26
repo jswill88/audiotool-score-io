@@ -14,6 +14,9 @@ Reusable pieces:
 - `apps/api`: Express API composing the packages.
 - `apps/web`: React/Vite app for OAuth, export/import workflows, score viewing, and downloads.
 
+The MIDI-to-MusicXML package cleans `dist` before every build, rebuilds during
+`npm pack`/publish, and limits its published files to compiled `dist` output.
+
 Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shared checklist, and `docs/CODEMAP.md` for file navigation.
 
 ## Current Conversion Behavior
@@ -23,6 +26,7 @@ Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shar
 - The web app and API no longer accept or display a notation-engine choice.
 - `POST /convert` converts uploaded MIDI directly. `quantize=false` bypasses canonical quantization.
 - `/ready` returns `{"status":"ready","converter":"direct"}` and has no external-binary readiness dependency.
+- Audiotool track rows and MusicXML import part rows expose named native checkboxes in the keyboard tab order. Track export names use a full-width edit button before entering the text field, and both lists show visible per-control focus. A completed project inspection moves focus into Tracks once, and completed MusicXML analysis moves focus into Parts once; merely refreshing projects or choosing a score file does not.
 - Key selection and contextual sharp/flat respelling remain future work. Output currently declares C major and uses sharp pitch-class spellings.
 - Coherent quintuplet/septuplet candidate generation remains future work; supported triplets are written with explicit MusicXML tuplet notation.
 
@@ -67,6 +71,9 @@ The primary deployment plan is now Cloud Run for the API plus Cloudflare Pages f
 - `docs/deployment/artifact-registry-cleanup-policy.json` deletes API images older than 14 days while retaining the five newest versions.
 - The suggested starting shape is 1 CPU, 1 GiB RAM, concurrency 4, `min-instances=0`, and a conservative instance cap. Tune from real measurements.
 - Cloudflare Pages should build from the repository root with `npm run build --workspace @midi-to-xml/web` and publish `apps/web/dist`.
+- The Cloudflare Pages production origin is `https://audiotool-score-io.pages.dev`; it returned `HTTP/2 200` on June 26, 2026.
+- The Cloud Run API is `https://audiotool-score-api-ne2gewecga-uw.a.run.app`. On June 26, 2026, `/health`, `/ready`, CORS preflight from the Cloudflare origin, uploaded MIDI conversion, `.musicxml` dry-run import, and `.mxl` dry-run import all returned `200`/`204` as expected.
+- The deployed Pages JS inspected on June 26, 2026 did not visibly include the Cloud Run URL, so the production UI still likely needs `VITE_API_BASE_URL=https://audiotool-score-api-ne2gewecga-uw.a.run.app` plus a Pages rebuild before the real browser flow can pass.
 - The old Oracle/DuckDNS materials remain archived under `docs/deployment/oracle-a1.md` and `scripts/oracle/`, but are no longer active TODO work.
 
 ## How To Run

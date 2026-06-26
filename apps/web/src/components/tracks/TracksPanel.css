@@ -6,6 +6,12 @@
   gap: 12px;
 }
 
+.tracks-panel:focus {
+  border-color: var(--focus-ring);
+  outline: 3px solid var(--focus-ring-soft);
+  outline-offset: 2px;
+}
+
 .panel-header {
   display: flex;
   align-items: center;

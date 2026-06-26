@@ -1,14 +1,36 @@
 .inline-text-edit {
   display: inline-grid;
-  grid-template-columns: minmax(0, auto) auto;
   align-items: center;
   max-width: 100%;
   min-width: 0;
-  gap: 5px;
 }
 
 .inline-text-edit.is-editing {
   grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 5px;
+}
+
+.inline-text-edit-trigger {
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto) auto;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.inline-text-edit-trigger:hover {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .inline-text-edit-value {

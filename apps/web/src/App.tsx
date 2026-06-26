@@ -125,12 +125,14 @@ function AppWorkspace({
               onSelectAllTracks={exportWorkflow.onSelectAllTracks}
               onTrackTitleChange={exportWorkflow.onTrackTitleChange}
               onTrackToggle={exportWorkflow.onTrackToggle}
+              onTracksFocusHandled={exportWorkflow.onTracksFocusHandled}
               quantize={exportWorkflow.quantize}
               scoreTitle={exportWorkflow.scoreTitle}
               selectedProject={exportWorkflow.selectedProject}
               selectedTrackIds={exportWorkflow.selectedTrackIds}
               setMode={exportWorkflow.setMode}
               setQuantize={exportWorkflow.setQuantize}
+              shouldFocusTracks={exportWorkflow.shouldFocusTracks}
               status={status}
               trackTitles={exportWorkflow.trackTitles}
             />
@@ -160,10 +162,12 @@ function AppWorkspace({
               onDeselectAllParts={scoreImportWorkflow.onDeselectAllParts}
               onPartTitleChange={scoreImportWorkflow.onPartTitleChange}
               onPartToggle={scoreImportWorkflow.onPartToggle}
+              onPartsFocusHandled={scoreImportWorkflow.onPartsFocusHandled}
               onSelectAllParts={scoreImportWorkflow.onSelectAllParts}
               partTitles={scoreImportWorkflow.partTitles}
               plan={scoreImportWorkflow.plan}
               selectedPartIds={scoreImportWorkflow.selectedPartIds}
+              shouldFocusParts={scoreImportWorkflow.shouldFocusParts}
             />
             <ResultPanel
               activeFile={scoreImportWorkflow.scorePreviewFile}

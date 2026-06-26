@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import {
   AlertTriangle,
   FileInput,
@@ -33,10 +33,12 @@ type ScorePartsPanelProps = {
   onDeselectAllParts: () => void;
   onPartTitleChange: (partId: string, title: string) => void;
   onPartToggle: (partId: string) => void;
+  onPartsFocusHandled: () => void;
   onSelectAllParts: () => void;
   partTitles: Record<string, string>;
   plan: ScoreImportPlan | null;
   selectedPartIds: string[];
+  shouldFocusParts: boolean;
 };
 
 export function ScoreImportPanel({
@@ -150,11 +152,14 @@ export function ScorePartsPanel({
   onDeselectAllParts,
   onPartTitleChange,
   onPartToggle,
+  onPartsFocusHandled,
   onSelectAllParts,
   partTitles,
   plan,
-  selectedPartIds
+  selectedPartIds,
+  shouldFocusParts
 }: ScorePartsPanelProps) {
+  const panelRef = useRef<HTMLElement>(null);
   const partCount = plan?.parts.length ?? 0;
   const knownPartIds = new Set(plan?.parts.map((part) => part.id) ?? []);
   const selectedPartCount = selectedPartIds.filter((partId) => knownPartIds.has(partId)).length;
@@ -163,8 +168,20 @@ export function ScorePartsPanel({
   const somePartsSelected = selectedPartCount > 0 && selectedPartCount < partCount;
   const warnings = formatImportWarnings(plan?.warnings ?? []);
 
+  useEffect(() => {
+    if (plan && shouldFocusParts) {
+      panelRef.current?.focus();
+      onPartsFocusHandled();
+    }
+  }, [onPartsFocusHandled, plan, shouldFocusParts]);
+
   return (
-    <section className="panel score-parts-panel" aria-label="Detected score parts">
+    <section
+      aria-label="Detected score parts"
+      className="panel score-parts-panel"
+      ref={panelRef}
+      tabIndex={-1}
+    >
       <div className="panel-header">
         <SectionTitle icon={<Music2 size={17} />} title="Parts" />
       </div>
@@ -195,7 +212,7 @@ export function ScorePartsPanel({
       ) : null}
 
       {plan ? (
-        <div className="score-part-list">
+        <div className="score-part-list" role="list" aria-label="MusicXML parts">
           {plan.parts.map((part) => (
             <ScoreImportPartRow
               key={part.id}
@@ -281,9 +298,13 @@ function ScoreImportPartRow({
   const inputId = useId();
 
   return (
-    <div className={selected ? 'score-part-row is-selected' : 'score-part-row'}>
+    <div
+      className={selected ? 'score-part-row is-selected' : 'score-part-row'}
+      role="listitem"
+    >
       <label className="score-part-check" htmlFor={inputId}>
         <input
+          aria-label={`Select ${part.title} for Audiotool import`}
           id={inputId}
           type="checkbox"
           checked={selected}

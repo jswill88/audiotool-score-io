@@ -12,6 +12,12 @@
   gap: 12px;
 }
 
+.score-parts-panel:focus {
+  border-color: var(--focus-ring);
+  outline: 3px solid var(--focus-ring-soft);
+  outline-offset: 2px;
+}
+
 .score-import-header,
 .score-import-actions {
   display: flex;
@@ -108,15 +114,28 @@
     var(--console-2);
 }
 
+.score-part-row:focus-within {
+  border-color: rgba(231, 189, 103, 0.62);
+  background:
+    var(--surface-hover),
+    var(--console-3);
+}
+
+.score-part-row.is-selected:focus-within {
+  border-color: var(--focus-ring);
+}
+
 .score-part-check {
   display: grid;
   place-items: center;
   min-height: 38px;
+  cursor: pointer;
 }
 
 .score-part-check input {
   width: 16px;
   height: 16px;
+  padding: 0;
   accent-color: var(--brass);
   box-shadow: none;
 }

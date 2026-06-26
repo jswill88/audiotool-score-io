@@ -41,6 +41,7 @@ export function useScoreImportWorkflow({
   const [selectedImportPartIds, setSelectedImportPartIds] = useState<string[]>([]);
   const [importPartTitles, setImportPartTitles] = useState<Record<string, string>>({});
   const [scoreImportResult, setScoreImportResult] = useState<ScoreImportResult | null>(null);
+  const [shouldFocusParts, setShouldFocusParts] = useState(false);
 
   const scorePreviewResult = useMemo<ActiveConversionResult | null>(() => {
     if (!scoreFile || !scorePreviewXml || !scorePreviewUrl) {
@@ -86,6 +87,7 @@ export function useScoreImportWorkflow({
     setSelectedImportPartIds([]);
     setImportPartTitles({});
     setScoreImportResult(null);
+    setShouldFocusParts(false);
     setScorePreviewXml('');
     setScorePreviewFileName('');
     setViewerTab('score');
@@ -143,6 +145,7 @@ export function useScoreImportWorkflow({
       setScoreImportTitle(result.plan.title || scoreImportTitle || titleFromFileName(scoreFile.name));
       setSelectedImportPartIds((defaultParts.length > 0 ? defaultParts : parts).map((part) => part.id));
       setImportPartTitles(createDefaultPartTitles(parts));
+      setShouldFocusParts(true);
       setStatus({
         phase: 'success',
         message: `${parts.length} score part${parts.length === 1 ? '' : 's'} detected`,
@@ -240,6 +243,10 @@ export function useScoreImportWorkflow({
     setSelectedImportPartIds([]);
   }, []);
 
+  const onPartsFocusHandled = useCallback(() => {
+    setShouldFocusParts(false);
+  }, []);
+
   return {
     canCreateImport,
     file: scoreFile,
@@ -250,6 +257,7 @@ export function useScoreImportWorkflow({
     onFileChange: handleScoreFileChange,
     onPartTitleChange,
     onPartToggle,
+    onPartsFocusHandled,
     onSelectAllParts,
     onTitleChange: setScoreImportTitle,
     partTitles: importPartTitles,
@@ -259,6 +267,7 @@ export function useScoreImportWorkflow({
     scorePreviewFileName,
     scorePreviewResult,
     selectedPartIds: selectedImportPartIds,
-    setScorePreviewFileName
+    setScorePreviewFileName,
+    shouldFocusParts
   };
 }

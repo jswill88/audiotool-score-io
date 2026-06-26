@@ -8,7 +8,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] UI fixes
 - [x] Clean up new code and audit large production modules, stale compatibility paths, and unused TypeScript symbols.
 - [ ] pdf support
-- [ ] tabbing support seems to be lost
+- [x] Restore visible keyboard tabbing through Audiotool track selection/name editing and MusicXML part selection/name editing; move focus to Tracks after project inspection and Parts after score analysis.
 - [x] Keep MIDI → MusicXML conversion in its own reusable package.
   - [ ] can there be a musicxml -> musicxml version, that cleans up dirty musicxml with the quantization option and rules?
 
@@ -22,18 +22,29 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [x] Convert Audiotool data to MIDI first, then run the direct notation engine so conversion is reusable for uploaded MIDI and other apps.
 - [x] Choose one clef per direct-export track from its median pitch and make stem direction use the active clef's middle line.
 
+### Standalone Node Package
+
+- [x] Keep MIDI → MusicXML conversion isolated in `packages/midi-to-musicxml` with a public TypeScript/ESM API.
+- [x] Clean `dist` before builds, rebuild during package preparation, and publish only compiled output.
+- [ ] Add package metadata for publication: license, repository, homepage, keywords, and supported Node version.
+- [ ] Decide the final npm package name and whether it will use a public npm scope.
+- [ ] Add an isolated consumer smoke test that installs the packed tarball and converts a sample MIDI file.
+- [ ] Document installation and standalone file/byte API examples.
+- [ ] Publish an initial npm release and verify installation from a separate project.
+- [ ] Decide whether to provide a browser-safe bytes-only entry point separately from the Node file API.
+
 ### Production Deployment: Cloud Run + Cloudflare Pages
 
 Detailed instructions and ownership are in [`docs/deployment/cloud-run.md`](deployment/cloud-run.md).
 
 - [x] **Codex:** Prepare the lightweight Cloud Run Docker image, API CORS support, deployment script, automatic Artifact Registry cleanup policy, and Cloudflare build settings.
 - [ ] **You:** Create/select the Google Cloud project, enable billing, create a budget alert, and complete `gcloud auth login`.
-- [ ] **You:** Connect the GitHub repository to Cloudflare Pages, use the documented monorepo build settings, and record the stable `*.pages.dev` production origin.
+- [x] **You:** Connect the GitHub repository to Cloudflare Pages, use the documented monorepo build settings, and record the stable `https://audiotool-score-io.pages.dev` production origin.
 - [ ] **You:** Confirm the Audiotool client ID.
 - [ ] **Codex:** Run `npm run deploy:cloud-run` after the Google account is authenticated and `PROJECT_ID`, `WEB_ORIGIN`, and `AUDIOTOOL_CLIENT_ID` are available.
-- [ ] **You or Codex with Cloudflare CLI access:** Add the final Cloud Run URL to the Cloudflare Pages production environment variables and trigger the production rebuild.
-- [ ] **You:** Register the final Cloudflare production URL as an Audiotool redirect URI.
-- [ ] **Codex:** Verify Cloud Run health/readiness, production CORS, direct MIDI conversion, and MusicXML/MXL import.
+- [ ] **You or Codex with Cloudflare CLI access:** Add the final Cloud Run URL to the Cloudflare Pages production environment variables and trigger the production rebuild; the deployed Pages bundle did not visibly include the Cloud Run URL during the June 26, 2026 smoke check.
+- [x] **You:** Register the final Cloudflare production URL as an Audiotool redirect URI.
+- [x] **Codex:** Verify Cloud Run health/readiness, production CORS, direct MIDI conversion, and MusicXML/MXL import.
 - [ ] **Together:** Verify the real browser flow: sign in, load projects, inspect tracks, export MusicXML, analyze a score upload, and import selected parts.
 - [ ] **Optional after launch — Codex:** Add keyless GitHub Actions API deployment using Google Workload Identity Federation.
 

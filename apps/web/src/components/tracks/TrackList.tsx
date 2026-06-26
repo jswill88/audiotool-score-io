@@ -40,7 +40,7 @@ export function TrackList({
   }
 
   return (
-    <div className="track-list">
+    <div className="track-list" role="list" aria-label="Audiotool tracks">
       {tracks.map((track) => {
         const notationStatus = track.notation?.status ?? 'ready';
         const isEmpty = !hasTrackNotes(track);
@@ -51,8 +51,14 @@ export function TrackList({
         const exportTitle = trackTitles[track.id] ?? track.label;
 
         return (
-          <div className={`track-row ${selectedClass} ${isEmpty ? 'is-empty' : ''} ${statusClass}`} key={track.id}>
+          <div
+            className={`track-row ${selectedClass} ${isEmpty ? 'is-empty' : ''} ${statusClass}`}
+            key={track.id}
+            role="listitem"
+          >
             <input
+              aria-label={`Select ${track.label} for MusicXML export`}
+              className="track-checkbox"
               id={checkboxId}
               type="checkbox"
               checked={checked}

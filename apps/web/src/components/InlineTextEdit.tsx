@@ -94,14 +94,14 @@ export function InlineTextEdit({
 
   return (
     <span className={`inline-text-edit ${className}`.trim()}>
-      <span className="inline-text-edit-value">{displayValue}</span>
       <button
         ref={triggerRef}
-        className="mini-icon-button"
+        className="inline-text-edit-trigger"
         type="button"
         aria-label={ariaLabel}
         onClick={() => setIsEditing(true)}
       >
+        <span className="inline-text-edit-value">{displayValue}</span>
         <Pencil size={13} aria-hidden="true" />
       </button>
     </span>

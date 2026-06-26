@@ -11,9 +11,14 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run clean && tsc -p tsconfig.json",
     "check": "npm run typecheck && npm run build && find dist test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "clean": "rm -rf dist",
+    "prepack": "npm run build",
     "test": "npm run build && node --test \"test/**/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
