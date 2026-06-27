@@ -101,6 +101,8 @@
   grid-template-columns: 22px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
+  height: auto;
+  min-height: 58px;
   padding: 9px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -127,6 +129,7 @@
 
 .score-part-check {
   display: grid;
+  align-self: start;
   place-items: center;
   min-height: 38px;
   cursor: pointer;
@@ -149,6 +152,7 @@
 .score-part-meta {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
   gap: 6px;
   color: var(--muted);
   font-size: 13px;
@@ -156,10 +160,14 @@
 }
 
 .score-part-meta span {
+  max-width: 100%;
+  min-width: 0;
   padding: 2px 6px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.035);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .score-import-empty,
@@ -185,10 +193,17 @@
 .score-import-warnings div {
   display: flex;
   align-items: flex-start;
+  min-width: 0;
   gap: 7px;
   color: var(--brass-strong);
   font-size: 14px;
   font-weight: 670;
+}
+
+.score-import-warnings span {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .score-import-warnings svg {

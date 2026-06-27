@@ -13,6 +13,7 @@
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   align-items: start;
+  height: auto;
   min-height: 72px;
   padding: 8px 16px 8px 10px;
   gap: 8px;
@@ -86,7 +87,9 @@
 
 .track-check-label {
   display: grid;
+  align-self: start;
   place-items: center;
+  padding-top: 2px;
   cursor: pointer;
 }
 
@@ -125,9 +128,9 @@
 
 .track-name,
 .track-main small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .track-name {
@@ -135,17 +138,19 @@
   cursor: pointer;
   font-size: 16px;
   font-weight: 760;
+  line-height: 1.25;
 }
 
 .track-main small {
   color: var(--muted);
   font-size: 14px;
+  line-height: 1.3;
 }
 
 .track-export-title {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   max-width: 100%;
   min-width: 0;
   gap: 7px;
@@ -155,19 +160,34 @@
   color: var(--faint);
   font-size: 12px;
   font-weight: 760;
+  padding-top: 5px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .track-export-title .inline-text-edit {
   color: var(--paper);
   font-size: 14px;
   font-weight: 720;
+  width: 100%;
+}
+
+.track-export-title .inline-text-edit-trigger {
+  align-items: start;
+  width: 100%;
+}
+
+.track-export-title .inline-text-edit-value {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .track-hint {
   display: inline-flex;
-  align-items: center;
-  width: fit-content;
+  align-items: flex-start;
+  width: auto;
   max-width: 100%;
   gap: 5px;
   padding: 2px 6px;
@@ -176,13 +196,18 @@
   color: var(--brass-strong);
   font-size: 13px;
   font-weight: 760;
-  line-height: 1.1;
+  line-height: 1.2;
+}
+
+.track-hint svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .track-hint span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .track-hint.is-warning {
@@ -255,4 +280,15 @@
 .empty-track-copy span {
   font-size: 15px;
   line-height: 1.35;
+}
+
+@media (max-width: 520px) {
+  .track-export-title {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .track-export-title > small {
+    padding-top: 0;
+  }
 }
