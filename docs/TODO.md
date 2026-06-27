@@ -5,9 +5,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ## Active
 
 ### Soon
-- [ ] UI fixes
 - [x] Clean up new code and audit large production modules, stale compatibility paths, and unused TypeScript symbols.
-- [ ] pdf support
 - [x] Add conservative 8va/8vb MusicXML octave-shift sections for contiguous extreme high/low note runs.
 - [x] Restore visible keyboard tabbing through Audiotool track selection/name editing and MusicXML part selection/name editing; move focus to Tracks after project inspection and Parts after score analysis.
 - [x] Keep MIDI → MusicXML conversion in its own reusable package.
