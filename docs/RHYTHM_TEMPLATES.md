@@ -55,18 +55,22 @@ Arbitrary quintuplet and septuplet candidate generation remains future work.
    a note-only spelling unless it remains equally readable.
 7. Ties should reveal important beat or pulse boundaries, but notes spanning
    complete aligned subdivisions should remain intact when possible.
-8. Tuplets should remain grouped within their intended tuplet span and display
+8. In simple meters, a short offbeat note value smaller than the spelling beat
+   should split when it crosses a spelling-beat boundary. Values equal to a full
+   spelling beat, such as an ordinary offbeat quarter in 2/4 or 4/4, may remain
+   intact when an approved pattern keeps the syncopation readable.
+9. Tuplets should remain grouped within their intended tuplet span and display
    their tuplet number.
-9. Beam each complete triplet set separately. For example:
+10. Beam each complete triplet set separately. For example:
 
    ```text
    [A 8t B 8t C 8t] | [D 8t E 8t F 8t]
    ```
 
    Do not place all six eighth-note triplets under one continuous beam.
-10. List more than one version under **Acceptable** when multiple spellings are
+11. List more than one version under **Acceptable** when multiple spellings are
    genuinely readable.
-11. Put awkward or forbidden spellings under **Avoid**.
+12. Put awkward or forbidden spellings under **Avoid**.
 
 ## Confidence Labels
 
@@ -261,6 +265,18 @@ Preferred spelling:      A 16n | B 8n | C 16n ~ C 16n | D 16n ~ D 8n
 Split the later offbeat values so the quarter-note beat boundary is visible and
 the final dotted-eighth sustain follows the approved diminished offbeat
 spelling.
+
+### Template 013 — Dotted Eighth, Dotted Eighth, Eighth
+
+**Confidence:** High
+
+```text
+Input duration pattern: A dotted 8n | B dotted 8n | C 8n
+Preferred spelling:      A dotted 8n | B 16n ~ B 8n | C 8n
+```
+
+Split the second dotted eighth so the quarter-note beat boundary is visible.
+The first dotted eighth starts on the downbeat and remains intact.
 
 ## Diminished One-Beat Equivalents
 

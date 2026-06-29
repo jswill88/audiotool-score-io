@@ -275,7 +275,8 @@ function createVoiceChunks(
       meter,
       {
         isStandardDuration,
-        override: spellingOverrides.get(event)
+        override: spellingOverrides.get(event),
+        splitShortBeatOverlaps: true
       }
     ).map((chunk) => ({ ...chunk, kind: 'note' as const })));
     cursor = event.start + event.duration;

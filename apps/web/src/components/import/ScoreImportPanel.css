@@ -27,6 +27,15 @@
   gap: 10px;
 }
 
+.score-import-header {
+  flex-wrap: wrap;
+}
+
+.score-import-header .icon-link {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .score-import-upload {
   display: grid;
   align-content: start;

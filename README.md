@@ -83,6 +83,8 @@ Set `?quantize=false` to bypass MIDI timing quantization altogether.
 
 When quantization is enabled, the shared multi-grid quantizer produces canonical MIDI before direct MusicXML generation. It evaluates several ordinary and triplet grids automatically.
 
+Consistently extreme high or low parts use whole-part octave clefs automatically: treble 8va/15ma for high parts and bass 8vb/15mb for low parts. Set `octaveClefs: 'off'` in the package API to keep ordinary treble/bass clefs plus measure-local octave-shift directions only.
+
 The package also exports `quantizeMidiForNotation` and `quantizeMidiBytesForNotation` for callers that want the canonical MIDI directly.
 
 The package API exposes the same choice:
@@ -90,6 +92,7 @@ The package API exposes the same choice:
 ```js
 await convertMidiToMusicXml({
   inputPath: 'song.mid',
+  octaveClefs: 'auto',
   outputPath: 'song.musicxml'
 });
 ```

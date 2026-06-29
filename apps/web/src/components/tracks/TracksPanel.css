@@ -37,27 +37,6 @@
   border-top: 1px solid var(--line);
 }
 
-.select-label {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  height: 38px;
-  gap: 6px;
-  color: var(--muted);
-}
-
-.select-label select {
-  width: 74px;
-  appearance: none;
-  padding: 0 26px 0 10px;
-}
-
-.select-label svg:last-child {
-  position: absolute;
-  right: 8px;
-  pointer-events: none;
-}
-
 @media (max-width: 760px) {
   .options-bar {
     display: grid;

@@ -11,8 +11,11 @@ export type NotationNote = {
   velocity: number;
 };
 
+export type OctaveClefMode = 'auto' | 'off';
+
 export type ConvertMidiToMusicXmlOptions = {
   inputPath: string;
+  octaveClefs?: OctaveClefMode;
   outputPath: string;
   quantize?: boolean;
   title?: string | null;
@@ -27,7 +30,7 @@ export type ConvertMidiToMusicXmlResult = {
 
 export type ConvertMidiToDirectMusicXmlOptions = Pick<
   ConvertMidiToMusicXmlOptions,
-  'inputPath' | 'outputPath' | 'partNames' | 'quantize' | 'title'
+  'inputPath' | 'octaveClefs' | 'outputPath' | 'partNames' | 'quantize' | 'title'
 >;
 
 export type DirectMusicXmlRenderOptions = Omit<

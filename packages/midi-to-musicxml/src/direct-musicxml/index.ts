@@ -58,6 +58,7 @@ export function convertMidiBytesToDirectMusicXml(
       {
         divisions,
         measureDuration,
+        octaveClefs: options.octaveClefs,
         partName: options.partNames?.[sourceIndex],
         ppq
       }

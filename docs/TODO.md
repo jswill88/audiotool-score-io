@@ -2,29 +2,33 @@
 
 Immediate issues, product polish, and later ideas for the Audiotool to MusicXML app.
 
-## Active
+## Open
 
-### Soon
-- [x] Clean up new code and audit large production modules, stale compatibility paths, and unused TypeScript symbols.
-- [x] Add conservative 8va/8vb MusicXML octave-shift sections for contiguous extreme high/low note runs.
-- [x] Restore visible keyboard tabbing through Audiotool track selection/name editing and MusicXML part selection/name editing; move focus to Tracks after project inspection and Parts after score analysis.
-- [x] Keep MIDI → MusicXML conversion in its own reusable package.
-  - [ ] can there be a musicxml -> musicxml version, that cleans up dirty musicxml with the quantization option and rules?
+### Conversion And Notation
 
-### Direct conversion
-- [x] Use one shared multi-grid quantizer to produce canonical MIDI before direct notation generation.
-- [x] Organize notation ranking and rhythm grammar into focused folders, and remove the unused legacy fixed-grid quantizer surface.
-- [x] Split direct MusicXML writing, Audiotool MIDI rendering, and MusicXML import into focused domain modules.
-- [x] Convert the approved core rules in `docs/RHYTHM_TEMPLATES.md` into a declarative TypeScript rhythm grammar, meter-aware transformations, and ranked-direct regression tests.
 - [ ] Add coherent quintuplet/septuplet candidate generation and dynamic MusicXML tuplet ratios; the executable grammar currently preserves supported triplets but the quantizer does not yet propose arbitrary tuplets.
-- [x] Emit explicit MusicXML tuplet start/stop notation so quarter-, eighth-, and other supported triplets display their visible `3`, including groups containing rests.
-- [x] Convert Audiotool data to MIDI first, then run the direct notation engine so conversion is reusable for uploaded MIDI and other apps.
-- [x] Choose one clef per direct-export track from its median pitch and make stem direction use the active clef's middle line.
+- [ ] Expand the notation-ranker experiment to ingest real MusicXML measures, generate candidates from the direct notation code, and train/evaluate a small learned ranker against the heuristic baseline.
+- [ ] Add direct-export key selection and enharmonic respelling: default to C when no key is chosen, prefer key-consistent spellings, use sharps for otherwise ambiguous ascending lines and flats for descending lines, and rewrite pitch spelling without transposing sounding pitches.
+- [ ] Add post-quantization grace-note classification on sufficiently fine-grid candidates: treat isolated notes no longer than one eighth of the beat near a principal note as candidates, but preserve repeated short-note runs as measured rhythm.
+- [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.
+- [ ] Allow mapping drum notation.
+- [ ] Explore title-based instrument defaults: infer an export instrument from track names with a deterministic synonym matcher, expose a dropdown override per track, keep the full score in concert pitch, and generate transposed individual parts for selected transposing instruments.
+- [ ] Explore Spotify Basic Pitch for experimental audio-track transcription: audio stem/recording -> MIDI -> existing MusicXML conversion. Best aimed at isolated melodic or harmonic recordings, with clear caveats about transcription cleanup and lower reliability than direct Audiotool note-track export.
+
+### Product And UX
+
+- [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
+- [ ] Show the score following along during playback.
+- [ ] Allow pressing play from the browser.
+- [ ] Decide whether users should be able to choose which region to export/import.
+
+### API, Deployment, And Operations
+
+- [ ] Investigate API timeout/abort handling around Audiotool project inspect/open requests so bad PAT/project probes cannot wedge the API or make `/health` time out.
+- [ ] Add keyless GitHub Actions API deployment using Google Workload Identity Federation.
 
 ### Standalone Node Package
 
-- [x] Keep MIDI → MusicXML conversion isolated in `packages/midi-to-musicxml` with a public TypeScript/ESM API.
-- [x] Clean `dist` before builds, rebuild during package preparation, and publish only compiled output.
 - [ ] Add package metadata for publication: license, repository, homepage, keywords, and supported Node version.
 - [ ] Decide the final npm package name and whether it will use a public npm scope.
 - [ ] Add an isolated consumer smoke test that installs the packed tarball and converts a sample MIDI file.
@@ -32,22 +36,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] Publish an initial npm release and verify installation from a separate project.
 - [ ] Decide whether to provide a browser-safe bytes-only entry point separately from the Node file API.
 
-### Production Deployment: Cloud Run + Cloudflare Pages
-
-Detailed instructions and ownership are in [`docs/deployment/cloud-run.md`](deployment/cloud-run.md).
-
-- [x] **Codex:** Prepare the lightweight Cloud Run Docker image, API CORS support, deployment script, automatic Artifact Registry cleanup policy, and Cloudflare build settings.
-- [x] **You:** Create/select the Google Cloud project, enable billing, create a budget alert, and complete `gcloud auth login`.
-- [x] **You:** Connect the GitHub repository to Cloudflare Pages, use the documented monorepo build settings, and record the stable `https://audiotool-score-io.pages.dev` production origin.
-- [x] **You:** Confirm the Audiotool client ID.
-- [x] **Codex:** Run `npm run deploy:cloud-run` after the Google account is authenticated and `PROJECT_ID`, `WEB_ORIGIN`, and `AUDIOTOOL_CLIENT_ID` are available.
-- [x] **You or Codex with Cloudflare CLI access:** Add the final Cloud Run URL to the Cloudflare Pages production environment variables and trigger the production rebuild; the deployed Pages bundle did not visibly include the Cloud Run URL during the June 26, 2026 smoke check.
-- [x] **You:** Register the final Cloudflare production URL as an Audiotool redirect URI.
-- [x] **Codex:** Verify Cloud Run health/readiness, production CORS, direct MIDI conversion, and MusicXML/MXL import.
-- [x] **Together:** Verify the real browser flow: sign in, load projects, inspect tracks, export MusicXML, analyze a score upload, and import selected parts.
-- [ ] **Optional after launch — Codex:** Add keyless GitHub Actions API deployment using Google Workload Identity Federation.
-
-### README Recruiter/Employer Polish
+### README And Portfolio Polish
 
 - [ ] Rewrite the README opening for recruiters and employers: state what Audiotool Score IO does, who it helps, and why it is technically interesting in the first few paragraphs.
 - [ ] Add a concise `Project Highlights` section covering full-stack TypeScript, OAuth/API integration, MusicXML/MIDI processing, Docker deployment, accessibility work, and production operations.
@@ -58,41 +47,54 @@ Detailed instructions and ownership are in [`docs/deployment/cloud-run.md`](depl
 - [ ] Move dense local setup, curl examples, and low-level configuration farther down so the README scans well for non-technical first-pass readers while still serving developers.
 - [ ] Add a short `Engineering Tradeoffs` section covering direct notation generation, Cloud Run/Cloudflare deployment, and known future improvements.
 
-### Future Features
-
-- [ ] Investigate API timeout/abort handling around Audiotool project inspect/open requests so bad PAT/project probes cannot wedge the API or make `/health` time out.
-- [x] Have codemap link to referenced files
-- [ ] Expand the notation-ranker experiment to ingest real MusicXML measures, generate candidates from the direct notation code, and train/evaluate a small learned ranker against the heuristic baseline.
-- [ ] Add direct-export key selection and enharmonic respelling: default to C when no key is chosen, prefer key-consistent spellings, use sharps for otherwise ambiguous ascending lines and flats for descending lines, and rewrite pitch spelling without transposing sounding pitches.
-- [ ] Add post-quantization grace-note classification on sufficiently fine-grid candidates: treat isolated notes no longer than one eighth of the beat near a principal note as candidates, but preserve repeated short-note runs as measured rhythm.
-- [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
-- [ ] Improve MusicXML-to-Audiotool import beyond the MVP: split piano staves/voices, map percussion to drum devices, preserve tempo/time-signature changes, and add richer instrument/preset selection.
-- [ ] Show the score following along during playback.
-- [ ] Allow pressing play from the browser.
-- [ ] Allow mapping drum notation
-- [ ] Ability to choose which region?
-
-### Stretch Ideas
-
-- [ ] Explore title-based instrument defaults: infer an export instrument from track names with a deterministic synonym matcher, expose a dropdown override per track, keep the full score in concert pitch, and generate transposed individual parts for selected transposing instruments.
-- [ ] Explore Spotify Basic Pitch for experimental audio-track transcription: audio stem/recording -> MIDI -> existing MusicXML conversion. Best aimed at isolated melodic or harmonic recordings, with clear caveats about transcription cleanup and lower reliability than direct Audiotool note-track export.
-
 ## Notes
+
+- Keep completed checklist items in the `Completed` section so the open backlog stays scannable.
 
 ## Completed
 
-### Immediate
+### Recent Codebase And Conversion Work
+
+- [x] Clean up new code and audit large production modules, stale compatibility paths, and unused TypeScript symbols.
+- [x] Add constrained whole-part octave clefs for consistently extreme parts: treble 8va/15ma and bass 8vb/15mb only.
+- [x] Add conservative 8va/8vb MusicXML octave-shift sections for contiguous extreme high/low note runs and very extreme isolated notes.
+- [x] Restore visible keyboard tabbing through Audiotool track selection/name editing and MusicXML part selection/name editing; move focus to Tracks after project inspection and Parts after score analysis.
+- [x] Keep MIDI -> MusicXML conversion in its own reusable package.
+- [x] Use one shared multi-grid quantizer to produce canonical MIDI before direct notation generation.
+- [x] Organize notation ranking and rhythm grammar into focused folders, and remove the unused legacy fixed-grid quantizer surface.
+- [x] Split direct MusicXML writing, Audiotool MIDI rendering, and MusicXML import into focused domain modules.
+- [x] Convert the approved core rules in `docs/RHYTHM_TEMPLATES.md` into a declarative TypeScript rhythm grammar, meter-aware transformations, and ranked-direct regression tests.
+- [x] Emit explicit MusicXML tuplet start/stop notation so quarter-, eighth-, and other supported triplets display their visible `3`, including groups containing rests.
+- [x] Convert Audiotool data to MIDI first, then run the direct notation engine so conversion is reusable for uploaded MIDI and other apps.
+- [x] Choose one clef per direct-export track from its median pitch and make stem direction use the active clef's middle line.
+- [x] Keep MIDI -> MusicXML conversion isolated in `packages/midi-to-musicxml` with a public TypeScript/ESM API.
+- [x] Clean `dist` before builds, rebuild during package preparation, and publish only compiled output.
+- [x] Have codemap link to referenced files.
+
+### Production Deployment
+
+- [x] Prepare the lightweight Cloud Run Docker image, API CORS support, deployment script, automatic Artifact Registry cleanup policy, and Cloudflare build settings.
+- [x] Create/select the Google Cloud project, enable billing, create a budget alert, and complete `gcloud auth login`.
+- [x] Connect the GitHub repository to Cloudflare Pages, use the documented monorepo build settings, and record the stable `https://audiotool-score-io.pages.dev` production origin.
+- [x] Confirm the Audiotool client ID.
+- [x] Run `npm run deploy:cloud-run` after the Google account is authenticated and `PROJECT_ID`, `WEB_ORIGIN`, and `AUDIOTOOL_CLIENT_ID` are available.
+- [x] Add the final Cloud Run URL to the Cloudflare Pages production environment variables and trigger the production rebuild; the deployed Pages bundle did not visibly include the Cloud Run URL during the June 26, 2026 smoke check.
+- [x] Register the final Cloudflare production URL as an Audiotool redirect URI.
+- [x] Verify Cloud Run health/readiness, production CORS, direct MIDI conversion, and MusicXML/MXL import.
+- [x] Verify the real browser flow: sign in, load projects, inspect tracks, export MusicXML, analyze a score upload, and import selected parts.
+
+### Immediate Product Fixes
 
 - [x] Update title to Audiotool Score IO now that the app imports and exports.
 - [x] Ignore drum tracks by default, especially Beatbox 8/9. Machiniste and unknown note players warn but stay selectable by default.
 - [x] Every track is "unknown type" which feels wrong.
-- [x] If there are 0 notes in a track, we can disable it or ignore it. We can show it maybe, but not allow conversion. There's nothing to convert.
+- [x] If there are 0 notes in a track, disable or ignore it. Show it if helpful, but do not allow conversion because there is nothing to convert.
 - [x] The score title should come from the name of the project.
 - [x] The track numbers are still long floating point numbers. They should be the order, and should look like "1", "2". These are in the tracks and the score.
 - [x] End music part with an ending double bar.
 - [x] When switching between projects or starting a new conversion, the previous score is hidden.
-- [x] add space between tempo and part name, and part name and staff
-- [x] make a handoff document to a new session
+- [x] Add space between tempo and part name, and part name and staff.
+- [x] Make a handoff document to a new session.
 - [x] Add a favicon.
 - [x] Change the default quantization grid to 24.
 - [x] Remove exact note counts from the UI/manifest; only track whether a part has 0 notes.
@@ -104,12 +106,12 @@ Detailed instructions and ownership are in [`docs/deployment/cloud-run.md`](depl
 - [x] Update the color scheme toward a modern DAW look with classical/Mozart hints.
 - [x] Use visual track order numbers in labels instead of raw Audiotool entity ids.
 - [x] Add editable score and track export titles that flow into MIDI metadata, MusicXML titles, MusicXML part names, and exported part filenames.
-- [x] Find confusing code and refactor. Look especially for very long files
-- [x] There should be a loading indicator when the score is being prepared to be displayed
-- [x] Create link to project
-- [x] Loading spinners for opening/inspecting projects
-- [x] Sometimes parts appear to be merged into one double staff when they should be separate parts
-- [x] Update logo colors
+- [x] Find confusing code and refactor. Look especially for very long files.
+- [x] There should be a loading indicator when the score is being prepared to be displayed.
+- [x] Create link to project.
+- [x] Loading spinners for opening/inspecting projects.
+- [x] Sometimes parts appear to be merged into one double staff when they should be separate parts.
+- [x] Update logo colors.
 
 ### Accessibility
 
@@ -130,7 +132,7 @@ Detailed instructions and ownership are in [`docs/deployment/cloud-run.md`](depl
 - [x] Add Docker start/stop instructions to the README.
 - [x] Add standing agent guidance to keep `docs/TODO.md` and `docs/HANDOFF.md` current.
 
-### Future Features
+### Major Features And Experiments
 
 - [x] Add a MusicXML-to-Audiotool import workflow with a `score-to-audiotool` package, `/audiotool/import` route, MusicXML upload/analyze UI, part selection, imported track naming, and basic Gakki note-track project creation.
 - [x] Add a direct MusicXML generation POC with side-by-side baseline comparison.

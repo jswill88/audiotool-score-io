@@ -52,10 +52,12 @@ export function spellRhythmDuration(
   meter: RhythmMeter,
   {
     isStandardDuration,
-    override
+    override,
+    splitShortBeatOverlaps = false
   }: {
     isStandardDuration: StandardDurationPredicate;
     override?: number[];
+    splitShortBeatOverlaps?: boolean;
   }
 ): RhythmChunk[] {
   if (override && sum(override) === duration) {
@@ -90,7 +92,15 @@ export function spellRhythmDuration(
     return [{ start, duration }];
   }
 
-  if (duration <= meter.spellingBeatTicks) {
+  if (
+    isStandardDuration(duration) &&
+    duration <= meter.spellingBeatTicks &&
+    !(
+      splitShortBeatOverlaps &&
+      duration < meter.spellingBeatTicks &&
+      crossesSpellingBeatBoundary(start, end, meter)
+    )
+  ) {
     return [{ start, duration }];
   }
 
@@ -150,6 +160,20 @@ function isGroupBoundary(value: number, meter: RhythmMeter) {
   return value === 0 ||
     value === meter.measureTicks ||
     meter.groupBoundaries.includes(value);
+}
+
+function crossesSpellingBeatBoundary(
+  start: number,
+  end: number,
+  meter: RhythmMeter
+) {
+  if (meter.denominator === 8 || meter.denominator === 16) {
+    return false;
+  }
+
+  const next = Math.ceil((start + 1) / meter.spellingBeatTicks) *
+    meter.spellingBeatTicks;
+  return next > start && next < end && next < meter.measureTicks;
 }
 
 function applyGroupTemplateOverrides<T extends RhythmVoiceEvent>(

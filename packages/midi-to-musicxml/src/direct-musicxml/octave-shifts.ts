@@ -4,22 +4,34 @@ import type {
   OctaveShiftType,
   VoiceEvent
 } from './types.js';
+import { clefSpecFor } from './clefs.js';
 
-const staffRanges: Record<Clef, { bottom: number; top: number }> = {
-  treble: { bottom: 64, top: 77 },
-  bass: { bottom: 43, top: 57 }
-};
+const runShiftOctavesOutsideStaff = 1;
+const isolatedShiftOctavesOutsideStaff = 2;
+const semitonesPerOctave = 12;
 
 export function createOctaveShiftRanges(
   events: VoiceEvent[],
   clef: Clef
 ): OctaveShiftRange[] {
   const ranges: OctaveShiftRange[] = [];
-  let current: (OctaveShiftRange & { eventCount: number }) | null = null;
+  let current:
+    | (OctaveShiftRange & {
+        eventCount: number;
+        shiftsWhenIsolated: boolean;
+      })
+    | null = null;
 
   function finishRange() {
-    if (current && current.eventCount >= 2) {
-      const { eventCount: _eventCount, ...range } = current;
+    if (
+      current &&
+      (current.eventCount >= 2 || current.shiftsWhenIsolated)
+    ) {
+      const {
+        eventCount: _eventCount,
+        shiftsWhenIsolated: _shiftsWhenIsolated,
+        ...range
+      } = current;
       ranges.push(range);
     }
 
@@ -27,7 +39,17 @@ export function createOctaveShiftRanges(
   }
 
   for (const event of events) {
-    const type = octaveShiftTypeForPitches(event.pitches, clef);
+    const type = octaveShiftTypeForPitches(
+      event.pitches,
+      clef,
+      runShiftOctavesOutsideStaff
+    );
+    const isolatedType = octaveShiftTypeForPitches(
+      event.pitches,
+      clef,
+      isolatedShiftOctavesOutsideStaff
+    );
+    const shiftsWhenIsolated = type !== null && type === isolatedType;
     const end = event.start + event.duration;
 
     if (!type) {
@@ -38,6 +60,7 @@ export function createOctaveShiftRanges(
     if (current && current.type === type && current.end === event.start) {
       current.end = end;
       current.eventCount += 1;
+      current.shiftsWhenIsolated ||= shiftsWhenIsolated;
       continue;
     }
 
@@ -45,6 +68,7 @@ export function createOctaveShiftRanges(
     current = {
       end,
       eventCount: 1,
+      shiftsWhenIsolated,
       start: event.start,
       type
     };
@@ -56,15 +80,17 @@ export function createOctaveShiftRanges(
 
 function octaveShiftTypeForPitches(
   pitches: number[],
-  clef: Clef
+  clef: Clef,
+  octavesOutsideStaff: number
 ): OctaveShiftType | null {
   if (pitches.length === 0) {
     return null;
   }
 
-  const range = staffRanges[clef];
-  const highThreshold = range.top + 12;
-  const lowThreshold = range.bottom - 12;
+  const range = clefSpecFor(clef).staffRange;
+  const thresholdOffset = octavesOutsideStaff * semitonesPerOctave;
+  const highThreshold = range.top + thresholdOffset;
+  const lowThreshold = range.bottom - thresholdOffset;
 
   if (pitches.every((pitch) => pitch > highThreshold)) {
     return 'down';

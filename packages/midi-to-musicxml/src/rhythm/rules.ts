@@ -96,6 +96,15 @@ export const rhythmGrammar: RhythmGrammar = {
       description: 'Split the later offbeat values to expose the quarter-note beat and diminished offbeat sustain.'
     },
     {
+      id: '2-4-dotted-eighth-dotted-eighth-eighth',
+      confidence: 'high',
+      meter: '2/4',
+      input: [dottedEighth, dottedEighth, eighth],
+      spelling: [[dottedEighth], [sixteenth, eighth], [eighth]],
+      match: 'measure-or-group',
+      description: 'Split the second dotted eighth to expose the quarter-note beat boundary.'
+    },
+    {
       id: '2-4-three-quarter-triplets',
       confidence: 'high',
       meter: '2/4',

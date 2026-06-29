@@ -15,7 +15,7 @@ const sampleMusicXml = `<?xml version="1.0" encoding="UTF-8"?>
   <part-list>
     <score-part id="P1"><part-name>B-flat Clarinet</part-name></score-part>
     <score-part id="P2">
-      <part-name>Drums</part-name>
+      <part-name>Percussion 2: Bass &amp; Cymbal</part-name>
       <midi-instrument id="P2-I1"><midi-channel>10</midi-channel></midi-instrument>
     </score-part>
   </part-list>
@@ -84,7 +84,14 @@ test('buildScoreImportPlan parses MusicXML directly without a notation executabl
       { pitch: 61, positionTicks: 0, durationTicks: 3840, velocity: 0.7 }
     ]);
     assert.equal(plan.parts[1].isPercussion, true);
+    assert.equal(plan.parts[1].title, 'Percussion 2: Bass & Cymbal');
     assert.equal(plan.parts[1].shouldImportByDefault, false);
+    assert(
+      plan.warnings.some((warning) => (
+        warning.message ===
+          'Percussion 2: Bass & Cymbal appears to be percussion and will import as pitched notes.'
+      ))
+    );
     assert.deepEqual(
       selectScoreImportParts(plan).parts.map((part) => part.title),
       ['B-flat Clarinet']

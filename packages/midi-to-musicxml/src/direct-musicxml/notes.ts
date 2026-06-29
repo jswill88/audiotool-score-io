@@ -1,9 +1,14 @@
 import type { Track } from '@tonejs/midi';
+import type { OctaveClefMode } from '../types.js';
 import type { RhythmArticulation } from '../rhythm/index.js';
 import type {
   NotationNote,
   TimeSignature
 } from '../types.js';
+import {
+  chooseClefForPitches,
+  clefSpecFor
+} from './clefs.js';
 import type {
   Clef,
   MeasureEvent,
@@ -19,11 +24,13 @@ export function buildScorePart(
   {
     divisions,
     measureDuration,
+    octaveClefs,
     partName,
     ppq
   }: {
     divisions: number;
     measureDuration: number;
+    octaveClefs?: OctaveClefMode;
     partName?: string;
     ppq: number;
   }
@@ -58,7 +65,7 @@ export function buildScorePart(
   return {
     id: `P${index + 1}`,
     name: partName?.trim() || track.name?.trim() || `Track ${index + 1}`,
-    clef: chooseClef(notes),
+    clef: chooseClef(notes, octaveClefs),
     measures
   };
 }
@@ -246,7 +253,7 @@ export function stemDirectionForPitches(
 ): 'down' | 'up' {
   const average = pitches.reduce((sum, pitch) => sum + pitch, 0) /
     Math.max(1, pitches.length);
-  const middleLinePitch = clef === 'bass' ? 50 : 71;
+  const middleLinePitch = clefSpecFor(clef).middleLinePitch;
   return average < middleLinePitch ? 'up' : 'down';
 }
 
@@ -274,16 +281,14 @@ export function midiPitchToMusicXmlPitch(midiPitch: number) {
   };
 }
 
-function chooseClef(notes: NotationNote[]): Clef {
-  if (notes.length === 0) {
-    return 'treble';
-  }
-
-  const sortedPitches = notes
-    .map((note) => note.pitch)
-    .sort((left, right) => left - right);
-  const median = sortedPitches[Math.floor(sortedPitches.length / 2)];
-  return median < 57 ? 'bass' : 'treble';
+function chooseClef(
+  notes: NotationNote[],
+  octaveClefs: OctaveClefMode = 'auto'
+): Clef {
+  return chooseClefForPitches(
+    notes.map((note) => note.pitch),
+    octaveClefs
+  );
 }
 
 export function measureDurationDivisions(

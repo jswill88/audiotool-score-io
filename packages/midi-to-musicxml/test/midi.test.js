@@ -104,11 +104,79 @@ test('ranked direct stem direction uses the bass-clef middle line', async (t) =>
   assert.match(noteBlocksForStep(xml, 'F')[0], /<octave>3<\/octave>[\s\S]*?<stem>down<\/stem>/);
 });
 
+test('direct conversion uses only constrained whole-part octave clefs', async (t) => {
+  const dir = await createTempDir(t);
+  const cases = [
+    {
+      clef: /<sign>G<\/sign>[\s\S]*?<line>2<\/line>[\s\S]*?<clef-octave-change>1<\/clef-octave-change>/,
+      name: 'high',
+      notes: [
+        { midi: 84, ticks: 0, durationTicks: 480, velocity: 0.8 },
+        { midi: 86, ticks: 480, durationTicks: 480, velocity: 0.8 },
+        { midi: 88, ticks: 960, durationTicks: 480, velocity: 0.8 }
+      ]
+    },
+    {
+      clef: /<sign>G<\/sign>[\s\S]*?<line>2<\/line>[\s\S]*?<clef-octave-change>2<\/clef-octave-change>/,
+      name: 'very-high',
+      notes: [
+        { midi: 96, ticks: 0, durationTicks: 480, velocity: 0.8 },
+        { midi: 98, ticks: 480, durationTicks: 480, velocity: 0.8 },
+        { midi: 100, ticks: 960, durationTicks: 480, velocity: 0.8 }
+      ]
+    },
+    {
+      clef: /<sign>F<\/sign>[\s\S]*?<line>4<\/line>[\s\S]*?<clef-octave-change>-1<\/clef-octave-change>/,
+      name: 'low',
+      notes: [
+        { midi: 36, ticks: 0, durationTicks: 480, velocity: 0.8 },
+        { midi: 34, ticks: 480, durationTicks: 480, velocity: 0.8 },
+        { midi: 31, ticks: 960, durationTicks: 480, velocity: 0.8 }
+      ]
+    },
+    {
+      clef: /<sign>F<\/sign>[\s\S]*?<line>4<\/line>[\s\S]*?<clef-octave-change>-2<\/clef-octave-change>/,
+      name: 'very-low',
+      notes: [
+        { midi: 24, ticks: 0, durationTicks: 480, velocity: 0.8 },
+        { midi: 19, ticks: 480, durationTicks: 480, velocity: 0.8 },
+        { midi: 12, ticks: 960, durationTicks: 480, velocity: 0.8 }
+      ]
+    }
+  ];
+
+  for (const { clef, name, notes } of cases) {
+    const inputPath = path.join(dir, `${name}.mid`);
+    await writeMidiFile(inputPath, notes);
+
+    const xml = convertMidiBytesToDirectMusicXml(
+      await fs.readFile(inputPath),
+      { quantize: false }
+    );
+
+    assert.match(clefBlock(xml), clef);
+    assert.doesNotMatch(clefBlock(xml), /<sign>G<\/sign>[\s\S]*?<clef-octave-change>-/);
+    assert.doesNotMatch(clefBlock(xml), /<sign>F<\/sign>[\s\S]*?<clef-octave-change>[12]<\/clef-octave-change>/);
+  }
+
+  const offPath = path.join(dir, 'octave-clefs-off.mid');
+  await writeMidiFile(offPath, cases[1].notes);
+  const offXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(offPath),
+    { octaveClefs: 'off', quantize: false }
+  );
+
+  assert.match(clefBlock(offXml), /<sign>G<\/sign>[\s\S]*?<line>2<\/line>/);
+  assert.doesNotMatch(clefBlock(offXml), /<clef-octave-change>/);
+});
+
 test('direct conversion adds octave-shift directions for extreme note runs', async (t) => {
   const dir = await createTempDir(t);
   const highPath = path.join(dir, 'high-run.mid');
   const lowPath = path.join(dir, 'low-run.mid');
   const isolatedPath = path.join(dir, 'isolated-high-note.mid');
+  const veryHighIsolatedPath = path.join(dir, 'very-high-isolated-note.mid');
+  const veryLowIsolatedPath = path.join(dir, 'very-low-isolated-note.mid');
 
   await writeMidiFile(highPath, [
     { midi: 96, ticks: 0, durationTicks: 480, velocity: 0.8 },
@@ -124,6 +192,20 @@ test('direct conversion adds octave-shift directions for extreme note runs', asy
     { midi: 96, ticks: 0, durationTicks: 480, velocity: 0.8 },
     { midi: 60, ticks: 480, durationTicks: 480, velocity: 0.8 }
   ]);
+  await writeMidiFile(veryHighIsolatedPath, [
+    { midi: 106, ticks: 0, durationTicks: 480, velocity: 0.8 },
+    { midi: 60, ticks: 480, durationTicks: 480, velocity: 0.8 },
+    { midi: 64, ticks: 960, durationTicks: 480, velocity: 0.8 },
+    { midi: 67, ticks: 1440, durationTicks: 480, velocity: 0.8 },
+    { midi: 72, ticks: 1920, durationTicks: 480, velocity: 0.8 }
+  ]);
+  await writeMidiFile(veryLowIsolatedPath, [
+    { midi: 36, ticks: 0, durationTicks: 480, velocity: 0.8 },
+    { midi: 60, ticks: 480, durationTicks: 480, velocity: 0.8 },
+    { midi: 64, ticks: 960, durationTicks: 480, velocity: 0.8 },
+    { midi: 67, ticks: 1440, durationTicks: 480, velocity: 0.8 },
+    { midi: 72, ticks: 1920, durationTicks: 480, velocity: 0.8 }
+  ]);
 
   const highXml = convertMidiBytesToDirectMusicXml(
     await fs.readFile(highPath),
@@ -137,6 +219,14 @@ test('direct conversion adds octave-shift directions for extreme note runs', asy
     await fs.readFile(isolatedPath),
     { quantize: false }
   );
+  const veryHighIsolatedXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(veryHighIsolatedPath),
+    { quantize: false }
+  );
+  const veryLowIsolatedXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(veryLowIsolatedPath),
+    { quantize: false }
+  );
 
   assert.match(
     highXml,
@@ -147,6 +237,14 @@ test('direct conversion adds octave-shift directions for extreme note runs', asy
     /<octave-shift type="up" size="8"\/>[\s\S]*?<step>C<\/step>[\s\S]*?<octave>1<\/octave>[\s\S]*?<step>D<\/step>[\s\S]*?<octave>1<\/octave>[\s\S]*?<octave-shift type="stop" size="8"\/>/
   );
   assert.doesNotMatch(isolatedXml, /<octave-shift/);
+  assert.match(
+    veryHighIsolatedXml,
+    /<octave-shift type="down" size="8"\/>[\s\S]*?<step>A<\/step>[\s\S]*?<alter>1<\/alter>[\s\S]*?<octave>7<\/octave>[\s\S]*?<octave-shift type="stop" size="8"\/>/
+  );
+  assert.match(
+    veryLowIsolatedXml,
+    /<sign>G<\/sign>[\s\S]*?<line>2<\/line>[\s\S]*?<octave-shift type="up" size="8"\/>[\s\S]*?<step>C<\/step>[\s\S]*?<octave>2<\/octave>[\s\S]*?<octave-shift type="stop" size="8"\/>/
+  );
 });
 
 test('convertMidiToMusicXml uses the direct engine', async (t) => {
@@ -304,6 +402,7 @@ test('six eighth-note triplets use a separate beam for each triplet set', async 
 test('rhythm grammar exposes approved templates and deterministic odd-meter groups', () => {
   assert(rhythmGrammar.templates.some((template) => template.id === '3-4-eighth-quarter-offbeat-dotted-quarter'));
   assert(rhythmGrammar.templates.some((template) => template.id === '2-4-sixteenth-eighth-eighth-dotted-eighth'));
+  assert(rhythmGrammar.templates.some((template) => template.id === '2-4-dotted-eighth-dotted-eighth-eighth'));
   assert(rhythmGrammar.cleanupRules.some((rule) => rule.id === 'staccato-on-double-extension'));
   assert(rhythmGrammar.beamingRules.some((rule) => rule.id === 'separate-complete-triplet-sets'));
   assert(rhythmGrammar.beamingRules.some((rule) => rule.id === 'two-beat-primary-beams-only-for-plain-eighth-groups'));
@@ -377,6 +476,73 @@ test('grammar spells the approved sixteenth-eighth syncopation exception', async
   assert.equal(noteBlocksForStep(xml, 'F').filter((note) => note.includes('<tie type=')).length, 2);
   assert.deepEqual(noteDurationsForStep(fourFourXml, 'E'), [240, 240]);
   assert.deepEqual(noteDurationsForStep(fourFourXml, 'F'), [240, 480]);
+});
+
+test('grammar spells the approved dotted-eighth syncopation exception', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'two-four-dotted-eighth-syncopation.mid');
+  const fourFourPath = path.join(dir, 'four-four-dotted-eighth-syncopation.mid');
+  await writeMidiFile(inputPath, [
+    { midi: 60, ticks: 0, durationTicks: 360, velocity: 0.8 },
+    { midi: 62, ticks: 360, durationTicks: 360, velocity: 0.8 },
+    { midi: 64, ticks: 720, durationTicks: 240, velocity: 0.8 }
+  ], {
+    timeSignature: [2, 4]
+  });
+  await writeMidiFile(fourFourPath, [
+    { midi: 60, ticks: 0, durationTicks: 360, velocity: 0.8 },
+    { midi: 62, ticks: 360, durationTicks: 360, velocity: 0.8 },
+    { midi: 64, ticks: 720, durationTicks: 240, velocity: 0.8 },
+    { midi: 65, ticks: 960, durationTicks: 480, velocity: 0.8 },
+    { midi: 67, ticks: 1440, durationTicks: 480, velocity: 0.8 }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(inputPath),
+    { quantize: false }
+  );
+  const fourFourXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(fourFourPath),
+    { quantize: false }
+  );
+
+  assert.deepEqual(noteDurationsForStep(xml, 'C'), [720]);
+  assert.deepEqual(noteDurationsForStep(xml, 'D'), [240, 480]);
+  assert.deepEqual(noteDurationsForStep(xml, 'E'), [480]);
+  assert.equal(noteBlocksForStep(xml, 'D').filter((note) => note.includes('<tie type=')).length, 2);
+  assert.deepEqual(noteDurationsForStep(fourFourXml, 'D'), [240, 480]);
+});
+
+test('grammar splits only short offbeat notes that cross a simple beat boundary', async (t) => {
+  const dir = await createTempDir(t);
+  const shortOverlapPath = path.join(dir, 'two-four-short-offbeat-overlap.mid');
+  const quarterOverlapPath = path.join(dir, 'two-four-quarter-offbeat-overlap.mid');
+  await writeMidiFile(shortOverlapPath, [
+    { midi: 60, ticks: 0, durationTicks: 360, velocity: 0.8 },
+    { midi: 62, ticks: 360, durationTicks: 240, velocity: 0.8 },
+    { midi: 64, ticks: 600, durationTicks: 360, velocity: 0.8 }
+  ], {
+    timeSignature: [2, 4]
+  });
+  await writeMidiFile(quarterOverlapPath, [
+    { midi: 60, ticks: 0, durationTicks: 240, velocity: 0.8 },
+    { midi: 62, ticks: 240, durationTicks: 480, velocity: 0.8 },
+    { midi: 64, ticks: 720, durationTicks: 240, velocity: 0.8 }
+  ], {
+    timeSignature: [2, 4]
+  });
+
+  const shortOverlapXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(shortOverlapPath),
+    { quantize: false }
+  );
+  const quarterOverlapXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(quarterOverlapPath),
+    { quantize: false }
+  );
+
+  assert.deepEqual(noteDurationsForStep(shortOverlapXml, 'D'), [240, 240]);
+  assert.deepEqual(noteDurationsForStep(quarterOverlapXml, 'D'), [960]);
 });
 
 test('grammar uses two-beat primary beams only for plain eighth groups in 4/4', async (t) => {
@@ -717,6 +883,31 @@ test('grammar absorbs a sixteenth rest after a same-measure dotted eighth', asyn
   assert.doesNotMatch(cNotes[0], /<tie type=/);
 });
 
+test('grammar splits nonstandard sub-beat gaps instead of emitting mismatched note types', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'nonstandard-leading-gap.mid');
+  await writeMidiFile(inputPath, [
+    {
+      midi: 60,
+      ticks: 390,
+      durationTicks: 60,
+      velocity: 0.8
+    }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(inputPath),
+    { quantize: false }
+  );
+  const firstMeasure = measureBlock(xml, 1);
+  const measureNotes = noteBlocks(firstMeasure);
+
+  assert.match(measureNotes[0], /<rest\/>[\s\S]*?<duration>720<\/duration>[\s\S]*?<type>eighth<\/type>[\s\S]*?<dot\/>/);
+  assert.match(measureNotes[1], /<rest\/>[\s\S]*?<duration>60<\/duration>[\s\S]*?<type>64th<\/type>/);
+  assert.match(measureNotes[2], /<pitch>[\s\S]*?<duration>180<\/duration>[\s\S]*?<type>32nd<\/type>[\s\S]*?<dot\/>/);
+  assert.doesNotMatch(firstMeasure, /<rest\/>[\s\S]*?<duration>780<\/duration>[\s\S]*?<type>64th<\/type>/);
+});
+
 test('grammar simplifies only the approved one-note trailing triplet rests', async (t) => {
   const dir = await createTempDir(t);
   const oneNotePath = path.join(dir, 'one-triplet-note.mid');
@@ -841,6 +1032,10 @@ function noteBlocksForStep(xml, step) {
 
 function noteBlocks(xml) {
   return xml.match(/<note>[\s\S]*?<\/note>/g) ?? [];
+}
+
+function clefBlock(xml) {
+  return xml.match(/<clef>[\s\S]*?<\/clef>/)?.[0] ?? '';
 }
 
 function measureBlock(xml, number) {

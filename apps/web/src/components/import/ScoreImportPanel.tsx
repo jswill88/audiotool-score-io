@@ -166,7 +166,7 @@ export function ScorePartsPanel({
   const hasParts = partCount > 0;
   const allPartsSelected = hasParts && selectedPartCount === partCount;
   const somePartsSelected = selectedPartCount > 0 && selectedPartCount < partCount;
-  const warnings = formatImportWarnings(plan?.warnings ?? []);
+  const warnings = formatImportWarnings(plan);
 
   useEffect(() => {
     if (plan && shouldFocusParts) {
@@ -234,16 +234,22 @@ export function ScorePartsPanel({
   );
 }
 
-function formatImportWarnings(warnings: ScoreImportPlan['warnings']) {
+function formatImportWarnings(plan: ScoreImportPlan | null) {
+  const warnings = plan?.warnings ?? [];
+  const partTitleById = new Map(
+    (plan?.parts ?? []).map((part) => [part.id, part.title])
+  );
   const emptyPartNumbers: number[] = [];
+  const percussionTitles: string[] = [];
   const displayWarnings: Array<{ key: string; message: string }> = [];
+  const seenDisplayMessages = new Set<string>();
 
   warnings.forEach((warning, index) => {
-    if (warning.code === 'empty-midi-track') {
+    if (warning.code === 'empty-midi-track' || warning.code === 'empty-score-part') {
       if (typeof warning.trackIndex === 'number') {
         emptyPartNumbers.push(warning.trackIndex + 1);
       } else {
-        displayWarnings.push({
+        pushDisplayWarning(displayWarnings, seenDisplayMessages, {
           key: `${warning.code}-${index}`,
           message: warning.message
         });
@@ -251,27 +257,76 @@ function formatImportWarnings(warnings: ScoreImportPlan['warnings']) {
       return;
     }
 
-    displayWarnings.push({
+    if (warning.code === 'percussion-basic-import') {
+      const title = warning.partId ? partTitleById.get(warning.partId) : '';
+
+      if (title) {
+        percussionTitles.push(title);
+      } else {
+        pushDisplayWarning(displayWarnings, seenDisplayMessages, {
+          key: `${warning.code}-${index}`,
+          message: warning.message
+        });
+      }
+      return;
+    }
+
+    pushDisplayWarning(displayWarnings, seenDisplayMessages, {
       key: `${warning.code}-${warning.partId ?? warning.trackIndex ?? index}`,
       message: warning.message
     });
   });
 
+  const groupedWarnings: Array<{ key: string; message: string }> = [];
   const uniqueEmptyPartNumbers = [...new Set(emptyPartNumbers)].sort((a, b) => a - b);
-  if (uniqueEmptyPartNumbers.length === 0) {
-    return displayWarnings;
+
+  if (uniqueEmptyPartNumbers.length > 0) {
+    const prefix = uniqueEmptyPartNumbers.length === 1 ? 'Part' : 'Parts';
+    const verb = uniqueEmptyPartNumbers.length === 1 ? 'was' : 'were';
+
+    groupedWarnings.push({
+      key: `empty-score-part-${uniqueEmptyPartNumbers.join('-')}`,
+      message: `${prefix} ${formatPartNumberList(uniqueEmptyPartNumbers)} had no notes and ${verb} skipped.`
+    });
   }
 
-  const prefix = uniqueEmptyPartNumbers.length === 1 ? 'Part' : 'Parts';
-  const verb = uniqueEmptyPartNumbers.length === 1 ? 'was' : 'were';
+  const uniquePercussionTitles = uniqueOrdered(percussionTitles);
 
-  return [
-    {
-      key: `empty-midi-track-${uniqueEmptyPartNumbers.join('-')}`,
-      message: `${prefix} ${formatPartNumberList(uniqueEmptyPartNumbers)} had no notes and ${verb} skipped.`
-    },
-    ...displayWarnings
-  ];
+  if (uniquePercussionTitles.length > 0) {
+    const verb = uniquePercussionTitles.length === 1 ? 'appears' : 'appear';
+
+    groupedWarnings.push({
+      key: `percussion-basic-import-${uniquePercussionTitles.join('-')}`,
+      message: `${formatNameList(uniquePercussionTitles)} ${verb} to be percussion and will import as pitched notes.`
+    });
+  }
+
+  return [...groupedWarnings, ...displayWarnings];
+}
+
+function pushDisplayWarning(
+  warnings: Array<{ key: string; message: string }>,
+  seenMessages: Set<string>,
+  warning: { key: string; message: string }
+) {
+  if (seenMessages.has(warning.message)) {
+    return;
+  }
+
+  seenMessages.add(warning.message);
+  warnings.push(warning);
+}
+
+function uniqueOrdered(values: string[]) {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    if (seen.has(value)) {
+      return false;
+    }
+
+    seen.add(value);
+    return true;
+  });
 }
 
 function formatPartNumberList(partNumbers: number[]) {
@@ -280,6 +335,14 @@ function formatPartNumberList(partNumbers: number[]) {
   }
 
   return `${partNumbers.slice(0, -1).join(', ')}, and ${partNumbers[partNumbers.length - 1]}`;
+}
+
+function formatNameList(names: string[]) {
+  if (names.length <= 2) {
+    return names.join(' and ');
+  }
+
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
 function ScoreImportPartRow({

@@ -8,6 +8,7 @@ import type {
 } from '../rhythm/index.js';
 import type { TimeSignature } from '../types.js';
 import { isStandardDuration } from './durations.js';
+import { clefSpecFor } from './clefs.js';
 import {
   createBeamLookup,
   createTupletLookup
@@ -130,8 +131,10 @@ function serializeMeasureHeader(
     timeSignature: TimeSignature;
   }
 ) {
-  const clefSign = part.clef === 'bass' ? 'F' : 'G';
-  const clefLine = part.clef === 'bass' ? 4 : 2;
+  const clefSpec = clefSpecFor(part.clef);
+  const clefOctaveChange = clefSpec.octaveChange === undefined
+    ? []
+    : [`          <clef-octave-change>${clefSpec.octaveChange}</clef-octave-change>`];
 
   return [
     '      <attributes>',
@@ -142,8 +145,9 @@ function serializeMeasureHeader(
     `          <beat-type>${timeSignature.denominator}</beat-type>`,
     '        </time>',
     '        <clef>',
-    `          <sign>${clefSign}</sign>`,
-    `          <line>${clefLine}</line>`,
+    `          <sign>${clefSpec.sign}</sign>`,
+    `          <line>${clefSpec.line}</line>`,
+    ...clefOctaveChange,
     '        </clef>',
     '      </attributes>',
     '      <direction placement="above">',

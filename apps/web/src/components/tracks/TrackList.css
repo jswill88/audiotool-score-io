@@ -1,6 +1,6 @@
 .track-list {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   min-height: 220px;
   max-height: 340px;
@@ -10,6 +10,7 @@
 
 .track-row {
   position: relative;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   align-items: start;
@@ -149,18 +150,17 @@
 
 .track-export-title {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   max-width: 100%;
   min-width: 0;
-  gap: 7px;
+  gap: 3px;
 }
 
 .track-export-title > small {
   color: var(--faint);
   font-size: 12px;
   font-weight: 760;
-  padding-top: 5px;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -187,6 +187,7 @@
 .track-hint {
   display: inline-flex;
   align-items: flex-start;
+  justify-self: start;
   width: auto;
   max-width: 100%;
   gap: 5px;
@@ -280,15 +281,4 @@
 .empty-track-copy span {
   font-size: 15px;
   line-height: 1.35;
-}
-
-@media (max-width: 520px) {
-  .track-export-title {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 3px;
-  }
-
-  .track-export-title > small {
-    padding-top: 0;
-  }
 }

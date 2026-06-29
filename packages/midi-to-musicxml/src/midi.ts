@@ -24,6 +24,7 @@ export async function assertValidMidiFile(filePath: string) {
 export async function convertMidiToMusicXml({
   inputPath,
   outputPath,
+  octaveClefs,
   quantize = true,
   title,
   partNames
@@ -40,6 +41,7 @@ export async function convertMidiToMusicXml({
 
   await convertMidiToDirectMusicXml({
     inputPath,
+    octaveClefs,
     outputPath,
     quantize,
     title,

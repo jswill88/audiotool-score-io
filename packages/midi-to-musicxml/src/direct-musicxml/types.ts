@@ -1,7 +1,13 @@
 import type { RhythmArticulation } from '../rhythm/index.js';
 import type { NotationNote } from '../types.js';
 
-export type Clef = 'treble' | 'bass';
+export type Clef =
+  | 'treble'
+  | 'treble-8va'
+  | 'treble-15ma'
+  | 'bass'
+  | 'bass-8vb'
+  | 'bass-15mb';
 export type OctaveShiftType = 'down' | 'up';
 
 export type OctaveShiftRange = {

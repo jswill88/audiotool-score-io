@@ -2,9 +2,12 @@
   display: grid;
   align-content: start;
   gap: 8px;
+  max-height: min(46vh, 420px);
   min-height: 0;
   overflow: auto;
-  padding-right: 2px;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
 }
 
 .project-row {

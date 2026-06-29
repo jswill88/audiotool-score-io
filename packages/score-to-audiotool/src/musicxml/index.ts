@@ -93,7 +93,7 @@ export async function buildScoreImportPlanFromMusicXml({
     if (isPercussion) {
       warnings.push({
         code: 'percussion-basic-import',
-        message: `${definition.title} appears to be percussion and will import as pitched notes until drum mapping is added.`,
+        message: `${definition.title} appears to be percussion and will import as pitched notes.`,
         partId: id,
         trackIndex
       });

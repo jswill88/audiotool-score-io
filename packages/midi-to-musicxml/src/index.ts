@@ -29,6 +29,7 @@ export type {
   ConvertMidiToDirectMusicXmlOptions,
   DirectMusicXmlRenderOptions,
   NotationNote,
+  OctaveClefMode,
   TimeSignature
 } from './types.js';
 export type {

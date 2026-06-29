@@ -24,13 +24,20 @@ Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shar
 - Audiotool export first creates MIDI, then `quantizeMidiForNotation` chooses canonical timing from ordinary and triplet grid candidates.
 - The direct MusicXML writer applies the executable rhythm grammar for values, ties, rests, staccato cleanup, beams, triplets, compound meters, odd-meter grouping, clefs, stems, and final barlines.
 - The web app and API no longer accept or display a notation-engine choice.
+- The sign-in page shows the supported export/import workflow names as static labels rather than interactive controls.
+- The export options show output mode plus a Quantize toggle only; quantization grid choice remains automatic and is not displayed as a separate control.
 - `POST /convert` converts uploaded MIDI directly. `quantize=false` bypasses canonical quantization.
 - `/ready` returns `{"status":"ready","converter":"direct"}` and has no external-binary readiness dependency.
 - Audiotool track rows and MusicXML import part rows expose named native checkboxes in the keyboard tab order. Track export names use a full-width edit button before entering the text field, and both lists show visible per-control focus. A completed project inspection moves focus into Tracks once, and completed MusicXML analysis moves focus into Parts once; merely refreshing projects or choosing a score file does not.
+- The Audiotool projects list is height-capped and scrolls internally so accounts with many projects do not push the rest of the export workflow offscreen.
 - Audiotool track rows and MusicXML import part rows use minimum heights but grow with wrapped labels, export names, metadata, and warning text so dense content stays visible.
+- In simple meters, direct note spelling splits short offbeat note values smaller than one spelling beat when they cross a spelling-beat boundary; equal-beat syncopations such as offbeat quarters remain intact unless an explicit template says otherwise.
+- Nonstandard sub-beat durations are split into conventional chunks before serialization instead of being emitted as one raw duration with a misleading fallback note type.
 - A scoped 2/4/equivalent-group sixteenth-level exception spells `16n | 8n | 8n | dotted 8n` as `16n | 8n | 16n ~ 16n | 16n ~ 8n` to reveal the quarter-note beat and apply the diminished offbeat sustain rule.
+- A related 2/4/equivalent-group exception spells `dotted 8n | dotted 8n | 8n` as `dotted 8n | 16n ~ 8n | 8n` so the second dotted eighth exposes the quarter-note beat boundary.
 - In simple `/4` meters, two-beat primary beams are reserved for groups made entirely of plain eighth notes; groups containing rests, dotted values, or sixteenths restart the primary beam at each quarter-note beat while preserving unsyncopated sixteenth pairs inside the beat.
-- The direct MusicXML writer emits conservative measure-local 8va/8vb octave-shift directions for contiguous runs of at least two note events more than an octave above or below the chosen staff; mixed-range chords, isolated leaps, multi-voice measures, and cross-measure spans are left unmarked for now.
+- The direct MusicXML writer chooses constrained whole-part octave clefs for consistently extreme parts: treble `8va`/`15ma` for high parts and bass `8vb`/`15mb` for low parts. It never emits treble-down or bass-up octave clefs, and the package API can disable the whole-part feature with `octaveClefs: 'off'`.
+- The direct MusicXML writer still emits conservative measure-local 8va/8vb octave-shift directions after whole-part clef selection. Contiguous runs of at least two note events shift when they are more than one octave outside the chosen staff; isolated note events shift only when they are more than two octaves outside the staff. Mixed-range chords, less-extreme isolated leaps, multi-voice measures, and cross-measure spans are left unmarked for now.
 - Key selection and contextual sharp/flat respelling remain future work. Output currently declares C major and uses sharp pitch-class spellings.
 - Coherent quintuplet/septuplet candidate generation remains future work; supported triplets are written with explicit MusicXML tuplet notation.
 
@@ -58,7 +65,7 @@ The unused fixed-grid `preprocessMidi` path, its grid defaults/types, `preproces
 
 The importer is organized under `packages/score-to-audiotool/src/musicxml/` by archive reading, ordered-tree helpers, part parsing, and plan assembly. Audiotool MIDI export is similarly organized under `packages/audiotool-to-midi/src/render/`.
 
-Import accepts `.musicxml`, `.xml`, and `.mxl`. It maps each selected score part to one Audiotool Gakki-backed note track. The first tempo and time signature are applied; later changes produce warnings. Slurs, dynamics, lyrics, repeats, grace notes, separate voice assignments, detailed percussion mapping, and other notation-only information are not imported yet.
+Import accepts `.musicxml`, `.xml`, and `.mxl`. It maps each selected score part to one Audiotool Gakki-backed note track. Part titles are normalized from MusicXML text, including common XML entity decoding for names such as `Bass & Cymbal`. Repeated import warnings are compacted in the web UI, such as grouping multiple percussion parts into one line. The first tempo and time signature are applied; later changes produce warnings. Slurs, dynamics, lyrics, repeats, grace notes, separate voice assignments, detailed percussion mapping, and other notation-only information are not imported yet.
 
 ## Deployment
 
@@ -121,10 +128,10 @@ npm test
 npm run check
 ```
 
-Last verified June 25, 2026:
+Last verified June 29, 2026:
 
-- `npm test`: 64 tests passed (34 Audiotool export, 28 direct MIDI/MusicXML, 2 score import).
-- `npm run check`: all workspace typechecks/builds/syntax checks passed.
+- `npm test`: 71 tests passed (34 Audiotool export, 35 direct MIDI/MusicXML, 2 score import).
+- `npm run check`: all workspace typechecks/builds/syntax checks passed. Vite still warns that local Node 22.2.0 is below its preferred 22.12+ patch level and reports large score-viewer chunks, but the build exits green.
 - Strict TypeScript unused-local and unused-parameter checks pass across every workspace.
 - Both local and Cloud Run API Dockerfiles built successfully at about 287 MB.
 - Container `/health` returned `ok`; `/ready` returned `{"status":"ready","converter":"direct"}`.

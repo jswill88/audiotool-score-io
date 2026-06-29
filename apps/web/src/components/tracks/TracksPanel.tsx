@@ -4,7 +4,6 @@ import {
   FileCode,
   ListMusic,
   Loader2,
-  Settings2,
   SlidersHorizontal
 } from 'lucide-react';
 import { SectionTitle } from '../SectionTitle';
@@ -157,10 +156,6 @@ export function TracksPanel({
           />
           <span>Quantize</span>
         </label>
-        <div className="select-label" aria-label="Automatic multi-grid quantization">
-          <Settings2 size={15} aria-hidden="true" />
-          <span>Auto grid</span>
-        </div>
         <button
           className="primary-button"
           type="button"

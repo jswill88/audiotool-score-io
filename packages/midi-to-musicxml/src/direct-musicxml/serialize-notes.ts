@@ -79,7 +79,8 @@ export function serializeNoteGroup(
 ) {
   const chunks = spellRhythmDuration(event.start, event.duration, meter, {
     isStandardDuration,
-    override: spellingOverride
+    override: spellingOverride,
+    splitShortBeatOverlaps: true
   });
   const lines: string[] = [];
   const stemDirection = stemDirectionForPitches(event.pitches, clef);

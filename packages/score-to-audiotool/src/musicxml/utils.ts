@@ -47,8 +47,47 @@ export function roundDurationToMeasure(
 }
 
 export function cleanTitle(value: unknown) {
-  const title = String(value ?? '').replace(/\s+/g, ' ').trim();
+  const title = decodeXmlEntities(String(value ?? ''))
+    .replace(/\s+/g, ' ')
+    .trim();
   return title.slice(0, 120);
+}
+
+function decodeXmlEntities(value: string) {
+  return value.replace(
+    /&(#\d+|#x[\da-fA-F]+|amp|apos|gt|lt|quot);/g,
+    (entity, code: string) => {
+      switch (code) {
+        case 'amp':
+          return '&';
+        case 'apos':
+          return "'";
+        case 'gt':
+          return '>';
+        case 'lt':
+          return '<';
+        case 'quot':
+          return '"';
+        default:
+          return decodeNumericEntity(entity, code);
+      }
+    }
+  );
+}
+
+function decodeNumericEntity(entity: string, code: string) {
+  const radix = code.startsWith('#x') ? 16 : 10;
+  const value = Number.parseInt(code.slice(radix === 16 ? 2 : 1), radix);
+
+  if (!Number.isFinite(value)) {
+    return entity;
+  }
+
+  try {
+    return String.fromCodePoint(value);
+  } catch {
+    return entity;
+  }
 }
 
 export function titleFromSourceName(sourceName: string | undefined) {
