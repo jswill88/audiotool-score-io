@@ -399,6 +399,33 @@ test('six eighth-note triplets use a separate beam for each triplet set', async 
   assert.equal((xml.match(/<tuplet number="1" type="stop"\/>/g) ?? []).length, 2);
 });
 
+test('an eighth and three triplet sixteenths share one beat beam', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'eighth-triplet-sixteenths.mid');
+  await writeMidiFile(inputPath, [
+    { midi: 60, ticks: 0, durationTicks: 240, velocity: 0.8 },
+    { midi: 62, ticks: 240, durationTicks: 80, velocity: 0.8 },
+    { midi: 64, ticks: 320, durationTicks: 80, velocity: 0.8 },
+    { midi: 65, ticks: 400, durationTicks: 80, velocity: 0.8 }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(inputPath),
+    { quantize: false }
+  );
+  const pitched = (xml.match(/<note>[\s\S]*?<\/note>/g) ?? [])
+    .filter((note) => note.includes('<pitch>'));
+
+  assert.deepEqual(
+    pitched.map((note) => note.match(/<beam number="1">([^<]+)<\/beam>/)?.[1]),
+    ['begin', 'continue', 'continue', 'end']
+  );
+  assert.doesNotMatch(pitched[0], /<time-modification>/);
+  assert(pitched.slice(1).every((note) => note.includes('<time-modification>')));
+  assert.match(pitched[1], /<tuplet number="1" type="start"/);
+  assert.match(pitched[3], /<tuplet number="1" type="stop"\/>/);
+});
+
 test('rhythm grammar exposes approved templates and deterministic odd-meter groups', () => {
   assert(rhythmGrammar.templates.some((template) => template.id === '3-4-eighth-quarter-offbeat-dotted-quarter'));
   assert(rhythmGrammar.templates.some((template) => template.id === '2-4-sixteenth-eighth-eighth-dotted-eighth'));
@@ -600,6 +627,23 @@ test('grammar uses a half note inside the confirmed 4/4 long offbeat sustain', a
   );
 
   assert.deepEqual(noteDurationsForStep(xml, 'D'), [480, 1920, 480]);
+});
+
+test('grammar consolidates an aligned half-note continuation after a dotted eighth', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'sixteenth-long-offbeat-sustain.mid');
+  await writeMidiFile(inputPath, [
+    { midi: 60, ticks: 0, durationTicks: 120, velocity: 0.8 },
+    { midi: 62, ticks: 120, durationTicks: 1320, velocity: 0.8 },
+    { midi: 64, ticks: 1440, durationTicks: 480, velocity: 0.8 }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(inputPath),
+    { quantize: false }
+  );
+
+  assert.deepEqual(noteDurationsForStep(xml, 'D'), [720, 1920]);
 });
 
 test('grammar beams the complete 3/8 pulse, including an interior rest', async (t) => {

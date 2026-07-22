@@ -104,7 +104,12 @@ export function spellRhythmDuration(
     return [{ start, duration }];
   }
 
-  const boundaries = durationBoundaries(start, end, meter);
+  const boundaries = durationBoundaries(
+    start,
+    end,
+    meter,
+    isStandardDuration
+  );
   return boundaries.slice(0, -1).flatMap((segmentStart, index) => (
     withStarts(segmentStart, splitConventionalDuration(
       boundaries[index + 1] - segmentStart,
@@ -129,7 +134,12 @@ export function approximatelyEqual(left: number, right: number) {
   return Math.abs(left - right) <= 0.0001;
 }
 
-function durationBoundaries(start: number, end: number, meter: RhythmMeter) {
+function durationBoundaries(
+  start: number,
+  end: number,
+  meter: RhythmMeter,
+  isStandardDuration: StandardDurationPredicate
+) {
   const mandatory = new Set<number>();
 
   if (meter.denominator === 8 || meter.denominator === 16) {
@@ -148,7 +158,10 @@ function durationBoundaries(start: number, end: number, meter: RhythmMeter) {
       mandatory.add(next);
     }
 
-    if (previous > start && previous < end) {
+    const alignedRemainder = next > start && next < end &&
+      isStandardDuration(end - next);
+
+    if (previous > start && previous < end && !alignedRemainder) {
       mandatory.add(previous);
     }
   }

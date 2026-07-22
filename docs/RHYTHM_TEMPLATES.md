@@ -68,9 +68,15 @@ Arbitrary quintuplet and septuplet candidate generation remains future work.
    ```
 
    Do not place all six eighth-note triplets under one continuous beam.
-11. List more than one version under **Acceptable** when multiple spellings are
-   genuinely readable.
-12. Put awkward or forbidden spellings under **Avoid**.
+
+11. An ordinary eighth followed by three sixteenth-note triplets within the
+    same quarter-note beat shares one primary beam. Keep the visible triplet
+    marking on the three triplet notes:
+
+    `[A 8n B 16t C 16t D 16t]`
+12. List more than one version under **Acceptable** when multiple spellings are
+    genuinely readable.
+13. Put awkward or forbidden spellings under **Avoid**.
 
 ## Confidence Labels
 

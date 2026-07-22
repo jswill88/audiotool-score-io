@@ -83,7 +83,7 @@ export function createBeamLookup(
           previous.start + previous.duration === chunk.start &&
           rhythmGroupIndexAt(previous.start, meter) ===
             rhythmGroupIndexAt(chunk.start, meter) &&
-          belongsToSameTripletBeamSet(previous, chunk) &&
+          belongsToSameTripletBeamSet(previous, chunk, meter) &&
           canContinuePrimaryBeam(previous, chunk, meter, allChunks, level) &&
           (
             level === 1 ||
@@ -150,7 +150,8 @@ function canContinuePrimaryBeam(
 
 function belongsToSameTripletBeamSet(
   previous: { duration: number; start: number },
-  current: { duration: number; start: number }
+  current: { duration: number; start: number },
+  meter: RhythmMeter
 ) {
   const previousIsTriplet = isSingleTripletDuration(previous.duration);
   const currentIsTriplet = isSingleTripletDuration(current.duration);
@@ -161,9 +162,13 @@ function belongsToSameTripletBeamSet(
 
   if (
     !previousIsTriplet ||
-    !currentIsTriplet ||
-    previous.duration !== current.duration
+    !currentIsTriplet
   ) {
+    return Math.floor(previous.start / meter.simpleBeatTicks) ===
+      Math.floor(current.start / meter.simpleBeatTicks);
+  }
+
+  if (previous.duration !== current.duration) {
     return false;
   }
 
