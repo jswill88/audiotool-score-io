@@ -92,9 +92,62 @@ test('buildScoreImportPlan parses MusicXML directly without a notation executabl
           'Percussion 2: Bass & Cymbal appears to be percussion and will import as pitched notes.'
       ))
     );
+    assert(
+      plan.warnings.some((warning) => (
+        warning.message ===
+          'This score contains separate voice assignments, which are not imported yet.'
+      ))
+    );
     assert.deepEqual(
       selectScoreImportParts(plan).parts.map((part) => part.title),
       ['B-flat Clarinet']
+    );
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('notation warnings appear only for unsupported features present in the score', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'score-to-audiotool-warning-test-'));
+  const cleanPath = path.join(dir, 'clean.musicxml');
+  const detailedPath = path.join(dir, 'detailed.musicxml');
+  const cleanMusicXml = `<?xml version="1.0"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+  <part id="P1"><measure number="1">
+    <attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+    <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice></note>
+  </measure></part>
+</score-partwise>`;
+  const detailedMusicXml = sampleMusicXml
+    .replace(
+      '<direction><sound tempo="90"/></direction>',
+      '<direction><direction-type><dynamics><mf/></dynamics><wedge type="crescendo"/></direction-type><sound tempo="90"/></direction>'
+    )
+    .replace(
+      '<duration>2</duration><voice>1</voice><tie type="start"/>',
+      '<duration>2</duration><voice>1</voice><tie type="start"/><notations><slur type="start"/><articulations><staccato/></articulations></notations><lyric><text>La</text></lyric>'
+    )
+    .replace(
+      '</measure>\n  </part>',
+      '<note><grace/><pitch><step>D</step><octave>4</octave></pitch><voice>1</voice></note><barline><repeat direction="backward"/></barline></measure>\n  </part>'
+    );
+
+  try {
+    await fs.writeFile(cleanPath, cleanMusicXml);
+    await fs.writeFile(detailedPath, detailedMusicXml);
+    const cleanPlan = await buildScoreImportPlan({ inputPath: cleanPath });
+    const detailedPlan = await buildScoreImportPlan({ inputPath: detailedPath });
+
+    assert.equal(
+      cleanPlan.warnings.some((warning) => warning.code === 'musicxml-notation-not-imported'),
+      false
+    );
+    assert(
+      detailedPlan.warnings.some((warning) => (
+        warning.message ===
+          'This score contains slurs, articulations, lyrics, dynamics, repeats, grace notes, and separate voice assignments, which are not imported yet.'
+      ))
     );
   } finally {
     await fs.rm(dir, { recursive: true, force: true });

@@ -169,12 +169,20 @@
   color: var(--paper);
   font-size: 14px;
   font-weight: 720;
+}
+
+.track-export-title .inline-text-edit:not(.is-editing) {
+  justify-self: start;
+  width: auto;
+}
+
+.track-export-title .inline-text-edit.is-editing {
   width: 100%;
 }
 
 .track-export-title .inline-text-edit-trigger {
   align-items: start;
-  width: 100%;
+  width: auto;
 }
 
 .track-export-title .inline-text-edit-value {

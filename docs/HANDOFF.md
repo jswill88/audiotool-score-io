@@ -28,9 +28,10 @@ Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shar
 - The export options show output mode plus a Quantize toggle only; quantization grid choice remains automatic and is not displayed as a separate control.
 - `POST /convert` converts uploaded MIDI directly. `quantize=false` bypasses canonical quantization.
 - `/ready` returns `{"status":"ready","converter":"direct"}` and has no external-binary readiness dependency.
-- Audiotool track rows and MusicXML import part rows expose named native checkboxes in the keyboard tab order. Track export names use a full-width edit button before entering the text field, and both lists show visible per-control focus. A completed project inspection moves focus into Tracks once, and completed MusicXML analysis moves focus into Parts once; merely refreshing projects or choosing a score file does not.
+- Audiotool track rows and MusicXML import part rows expose named native checkboxes in the keyboard tab order. Track export names keep the pencil directly beside the displayed title, expand to a full-width field while editing, and both lists show visible per-control focus. A completed project inspection moves focus into Tracks once, and completed MusicXML analysis moves focus into Parts once; merely refreshing projects or choosing a score file does not.
 - The Audiotool projects list is height-capped and scrolls internally so accounts with many projects do not push the rest of the export workflow offscreen.
 - Audiotool track rows and MusicXML import part rows use minimum heights but grow with wrapped labels, export names, metadata, and warning text so dense content stays visible.
+- The editable score title in the Tracks header uses a wider responsive field so moderately long project titles remain visible while editing.
 - In simple meters, direct note spelling splits short offbeat note values smaller than one spelling beat when they cross a spelling-beat boundary; equal-beat syncopations such as offbeat quarters remain intact unless an explicit template says otherwise.
 - Nonstandard sub-beat durations are split into conventional chunks before serialization instead of being emitted as one raw duration with a misleading fallback note type.
 - A scoped 2/4/equivalent-group sixteenth-level exception spells `16n | 8n | 8n | dotted 8n` as `16n | 8n | 16n ~ 16n | 16n ~ 8n` to reveal the quarter-note beat and apply the diminished offbeat sustain rule.
@@ -67,7 +68,7 @@ The unused fixed-grid `preprocessMidi` path, its grid defaults/types, `preproces
 
 The importer is organized under `packages/score-to-audiotool/src/musicxml/` by archive reading, ordered-tree helpers, part parsing, and plan assembly. Audiotool MIDI export is similarly organized under `packages/audiotool-to-midi/src/render/`.
 
-Import accepts `.musicxml`, `.xml`, and `.mxl`. It maps each selected score part to one Audiotool Gakki-backed note track. Part titles are normalized from MusicXML text, including common XML entity decoding for names such as `Bass & Cymbal`. Repeated import warnings are compacted in the web UI, such as grouping multiple percussion parts into one line. The first tempo and time signature are applied; later changes produce warnings. Slurs, dynamics, lyrics, repeats, grace notes, separate voice assignments, detailed percussion mapping, and other notation-only information are not imported yet.
+Import accepts `.musicxml`, `.xml`, and `.mxl`. It maps each selected score part to one Audiotool Gakki-backed note track. Part titles are normalized from MusicXML text, including common XML entity decoding for names such as `Bass & Cymbal`. Repeated import warnings are compacted in the web UI, such as grouping multiple percussion parts into one line. The first tempo and time signature are applied; later changes produce warnings. Unsupported slurs, dynamics, lyrics, repeats, grace notes, and separate voice assignments produce one concise warning only when the uploaded score contains them; detailed percussion mapping and other notation-only information are not imported yet.
 
 ## Deployment
 

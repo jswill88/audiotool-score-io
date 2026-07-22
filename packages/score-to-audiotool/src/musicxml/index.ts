@@ -16,6 +16,7 @@ import {
   readPartDefinitions,
   readScoreTitle
 } from './part.js';
+import { unsupportedNotationWarning } from './notation.js';
 import {
   attribute,
   children,
@@ -140,10 +141,14 @@ export async function buildScoreImportPlanFromMusicXml({
     });
   }
 
-  warnings.push({
-    code: 'musicxml-notation-not-imported',
-    message: 'Notation-only details such as slurs, articulations, lyrics, dynamics, repeats, grace notes, and separate voice assignments are not imported yet.'
-  });
+  const notationWarning = unsupportedNotationWarning(score);
+
+  if (notationWarning) {
+    warnings.push({
+      code: 'musicxml-notation-not-imported',
+      message: notationWarning
+    });
+  }
 
   return {
     title: cleanTitle(title) ||

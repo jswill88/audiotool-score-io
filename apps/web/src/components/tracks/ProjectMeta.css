@@ -1,6 +1,7 @@
 .project-meta {
   display: grid;
   justify-items: end;
+  width: min(360px, 60%);
   min-width: 0;
   color: var(--muted);
   font-size: 14px;
@@ -8,23 +9,34 @@
 
 .project-meta > strong,
 .project-meta > span {
-  max-width: 220px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .project-meta > strong {
+  width: 100%;
   color: var(--paper);
   font-size: 15px;
+  text-align: right;
 }
 
 .project-meta .inline-text-edit {
-  max-width: 220px;
+  max-width: 100%;
+}
+
+.project-meta .inline-text-edit.is-editing {
+  width: 100%;
 }
 
 @media (max-width: 760px) {
   .project-meta {
     justify-items: start;
+    width: 100%;
+  }
+
+  .project-meta > strong {
+    text-align: left;
   }
 }
