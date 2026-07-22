@@ -148,31 +148,32 @@ function AppWorkspace({
         ) : (
           <>
             <ScoreImportPanel
-              canCreate={scoreImportWorkflow.canCreateImport}
               file={scoreImportWorkflow.file}
               importResult={scoreImportWorkflow.importResult}
-              onAnalyze={scoreImportWorkflow.onAnalyze}
-              onCreate={scoreImportWorkflow.onCreate}
               onFileChange={scoreImportWorkflow.onFileChange}
-              onTitleChange={scoreImportWorkflow.onTitleChange}
-              projectTitle={scoreImportWorkflow.projectTitle}
               status={status}
             />
             <ScorePartsPanel
+              canCreate={scoreImportWorkflow.canCreateImport}
+              file={scoreImportWorkflow.file}
+              onCreate={scoreImportWorkflow.onCreate}
               onDeselectAllParts={scoreImportWorkflow.onDeselectAllParts}
               onPartTitleChange={scoreImportWorkflow.onPartTitleChange}
               onPartToggle={scoreImportWorkflow.onPartToggle}
               onPartsFocusHandled={scoreImportWorkflow.onPartsFocusHandled}
               onSelectAllParts={scoreImportWorkflow.onSelectAllParts}
+              onTitleChange={scoreImportWorkflow.onTitleChange}
               partTitles={scoreImportWorkflow.partTitles}
               plan={scoreImportWorkflow.plan}
+              projectTitle={scoreImportWorkflow.projectTitle}
               selectedPartIds={scoreImportWorkflow.selectedPartIds}
               shouldFocusParts={scoreImportWorkflow.shouldFocusParts}
+              status={status}
             />
             <ResultPanel
               activeFile={scoreImportWorkflow.scorePreviewFile}
               activeResult={scoreImportWorkflow.scorePreviewResult}
-              emptyDescription="Plain .musicxml and .xml files preview here after you choose them. Compressed .mxl files can still be analyzed and imported, but they do not render in this browser preview."
+              emptyDescription="Plain .musicxml and .xml files preview here after you choose them. Compressed .mxl files are still analyzed and can be imported, but they do not render in this browser preview."
               emptyTitle="No preview yet"
               selectedProject={null}
               setActiveFileName={scoreImportWorkflow.setScorePreviewFileName}

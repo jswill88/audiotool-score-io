@@ -1,5 +1,6 @@
 .score-import-panel {
   display: grid;
+  align-content: start;
   gap: 14px;
   padding: 14px;
 }
@@ -18,8 +19,7 @@
   outline-offset: 2px;
 }
 
-.score-import-header,
-.score-import-actions {
+.score-import-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -67,15 +67,6 @@
   border-color: var(--focus-ring);
   outline: 3px solid var(--focus-ring-soft);
   outline-offset: 2px;
-}
-
-.score-import-actions {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-}
-
-.score-import-actions .primary-button {
-  margin-left: 0;
 }
 
 .score-import-file {
@@ -155,7 +146,66 @@
 .score-part-main {
   display: grid;
   min-width: 0;
-  gap: 6px;
+  gap: 5px;
+}
+
+.score-part-name,
+.score-part-main small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.score-part-name {
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.score-part-import-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  max-width: 100%;
+  min-width: 0;
+  gap: 3px;
+}
+
+.score-part-import-title > small {
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.score-part-import-title .inline-text-edit {
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 720;
+}
+
+.score-part-import-title .inline-text-edit:not(.is-editing) {
+  justify-self: start;
+  width: auto;
+}
+
+.score-part-import-title .inline-text-edit.is-editing {
+  width: 100%;
+}
+
+.score-part-import-title .inline-text-edit-trigger {
+  align-items: start;
+  width: auto;
+}
+
+.score-part-import-title .inline-text-edit-value {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .score-part-meta {
@@ -179,7 +229,6 @@
   overflow-wrap: anywhere;
 }
 
-.score-import-empty,
 .score-import-success {
   display: grid;
   gap: 4px;
@@ -189,7 +238,6 @@
   color: var(--muted);
 }
 
-.score-import-empty strong,
 .score-import-success strong {
   color: var(--paper);
 }
@@ -220,6 +268,16 @@
   margin-top: 2px;
 }
 
+.score-import-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
 .score-import-success {
   border-style: solid;
   border-color: rgba(32, 199, 189, 0.46);
@@ -232,13 +290,13 @@
     flex-direction: column;
   }
 
-  .score-import-actions {
+  .score-import-action-bar {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .score-import-actions .command-button,
-  .score-import-actions .primary-button {
+  .score-import-action-bar .primary-button {
     width: 100%;
+    margin-left: 0;
   }
 }

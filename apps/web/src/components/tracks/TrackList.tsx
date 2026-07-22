@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { AlertTriangle, Ban, Check } from 'lucide-react';
 import './TrackList.css';
+import { EmptyListState } from '../EmptyListState';
 import { InlineTextEdit } from '../InlineTextEdit';
 import { formatDeviceType } from '../../utils/format';
 import type { AppStatus, SelectedProject, TrackManifest } from '../../types';
@@ -30,12 +31,10 @@ export function TrackList({
     const emptyState = getEmptyState(selectedProject, status);
 
     return (
-      <div className="empty-track-list">
-        <div className="empty-track-copy">
-          <strong>{emptyState.title}</strong>
-          <span>{emptyState.description}</span>
-        </div>
-      </div>
+      <EmptyListState
+        description={emptyState.description}
+        title={emptyState.title}
+      />
     );
   }
 

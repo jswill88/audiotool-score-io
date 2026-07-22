@@ -180,7 +180,7 @@ The direct converter applies an executable rhythm grammar to canonical MIDI, wit
 
 ## MusicXML to Audiotool
 
-The authenticated web app also has a `MusicXML -> Audiotool` workflow. Upload a `.musicxml`, `.xml`, or `.mxl` score, analyze its parts, choose which parts to import, edit the imported track names, and create a new Audiotool project.
+The authenticated web app also has a `MusicXML -> Audiotool` workflow. Choose a `.musicxml`, `.xml`, or `.mxl` score to analyze its parts automatically, choose which parts to import, edit the Audiotool project and track names, and create the project.
 
 The importer reads MusicXML directly with lightweight Node libraries, including compressed `.mxl` files. It maps selected score parts to one Audiotool note track each, using basic Gakki instruments and mixer channels. It imports pitched notes and chords, ties, written-to-sounding transposition, timing expressed through MusicXML voices/backup/forward events, the first tempo, and the first time signature. When present, notation-only details such as slurs, dynamics, articulations, lyrics, repeats, grace notes, separate voice assignment, and percussion notation are reported as warnings and are not preserved yet.
 

@@ -81,7 +81,8 @@ export function useScoreImportWorkflow({
   }, []);
 
   const handleScoreFileChange = useCallback(async (file: File | null) => {
-    importRequestId.current += 1;
+    const requestId = importRequestId.current + 1;
+    importRequestId.current = requestId;
     setScoreFile(file);
     setScoreImportPlan(null);
     setSelectedImportPartIds([]);
@@ -91,7 +92,6 @@ export function useScoreImportWorkflow({
     setScorePreviewXml('');
     setScorePreviewFileName('');
     setViewerTab('score');
-    setStatus({ phase: 'idle', message: '', area: null });
 
     setScorePreviewUrl((current) => {
       if (current) {
@@ -102,37 +102,26 @@ export function useScoreImportWorkflow({
     });
 
     if (!file) {
+      setScoreImportTitle('');
+      setStatus({ phase: 'idle', message: '', area: null });
       return;
     }
 
-    setScoreImportTitle((current) => current || titleFromFileName(file.name));
+    const inferredTitle = titleFromFileName(file.name);
+    setScoreImportTitle(inferredTitle);
     setScorePreviewFileName(file.name);
-
-    if (isTextMusicXmlFile(file.name)) {
-      try {
-        setScorePreviewXml(await file.text());
-      } catch (error) {
-        setStatus({ phase: 'error', message: errorMessage(error), area: 'import' });
-      }
-    }
-  }, [setStatus, setViewerTab]);
-
-  const analyzeScoreFile = useCallback(async () => {
-    if (!scoreFile) {
-      setStatus({ phase: 'error', message: 'Select a MusicXML file', area: 'import' });
-      return;
-    }
-
-    const requestId = importRequestId.current + 1;
-    importRequestId.current = requestId;
     setStatus({ phase: 'loading', message: 'Analyzing score parts', area: 'import' });
-    setScoreImportResult(null);
 
     try {
-      const result = await analyzeScoreImport({
-        file: scoreFile,
-        title: scoreImportTitle || titleFromFileName(scoreFile.name)
-      });
+      const [result, previewXml] = await Promise.all([
+        analyzeScoreImport({
+          file,
+          title: inferredTitle
+        }),
+        isTextMusicXmlFile(file.name)
+          ? file.text().catch(() => '')
+          : Promise.resolve('')
+      ]);
 
       if (requestId !== importRequestId.current) {
         return;
@@ -141,8 +130,9 @@ export function useScoreImportWorkflow({
       const parts = result.plan.parts ?? [];
       const defaultParts = parts.filter((part) => part.shouldImportByDefault !== false);
 
+      setScorePreviewXml(previewXml);
       setScoreImportPlan(result.plan);
-      setScoreImportTitle(result.plan.title || scoreImportTitle || titleFromFileName(scoreFile.name));
+      setScoreImportTitle(result.plan.title || inferredTitle);
       setSelectedImportPartIds((defaultParts.length > 0 ? defaultParts : parts).map((part) => part.id));
       setImportPartTitles(createDefaultPartTitles(parts));
       setShouldFocusParts(true);
@@ -158,13 +148,13 @@ export function useScoreImportWorkflow({
 
       setStatus({ phase: 'error', message: errorMessage(error), area: 'import' });
     }
-  }, [scoreFile, scoreImportTitle, setStatus]);
+  }, [setStatus, setViewerTab]);
 
   const createProjectFromScore = useCallback(async () => {
     const auth = readRequestAuth(audiotoolAuth);
 
     if (!scoreFile || !scoreImportPlan) {
-      setStatus({ phase: 'error', message: 'Analyze a MusicXML file first', area: 'import' });
+      setStatus({ phase: 'error', message: 'Choose a MusicXML file first', area: 'import' });
       return;
     }
 
@@ -251,7 +241,6 @@ export function useScoreImportWorkflow({
     canCreateImport,
     file: scoreFile,
     importResult: scoreImportResult,
-    onAnalyze: analyzeScoreFile,
     onCreate: createProjectFromScore,
     onDeselectAllParts,
     onFileChange: handleScoreFileChange,

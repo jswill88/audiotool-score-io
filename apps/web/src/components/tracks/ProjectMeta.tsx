@@ -1,5 +1,4 @@
-import './ProjectMeta.css';
-import { InlineTextEdit } from '../InlineTextEdit';
+import { EditableTitleMeta } from '../EditableTitleMeta';
 import type { ProjectManifest, SelectedProject } from '../../types';
 
 type ProjectMetaProps = {
@@ -29,16 +28,12 @@ export function ProjectMeta({
   }
 
   return (
-    <div className="project-meta">
-      <strong>
-        <InlineTextEdit
-          ariaLabel="Edit score title"
-          fallbackValue={defaultScoreTitle}
-          value={scoreTitle}
-          onCommit={onScoreTitleChange}
-        />
-      </strong>
-      <span>{summary}</span>
-    </div>
+    <EditableTitleMeta
+      ariaLabel="Edit score title"
+      fallbackValue={defaultScoreTitle}
+      onCommit={onScoreTitleChange}
+      summary={summary}
+      value={scoreTitle}
+    />
   );
 }

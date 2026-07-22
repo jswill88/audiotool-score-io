@@ -4,9 +4,11 @@ import {
   FileInput,
   Loader2,
   Music2,
-  UploadCloud,
   Wand2
 } from 'lucide-react';
+import { EditableTitleMeta } from '../EditableTitleMeta';
+import { EmptyListState } from '../EmptyListState';
+import { InlineTextEdit } from '../InlineTextEdit';
 import { SectionTitle } from '../SectionTitle';
 import { SelectAllCheckbox } from '../SelectAllCheckbox';
 import type {
@@ -18,43 +20,40 @@ import type {
 import './ScoreImportPanel.css';
 
 type ScoreImportPanelProps = {
-  canCreate: boolean;
   file: File | null;
   importResult: ScoreImportResult | null;
-  onAnalyze: () => void | Promise<void>;
-  onCreate: () => void | Promise<void>;
   onFileChange: (file: File | null) => void | Promise<void>;
-  onTitleChange: (title: string) => void;
-  projectTitle: string;
   status: AppStatus;
 };
 
 type ScorePartsPanelProps = {
+  canCreate: boolean;
+  file: File | null;
+  onCreate: () => void | Promise<void>;
   onDeselectAllParts: () => void;
   onPartTitleChange: (partId: string, title: string) => void;
   onPartToggle: (partId: string) => void;
   onPartsFocusHandled: () => void;
   onSelectAllParts: () => void;
+  onTitleChange: (title: string) => void;
   partTitles: Record<string, string>;
   plan: ScoreImportPlan | null;
+  projectTitle: string;
   selectedPartIds: string[];
   shouldFocusParts: boolean;
+  status: AppStatus;
 };
 
 export function ScoreImportPanel({
-  canCreate,
   file,
   importResult,
-  onAnalyze,
-  onCreate,
   onFileChange,
-  onTitleChange,
-  projectTitle,
   status
 }: ScoreImportPanelProps) {
   const fileInputId = useId();
-  const titleInputId = useId();
-  const isLoading = status.phase === 'loading';
+  const isAnalyzing = status.phase === 'loading' &&
+    status.area === 'import' &&
+    status.message === 'Analyzing score parts';
   const importError = status.phase === 'error' && status.area === 'import'
     ? status.message
     : '';
@@ -83,45 +82,11 @@ export function ScoreImportPanel({
             onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
           />
           <label className="command-button score-import-file-button" htmlFor={fileInputId}>
-            <FileInput size={16} aria-hidden="true" />
-            <span>Choose File</span>
+            {isAnalyzing
+              ? <Loader2 className="spin" size={16} aria-hidden="true" />
+              : <FileInput size={16} aria-hidden="true" />}
+            <span>{isAnalyzing ? 'Analyzing' : 'Choose File'}</span>
           </label>
-        </div>
-
-        <label className="field-stack" htmlFor={titleInputId}>
-          <span className="field-label">Audiotool project title</span>
-          <input
-            id={titleInputId}
-            type="text"
-            value={projectTitle}
-            placeholder="Imported Score"
-            onChange={(event) => onTitleChange(event.target.value)}
-          />
-        </label>
-
-        <div className="score-import-actions">
-          <button
-            className="command-button"
-            type="button"
-            disabled={!file || isLoading}
-            onClick={onAnalyze}
-          >
-            {isLoading && status.area === 'import'
-              ? <Loader2 className="spin" size={16} aria-hidden="true" />
-              : <UploadCloud size={16} aria-hidden="true" />}
-            <span>Analyze</span>
-          </button>
-          <button
-            className="primary-button"
-            type="button"
-            disabled={!canCreate || isLoading}
-            onClick={onCreate}
-          >
-            {isLoading && status.area === 'import'
-              ? <Loader2 className="spin" size={16} aria-hidden="true" />
-              : <Wand2 size={16} aria-hidden="true" />}
-            <span>Create Project</span>
-          </button>
         </div>
 
         {file ? (
@@ -149,15 +114,21 @@ export function ScoreImportPanel({
 }
 
 export function ScorePartsPanel({
+  canCreate,
+  file,
+  onCreate,
   onDeselectAllParts,
   onPartTitleChange,
   onPartToggle,
   onPartsFocusHandled,
   onSelectAllParts,
+  onTitleChange,
   partTitles,
   plan,
+  projectTitle,
   selectedPartIds,
-  shouldFocusParts
+  shouldFocusParts,
+  status
 }: ScorePartsPanelProps) {
   const panelRef = useRef<HTMLElement>(null);
   const partCount = plan?.parts.length ?? 0;
@@ -167,6 +138,9 @@ export function ScorePartsPanel({
   const allPartsSelected = hasParts && selectedPartCount === partCount;
   const somePartsSelected = selectedPartCount > 0 && selectedPartCount < partCount;
   const warnings = formatImportWarnings(plan);
+  const isLoading = status.phase === 'loading' && status.area === 'import';
+  const isAnalyzing = isLoading && status.message === 'Analyzing score parts';
+  const isCreating = isLoading && status.message === 'Creating Audiotool project';
 
   useEffect(() => {
     if (plan && shouldFocusParts) {
@@ -184,6 +158,17 @@ export function ScorePartsPanel({
     >
       <div className="panel-header">
         <SectionTitle icon={<Music2 size={17} />} title="Parts" />
+        {file ? (
+          <EditableTitleMeta
+            ariaLabel="Edit Audiotool project title"
+            fallbackValue={plan?.title || 'Imported Score'}
+            onCommit={onTitleChange}
+            summary={plan
+              ? `${partCount} part${partCount === 1 ? '' : 's'}`
+              : isAnalyzing ? 'Analyzing' : 'No parts'}
+            value={projectTitle}
+          />
+        ) : null}
       </div>
 
       {plan ? (
@@ -225,11 +210,31 @@ export function ScorePartsPanel({
           ))}
         </div>
       ) : (
-        <div className="score-import-empty">
-          <strong>No score analyzed</strong>
-          <span>Upload a MusicXML file and analyze it to choose parts.</span>
-        </div>
+        <EmptyListState
+          title={isAnalyzing
+            ? 'Analyzing score'
+            : file ? 'No parts available' : 'No score selected'}
+          description={isAnalyzing
+            ? 'Detecting score parts and import details.'
+            : file
+              ? 'Choose another MusicXML file to try again.'
+              : 'Choose a MusicXML file to detect its parts.'}
+        />
       )}
+
+      <div className="score-import-action-bar">
+        <button
+          className="primary-button"
+          type="button"
+          disabled={!canCreate || isLoading}
+          onClick={onCreate}
+        >
+          {isCreating
+            ? <Loader2 className="spin" size={16} aria-hidden="true" />
+            : <Wand2 size={16} aria-hidden="true" />}
+          <span>Create Project</span>
+        </button>
+      </div>
     </section>
   );
 }
@@ -375,12 +380,16 @@ function ScoreImportPartRow({
         />
       </label>
       <div className="score-part-main">
-        <input
-          type="text"
-          value={title}
-          aria-label={`Imported track name for ${part.title}`}
-          onChange={(event) => onTitleChange(part.id, event.target.value)}
-        />
+        <label className="score-part-name" htmlFor={inputId}>{part.title}</label>
+        <span className="score-part-import-title">
+          <small>Import name</small>
+          <InlineTextEdit
+            ariaLabel={`Edit imported track name for ${part.title}`}
+            fallbackValue={part.title}
+            value={title}
+            onCommit={(nextTitle) => onTitleChange(part.id, nextTitle)}
+          />
+        </span>
         {part.isPercussion ? (
           <div className="score-part-meta">
             <span>Percussion</span>

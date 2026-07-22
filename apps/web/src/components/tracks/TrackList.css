@@ -253,38 +253,6 @@
   color: var(--muted);
 }
 
-.empty-track-list {
-  display: grid;
-  place-items: center;
-  min-height: 280px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 8px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(35, 199, 183, 0.04) 0,
-      rgba(35, 199, 183, 0.04) 1px,
-      transparent 1px,
-      transparent 46px
-    ),
-    rgba(10, 13, 16, 0.58);
-}
-
-.empty-track-copy {
-  display: grid;
-  justify-items: center;
-  gap: 5px;
-  max-width: 260px;
-  padding: 24px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.empty-track-copy strong {
-  color: var(--paper);
-  font-size: 18px;
-  font-weight: 760;
-}
 
 .empty-track-copy span {
   font-size: 15px;

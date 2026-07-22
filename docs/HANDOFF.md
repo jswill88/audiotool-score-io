@@ -28,10 +28,12 @@ Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shar
 - The export options show output mode plus a Quantize toggle only; quantization grid choice remains automatic and is not displayed as a separate control.
 - `POST /convert` converts uploaded MIDI directly. `quantize=false` bypasses canonical quantization.
 - `/ready` returns `{"status":"ready","converter":"direct"}` and has no external-binary readiness dependency.
-- Audiotool track rows and MusicXML import part rows expose named native checkboxes in the keyboard tab order. Track export names keep the pencil directly beside the displayed title, expand to a full-width field while editing, and both lists show visible per-control focus. A completed project inspection moves focus into Tracks once, and completed MusicXML analysis moves focus into Parts once; merely refreshing projects or choosing a score file does not.
+- Audiotool track rows and MusicXML import part rows expose named native checkboxes in the keyboard tab order. Track export names and imported part names use the same pencil-based inline editor, keep the pencil directly beside the displayed title, and expand to a full-width field while editing. Both lists show visible per-control focus. A completed project inspection moves focus into Tracks once. Choosing a score file starts MusicXML analysis immediately, and successful analysis moves focus into Parts once; merely refreshing projects does not move focus.
 - The Audiotool projects list is height-capped and scrolls internally so accounts with many projects do not push the rest of the export workflow offscreen.
 - Audiotool track rows and MusicXML import part rows use minimum heights but grow with wrapped labels, export names, metadata, and warning text so dense content stays visible.
 - The editable score title in the Tracks header uses a wider responsive field so moderately long project titles remain visible while editing.
+- The MusicXML import layout mirrors export more closely: the Audiotool project title occupies the same header position in Parts as the score title in Tracks, and Create Project sits in a bottom action bar where Convert appears in the export flow.
+- Tracks and Parts use the same centered, patterned empty-list state before a project or score is selected.
 - In simple meters, direct note spelling splits short offbeat note values smaller than one spelling beat when they cross a spelling-beat boundary; equal-beat syncopations such as offbeat quarters remain intact unless an explicit template says otherwise.
 - Nonstandard sub-beat durations are split into conventional chunks before serialization instead of being emitted as one raw duration with a misleading fallback note type.
 - A scoped 2/4/equivalent-group sixteenth-level exception spells `16n | 8n | 8n | dotted 8n` as `16n | 8n | 16n ~ 16n | 16n ~ 8n` to reveal the quarter-note beat and apply the diminished offbeat sustain rule.
@@ -131,9 +133,9 @@ npm test
 npm run check
 ```
 
-Last verified June 29, 2026:
+Last verified July 21, 2026:
 
-- `npm test`: 71 tests passed (34 Audiotool export, 35 direct MIDI/MusicXML, 2 score import).
+- `npm test`: 74 tests passed (34 Audiotool export, 37 direct MIDI/MusicXML, 3 score import).
 - `npm run check`: all workspace typechecks/builds/syntax checks passed. Vite still warns that local Node 22.2.0 is below its preferred 22.12+ patch level and reports large score-viewer chunks, but the build exits green.
 - Strict TypeScript unused-local and unused-parameter checks pass across every workspace.
 - Both local and Cloud Run API Dockerfiles built successfully at about 287 MB.

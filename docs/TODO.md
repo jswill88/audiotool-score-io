@@ -134,7 +134,7 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### Major Features And Experiments
 
-- [x] Add a MusicXML-to-Audiotool import workflow with a `score-to-audiotool` package, `/audiotool/import` route, MusicXML upload/analyze UI, part selection, imported track naming, and basic Gakki note-track project creation.
+- [x] Add a MusicXML-to-Audiotool import workflow with a `score-to-audiotool` package, `/audiotool/import` route, automatic MusicXML upload analysis, part selection, imported project/track naming, and basic Gakki note-track project creation.
 - [x] Add a direct MusicXML generation POC with side-by-side baseline comparison.
 - [x] Add an offline notation-ranker starter experiment that generates synthetic messy note-track examples, candidate quantizations, heuristic scores, oracle labels, JSONL rows, and an HTML report.
 - [x] Add first-pass beaming candidates plus nested `rhythm`, `beaming`, `voices`, and `stems` feature groups to the notation-ranker dataset.

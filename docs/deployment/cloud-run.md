@@ -214,7 +214,7 @@ Open the Cloudflare URL and test:
 4. Convert one selected note track.
 5. Convert multiple tracks.
 6. Download MusicXML or a zip.
-7. Analyze a MusicXML and an MXL upload.
+7. Choose a MusicXML and an MXL upload and confirm that each is analyzed automatically.
 8. Import selected parts into Audiotool.
 
 The real OAuth consent and project access test must be done in your browser/account.

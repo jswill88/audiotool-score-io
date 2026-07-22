@@ -1,4 +1,4 @@
-.project-meta {
+.editable-title-meta {
   display: grid;
   justify-items: end;
   width: min(360px, 60%);
@@ -7,36 +7,36 @@
   font-size: 14px;
 }
 
-.project-meta > strong,
-.project-meta > span {
+.editable-title-meta > strong,
+.editable-title-meta > span {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.project-meta > strong {
+.editable-title-meta > strong {
   width: 100%;
   color: var(--paper);
   font-size: 15px;
   text-align: right;
 }
 
-.project-meta .inline-text-edit {
+.editable-title-meta .inline-text-edit {
   max-width: 100%;
 }
 
-.project-meta .inline-text-edit.is-editing {
+.editable-title-meta .inline-text-edit.is-editing {
   width: 100%;
 }
 
 @media (max-width: 760px) {
-  .project-meta {
+  .editable-title-meta {
     justify-items: start;
     width: 100%;
   }
 
-  .project-meta > strong {
+  .editable-title-meta > strong {
     text-align: left;
   }
 }
