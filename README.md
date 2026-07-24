@@ -230,7 +230,9 @@ npm run docker:dev
 Open `http://127.0.0.1:5173/`. The root route redirects to `/sign-in` or protected `/app` based on
 auth state. The web service runs Vite in a Node container,
 mounts the local source tree, and proxies API requests to the Compose `api`
-service. CSS changes should hot reload on save.
+service. Web changes hot reload on save. API and shared-package TypeScript
+changes automatically restart the API process, so neither development container
+needs to be rebuilt or restarted for ordinary source edits.
 
 Stop the Docker dev environment:
 
@@ -238,7 +240,7 @@ Stop the Docker dev environment:
 npm run docker:dev:down
 ```
 
-If dependencies change, rebuild the dev image and recreate the dependency volume:
+If dependencies change, rebuild the dev images and recreate the dependency volumes:
 
 ```bash
 docker compose -f compose.dev.yml down -v

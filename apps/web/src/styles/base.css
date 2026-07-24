@@ -235,6 +235,37 @@ a:focus-visible {
   color: var(--teal);
 }
 
+@media (hover: hover) {
+  button:not(:disabled):hover,
+  .score-import-file-button:hover,
+  .icon-link:hover {
+    filter: brightness(1.1);
+  }
+
+  .icon-button:not(:disabled):hover,
+  .command-button:not(:disabled):hover,
+  .score-import-file-button:hover,
+  .mini-icon-button:not(:disabled):hover,
+  .file-strip button:not(:disabled):hover {
+    border-color: var(--line-strong);
+    background:
+      var(--surface-hover),
+      var(--console-3);
+  }
+
+  .primary-button:not(:disabled):hover {
+    border-color: var(--brass-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 248, 234, 0.48),
+      0 11px 22px rgba(0, 0, 0, 0.32);
+  }
+
+  .icon-link:hover {
+    border-color: rgba(32, 199, 189, 0.58);
+    background: var(--teal-soft);
+  }
+}
+
 .check-row {
   display: inline-flex;
   align-items: center;

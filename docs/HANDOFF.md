@@ -34,6 +34,7 @@ Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shar
 - The editable score title in the Tracks header uses a wider responsive field so moderately long project titles remain visible while editing.
 - The MusicXML import layout mirrors export more closely: the Audiotool project title occupies the same header position in Parts as the score title in Tracks, and Create Project sits in a bottom action bar where Convert appears in the export flow.
 - Tracks and Parts use the same centered, patterned empty-list state before a project or score is selected.
+- Interactive buttons have a subtle pointer-hover treatment across shared command, primary, icon, file, edit, and result-tab controls; disabled controls do not react, and hover-only styling is limited to hover-capable devices.
 - In simple meters, direct note spelling splits short offbeat note values smaller than one spelling beat when they cross a spelling-beat boundary; equal-beat syncopations such as offbeat quarters remain intact unless an explicit template says otherwise.
 - Nonstandard sub-beat durations are split into conventional chunks before serialization instead of being emitted as one raw duration with a misleading fallback note type.
 - A scoped 2/4/equivalent-group sixteenth-level exception spells `16n | 8n | 8n | dotted 8n` as `16n | 8n | 16n ~ 16n | 16n ~ 8n` to reveal the quarter-note beat and apply the diminished offbeat sustain rule.
@@ -58,7 +59,9 @@ The conversion implementation is organized by domain:
 
 The unused fixed-grid `preprocessMidi` path, its grid defaults/types, `preprocessedPath` temp-file flow, API `preprocess` alias, and compatibility-only barrels were removed. Automatic in-memory canonical quantization is the only quantization path.
 
-`docs/RHYTHM_TEMPLATES.md` remains the human-readable source of truth.
+Runtime code and regression tests are the source of truth for rhythm behavior.
+`docs/RHYTHM.md` records the durable design principles and module ownership
+without duplicating the executable template catalog.
 
 ## MusicXML Import
 
@@ -109,6 +112,11 @@ Docker development:
 npm run docker:dev
 npm run docker:dev:down
 ```
+
+The Docker development stack bind-mounts the repository. Vite hot reloads web
+changes, while `tsx watch` restarts the API automatically for edits under
+`apps/api/src` or the three shared packages. Dependency changes still require
+rebuilding the dev images and volumes.
 
 Production-style local stack:
 

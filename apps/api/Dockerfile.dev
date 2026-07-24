@@ -1,0 +1,16 @@
+FROM node:22-bullseye-slim
+
+WORKDIR /usr/src/app
+
+COPY package.json package-lock.json ./
+COPY packages/midi-to-musicxml/package.json packages/midi-to-musicxml/package.json
+COPY packages/audiotool-to-midi/package.json packages/audiotool-to-midi/package.json
+COPY packages/score-to-audiotool/package.json packages/score-to-audiotool/package.json
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+
+RUN npm ci
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev:api"]

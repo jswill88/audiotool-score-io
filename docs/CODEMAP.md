@@ -86,6 +86,7 @@ Use this as the first stop when deciding where a change belongs.
 - [`experiments/notation-ranker/README.md`](../experiments/notation-ranker/README.md): Offline notation-ranker experiment notes and commands.
 - [`docs/TODO.md`](TODO.md): Shared product/backlog checklist.
 - [`docs/HANDOFF.md`](HANDOFF.md): Current project state, recent decisions, verification commands, and next-session notes.
+- [`docs/RHYTHM.md`](RHYTHM.md): Rhythm-processing boundaries, engraving principles, module ownership, and change workflow.
 - [`docs/deployment/cloud-run.md`](deployment/cloud-run.md): Primary Cloud Run API + Cloudflare Pages deployment runbook, including user/Codex ownership.
 - [`docs/deployment/artifact-registry-cleanup-policy.json`](deployment/artifact-registry-cleanup-policy.json): Automatic API image retention policy.
 - [`scripts/deploy/cloud-run.sh`](../scripts/deploy/cloud-run.sh): Idempotent API repository, cleanup-policy, image-push, Cloud Run deploy, and health-check helper.
