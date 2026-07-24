@@ -63,7 +63,13 @@ export function ScoreImportPanel({
       <div className="score-import-header">
         <SectionTitle icon={<FileInput size={17} />} title="Start From Score" />
         {importResult?.dawUrl ? (
-          <a className="icon-link" href={importResult.dawUrl} target="_blank" rel="noreferrer">
+          <a
+            className="icon-link"
+            href={importResult.dawUrl}
+            target="_blank"
+            rel="noreferrer"
+            tabIndex={0}
+          >
             <Music2 size={16} aria-hidden="true" />
             <span>Open in Audiotool</span>
           </a>
@@ -78,6 +84,7 @@ export function ScoreImportPanel({
             className="score-import-native-file"
             id={fileInputId}
             type="file"
+            tabIndex={0}
             accept=".musicxml,.xml,.mxl"
             onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
           />
@@ -226,6 +233,7 @@ export function ScorePartsPanel({
         <button
           className="primary-button"
           type="button"
+          tabIndex={0}
           disabled={!canCreate || isLoading}
           onClick={onCreate}
         >
@@ -375,6 +383,7 @@ function ScoreImportPartRow({
           aria-label={`Select ${part.title} for Audiotool import`}
           id={inputId}
           type="checkbox"
+          tabIndex={0}
           checked={selected}
           onChange={() => onToggle(part.id)}
         />

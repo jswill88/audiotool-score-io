@@ -35,7 +35,12 @@ export function ProjectsPanel({
     <section className="sidebar-section grow-section project-panel">
       <SectionTitle icon={<Search size={17} />} title="Projects" />
       <div className="field-stack">
-        <button className="command-button" type="button" onClick={loadProjects}>
+        <button
+          className="command-button"
+          type="button"
+          tabIndex={0}
+          onClick={loadProjects}
+        >
           <RefreshCw size={16} aria-hidden="true" />
           <span>Load projects</span>
         </button>
@@ -46,6 +51,7 @@ export function ProjectsPanel({
           <input
             id={projectInputId}
             value={projectInput}
+            tabIndex={0}
             aria-describedby={projectHelpId}
             placeholder="Project URL or ID"
             onChange={(event) => setProjectInput(event.target.value)}
@@ -56,6 +62,7 @@ export function ProjectsPanel({
           <button
             className="icon-button"
             type="button"
+            tabIndex={0}
             title="Inspect project"
             aria-label="Inspect project"
             onClick={() => inspectProject(projectInput)}

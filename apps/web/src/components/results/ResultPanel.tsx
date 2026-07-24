@@ -53,7 +53,12 @@ export function ResultPanel({
         <SectionTitle icon={<Eye size={17} />} title={title} />
         <div className="viewer-actions">
           {activeResult?.downloadUrl ? (
-            <a className="icon-link" href={activeResult.downloadUrl} download={activeResult.downloadName}>
+            <a
+              className="icon-link"
+              href={activeResult.downloadUrl}
+              download={activeResult.downloadName}
+              tabIndex={0}
+            >
               {activeResult.kind === 'zip'
                 ? <FileArchive size={16} aria-hidden="true" />
                 : <Download size={16} aria-hidden="true" />}
@@ -83,6 +88,7 @@ export function ResultPanel({
                 className={isActiveFile ? 'is-active' : ''}
                 key={file.name}
                 type="button"
+                tabIndex={0}
                 onClick={() => setActiveFileName(file.name)}
               >
                 {file.name}

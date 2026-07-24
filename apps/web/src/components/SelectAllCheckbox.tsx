@@ -34,6 +34,7 @@ export function SelectAllCheckbox({
         <input
           ref={inputRef}
           type="checkbox"
+          tabIndex={0}
           checked={checked}
           disabled={disabled}
           aria-label={ariaLabel}

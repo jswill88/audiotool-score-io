@@ -216,6 +216,7 @@ function SignInPage({ auth }: { auth: AudiotoolBrowserAuth }) {
           <button
             className="primary-button auth-page-button"
             type="button"
+            tabIndex={0}
             disabled={isLoading || isUnavailable}
             onClick={auth.login}
           >

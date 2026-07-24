@@ -151,6 +151,7 @@ export function TracksPanel({
         <label className="check-row compact">
           <input
             type="checkbox"
+            tabIndex={0}
             checked={quantize}
             onChange={(event) => setQuantize(event.target.checked)}
           />
@@ -159,6 +160,7 @@ export function TracksPanel({
         <button
           className="primary-button"
           type="button"
+          tabIndex={0}
           disabled={!canConvert || status.phase === 'loading'}
           onClick={onConvert}
         >

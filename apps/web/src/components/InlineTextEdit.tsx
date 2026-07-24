@@ -58,6 +58,7 @@ export function InlineTextEdit({
         <input
           ref={inputRef}
           aria-label={ariaLabel}
+          tabIndex={0}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -75,6 +76,7 @@ export function InlineTextEdit({
         <button
           className="mini-icon-button"
           type="button"
+          tabIndex={0}
           aria-label={`Save ${ariaLabel}`}
           onClick={commitDraft}
         >
@@ -83,6 +85,7 @@ export function InlineTextEdit({
         <button
           className="mini-icon-button"
           type="button"
+          tabIndex={0}
           aria-label={`Cancel ${ariaLabel}`}
           onClick={cancelDraft}
         >
@@ -98,6 +101,7 @@ export function InlineTextEdit({
         ref={triggerRef}
         className="inline-text-edit-trigger"
         type="button"
+        tabIndex={0}
         aria-label={ariaLabel}
         onClick={() => setIsEditing(true)}
       >

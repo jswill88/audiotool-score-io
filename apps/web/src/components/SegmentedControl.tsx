@@ -35,6 +35,7 @@ export function SegmentedControl<T extends string>({
               className={checked ? 'is-active' : ''}
               key={optionValue}
               type="button"
+              tabIndex={0}
               onClick={() => onChange(optionValue)}
             >
               <span>{label}</span>
@@ -66,6 +67,7 @@ export function SegmentedControl<T extends string>({
               id={optionId}
               name={groupName}
               type="radio"
+              tabIndex={checked ? 0 : -1}
               value={optionValue}
               onChange={() => onChange(optionValue)}
             />

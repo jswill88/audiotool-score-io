@@ -23,6 +23,7 @@ export function AppHeader({ accountName, onLogout }: AppHeaderProps) {
           <button
             className="command-button"
             type="button"
+            tabIndex={0}
             aria-label="Log out and return to sign-in"
             onClick={onLogout}
           >

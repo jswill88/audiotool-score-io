@@ -60,6 +60,7 @@ export function TrackList({
               className="track-checkbox"
               id={checkboxId}
               type="checkbox"
+              tabIndex={0}
               checked={checked}
               disabled={isEmpty}
               onChange={() => {

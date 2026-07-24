@@ -7,7 +7,13 @@ export function AppFooter() {
     <footer className="app-footer">
       <span>&copy; 2026 Joshua Williams</span>
       <span className="footer-separator" aria-hidden="true">&bull;</span>
-      <a href={sourceCodeUrl} target="_blank" rel="noreferrer" aria-label="View source code on GitHub">
+      <a
+        href={sourceCodeUrl}
+        target="_blank"
+        rel="noreferrer"
+        tabIndex={0}
+        aria-label="View source code on GitHub"
+      >
         <GitHubMark />
         <span>Code</span>
       </a>

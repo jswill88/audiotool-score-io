@@ -36,6 +36,7 @@ export function ProjectList({
             <button
               className="project-select"
               type="button"
+              tabIndex={0}
               aria-current={isSelectedProject ? 'true' : undefined}
               onClick={() => inspectProject(project.name)}
               disabled={isOpeningProject}
@@ -52,6 +53,7 @@ export function ProjectList({
                 href={projectUrl}
                 target="_blank"
                 rel="noreferrer"
+                tabIndex={0}
                 title="Open in Audiotool"
                 aria-label={`Open ${projectTitle} in Audiotool`}
               >
