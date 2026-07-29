@@ -19,7 +19,12 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### Product And UX
 
-- [ ] Add a public `/demo` route for portfolio/recruiter access with an example track loaded by default, while keeping the main app/authenticated project flow behind sign-in.
+- [ ] Add public Audiotool-to-MusicXML and MusicXML-to-Audiotool examples to the sign-in page for portfolio/recruiter access, while keeping personal project conversion behind sign-in.
+- [ ] Create a short, original plain `.musicxml` file for the public MusicXML-to-Audiotool demo: use 8–16 measures, two or three clearly named parts, one tempo, one time signature, and no percussion, independent multi-staff/voice writing, grace notes, lyrics, repeats, or later tempo/meter changes.
+- [ ] Create and publish a short, original Audiotool project for the public Audiotool-to-MusicXML demo: use two or three note tracks, avoid relying on audio samples, and save the public listening-page URL.
+- [ ] Import the demo MusicXML file through the deployed app, confirm that the created Audiotool tracks and notes are correct, and keep the resulting project available in the demo owner's account.
+- [ ] Capture a short screen recording or a small set of screenshots showing the imported MusicXML result inside Audiotool Studio.
+- [ ] Decide whether to publish the imported Audiotool result for anonymous listening; if published, save its public listening-page URL and keep the captured Studio media because the public page does not show the editable note-track result.
 - [ ] Show the score following along during playback.
 - [ ] Allow pressing play from the browser.
 - [ ] Decide whether users should be able to choose which region to export/import.
