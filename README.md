@@ -1,17 +1,63 @@
-# MIDI to XML Tools
+# Audiotool Score IO
 
-A monorepo for MIDI, MusicXML, and Audiotool conversion tools.
+Audiotool Score IO turns editable [Audiotool](https://www.audiotool.com/) note tracks into notation-friendly MusicXML and imports MusicXML scores into new Audiotool projects. It is designed for musicians who want to move compositions between a browser-based DAW and notation software without manually rebuilding every part.
 
-## Workspace layout
+The interesting work happens between those formats. Audiotool timing is rendered to MIDI, evaluated against multiple ordinary and triplet grids, cleaned with an executable rhythm grammar, and written directly as MusicXML. The reverse flow parses MusicXML and compressed MXL directly, preserves the supported musical structure, and creates editable Audiotool note tracks.
 
-- `packages/midi-to-musicxml`: standalone TypeScript MIDI-to-MusicXML package with automatic multi-grid quantization and direct notation generation.
-- `packages/audiotool-to-midi`: standalone TypeScript Audiotool note-track to MIDI exporter.
-- `packages/score-to-audiotool`: standalone TypeScript MusicXML score importer that turns score parts into editable Audiotool note tracks.
-- `apps/api`: Express TypeScript API that wraps the packages for upload/conversion workflows.
-- `apps/web`: React/Vite TypeScript browser app for Audiotool sign-in, project/track selection, MusicXML export, MusicXML import, and score viewing.
-- `experiments/notation-ranker`: offline synthetic-data starter for evaluating ML-guided quantization and notation candidate ranking.
+The project is a full-stack TypeScript monorepo rather than a wrapper around a desktop notation program. Its conversion packages are reusable independently of the React app and Express API, while the production containers remain Node-only.
 
-For a file-by-file navigation guide, see [`docs/CODEMAP.md`](docs/CODEMAP.md).
+## Production Deployment
+
+The web app is deployed at [audiotool-score-io.pages.dev](https://audiotool-score-io.pages.dev/), with the static React frontend on Cloudflare Pages and the conversion API on Google Cloud Run.
+
+The current Pages build targets the deployed Cloud Run API, and both production health endpoints are responding. Direct production smoke tests have also passed for CORS, MIDI conversion, and MusicXML/MXL import. The authenticated browser workflow still needs a final owner-run check with real Audiotool projects.
+
+Audiotool OAuth is required to list, inspect, export, or create projects, so visitors need an Audiotool account. Anonymous sample conversions and public before/after examples are planned but are not available yet.
+
+## Project Highlights
+
+- Full-stack TypeScript across a React/Vite frontend, Express API, and three reusable conversion packages.
+- Audiotool OAuth and API integration for project discovery, note-track inspection, export, and creation.
+- Direct MIDI quantization and MusicXML generation with rhythm spelling, ties, rests, beams, triplets, compound and odd meters, clefs, and octave shifts.
+- Direct `.musicxml`, `.xml`, and compressed `.mxl` parsing without a MIDI round trip.
+- Multi-stage, Node-only Docker images deployed to Cloud Run, with a Cloudflare Pages frontend and automatic Artifact Registry cleanup.
+- Keyboard-oriented interaction design, visible focus states, semantic controls, roving focus for tab/radio groups, and a score-preview text alternative.
+- Production runbooks for health checks, CORS verification, synthetic conversion smoke tests, cost controls, and rollback.
+
+## How It Works
+
+### Audiotool to MusicXML
+
+1. Sign in with Audiotool and choose one of your projects.
+2. Select its editable note tracks, adjust the score and part names, and choose a score, separate parts, or both.
+3. The API renders the selected tracks to MIDI, automatically chooses a canonical timing grid, and writes MusicXML directly.
+4. Preview the score in the browser and download the MusicXML files or zip archive.
+
+### MusicXML to Audiotool
+
+1. Choose a `.musicxml`, `.xml`, or `.mxl` score.
+2. Review the detected parts, select what to import, and edit the new project and track names.
+3. The API parses the score and creates a new Audiotool project with one editable note track per selected part.
+4. Unsupported notation details are summarized as warnings instead of being silently treated as editable Audiotool data.
+
+The API also accepts an uploaded MIDI file for direct MIDI-to-MusicXML conversion without an Audiotool project.
+
+## Architecture
+
+- [`apps/web`](apps/web/) is the accessible React/Vite browser interface and score viewer.
+- [`apps/api`](apps/api/) is the Express API that composes the conversion packages.
+- [`packages/audiotool-to-midi`](packages/audiotool-to-midi/) inspects Audiotool projects and renders selected note tracks to MIDI.
+- [`packages/midi-to-musicxml`](packages/midi-to-musicxml/) owns multi-grid quantization, notation cleanup, and direct MusicXML generation.
+- [`packages/score-to-audiotool`](packages/score-to-audiotool/) parses MusicXML/MXL and creates Audiotool projects and note tracks.
+- [`experiments/notation-ranker`](experiments/notation-ranker/) evaluates notation candidates and an eventual learned ranker against the current heuristic approach.
+
+See [`docs/CODEMAP.md`](docs/CODEMAP.md) for a file-by-file navigation guide and [`docs/RHYTHM.md`](docs/RHYTHM.md) for the notation pipeline's design principles.
+
+## Engineering Tradeoffs
+
+- **Direct notation generation:** keeping conversion in TypeScript removes the runtime size, startup cost, and operational complexity of a desktop notation engine. It also means engraving behavior must be implemented and regression-tested explicitly; key-aware enharmonic spelling and arbitrary tuplets remain future work.
+- **Cloud Run plus Cloudflare Pages:** the split keeps static delivery inexpensive and lets the API scale to zero. In return, production needs explicit cross-origin configuration, two coordinated deployments, and tolerance for Cloud Run cold starts.
+- **Focused import fidelity:** the importer preserves supported notes, chords, ties, transposition, timing, tempo, and meter while warning about unsupported notation. Richer voice/staff separation, percussion mapping, later tempo/meter changes, and instrument selection are deliberately left for future iterations.
 
 ## Run locally
 
@@ -269,7 +315,7 @@ Stop both containers:
 docker compose down
 ```
 
-### Cloud Run + Cloudflare Pages deployment
+### Cloud Run + Cloudflare Pages deployment details
 
 The recommended production setup puts the lightweight Node API on Cloud Run and the static React app on Cloudflare Pages. See [`docs/deployment/cloud-run.md`](docs/deployment/cloud-run.md) for the ownership checklist, exact Cloudflare build settings, one-command API deployment, automatic Artifact Registry image cleanup, verification, and rollback steps.
 

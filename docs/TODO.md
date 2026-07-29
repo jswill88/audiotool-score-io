@@ -45,11 +45,4 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### README And Portfolio Polish
 
-- [ ] Rewrite the README opening for recruiters and employers: state what Audiotool Score IO does, who it helps, and why it is technically interesting in the first few paragraphs.
-- [ ] Add a concise `Project Highlights` section covering full-stack TypeScript, OAuth/API integration, MusicXML/MIDI processing, Docker deployment, accessibility work, and production operations.
-- [ ] Add a `Live Demo` or `Production Deployment` section with the Cloudflare Pages URL, current status, and any auth/demo limitations explained plainly.
-- [ ] Add a `How It Works` section that describes the main export/import flows without requiring the reader to understand the codebase first.
-- [ ] Add a small architecture overview linking to `docs/CODEMAP.md` for deeper code navigation.
 - [ ] Add screenshots or a short demo GIF once the production flow is stable enough to show confidently.
-- [ ] Move dense local setup, curl examples, and low-level configuration farther down so the README scans well for non-technical first-pass readers while still serving developers.
-- [ ] Add a short `Engineering Tradeoffs` section covering direct notation generation, Cloud Run/Cloudflare deployment, and known future improvements.

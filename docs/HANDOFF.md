@@ -92,7 +92,7 @@ The primary deployment plan is now Cloud Run for the API plus Cloudflare Pages f
 - Cloudflare Pages should build from the repository root with `npm run build --workspace @midi-to-xml/web` and publish `apps/web/dist`.
 - The Cloudflare Pages production origin is `https://audiotool-score-io.pages.dev`; it returned `HTTP/2 200` on June 26, 2026.
 - The Cloud Run API is `https://audiotool-score-api-ne2gewecga-uw.a.run.app`. On June 26, 2026, `/health`, `/ready`, CORS preflight from the Cloudflare origin, uploaded MIDI conversion, `.musicxml` dry-run import, and `.mxl` dry-run import all returned `200`/`204` as expected.
-- The deployed Pages JS inspected on June 26, 2026 did not visibly include the Cloud Run URL, so the production UI still likely needs `VITE_API_BASE_URL=https://audiotool-score-api-ne2gewecga-uw.a.run.app` plus a Pages rebuild before the real browser flow can pass.
+- The deployed Pages JS inspected on July 29, 2026 includes `VITE_API_BASE_URL=https://audiotool-score-api-ne2gewecga-uw.a.run.app`; the production frontend, API `/health`, and API `/ready` all returned `200`. The authenticated browser workflow still needs the owner-run Audiotool OAuth and real-project checks.
 - The old Oracle/DuckDNS materials remain archived under `docs/deployment/oracle-a1.md` and `scripts/oracle/`, but are no longer active TODO work.
 
 ## How To Run
