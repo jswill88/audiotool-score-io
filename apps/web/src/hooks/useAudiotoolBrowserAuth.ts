@@ -16,6 +16,8 @@ type AuthState = {
   error: string;
 };
 
+let initialAuthStatePromise: Promise<AuthState> | null = null;
+
 export type AudiotoolBrowserAuth = AuthState & {
   config: typeof audiotoolAuthConfig;
   isAuthenticated: boolean;
@@ -33,7 +35,7 @@ export function useAudiotoolBrowserAuth(): AudiotoolBrowserAuth {
 
     async function initializeAuth() {
       try {
-        const nextState = await readAudiotoolAuthState();
+        const nextState = await readInitialAudiotoolAuthState();
 
         if (!cancelled) {
           setState(nextState);
@@ -151,11 +153,20 @@ async function readAudiotoolAuthState(): Promise<AuthState> {
     };
   }
 
+  if (result.error) {
+    console.error('Audiotool browser authentication failed:', result.error);
+  }
+
   return {
     phase: 'unauthenticated',
     client: result,
-    error: result.error?.message ?? ''
+    error: result.error ? formatAudiotoolBrowserAuthError(result.error) : ''
   };
+}
+
+function readInitialAudiotoolAuthState() {
+  initialAuthStatePromise ??= readAudiotoolAuthState();
+  return initialAuthStatePromise;
 }
 
 function createInitialState(): AuthState {

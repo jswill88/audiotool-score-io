@@ -68,7 +68,7 @@ export function extractFeatures(
     shortRestCount += trailingRest <= ppq / 4 ? 1 : 0;
   }
 
-  const triplets = summarizeTripletRuns(events, ppq);
+  const triplets = summarizeTripletRuns(events, ppq, measureTicks);
   const isolatedVeryShortEventCount = events.filter((event, index) => {
     if (event.duration >= ppq / 2) {
       return false;
@@ -177,37 +177,119 @@ function crossesReadableBoundary(
   ));
 }
 
-function summarizeTripletRuns(events: RankerEvent[], ppq: number) {
-  let completeTripletGroupCount = 0;
-  let orphanTripletEventCount = 0;
-  let run: RankerEvent[] = [];
+function summarizeTripletRuns(
+  events: RankerEvent[],
+  ppq: number,
+  measureTicks: number
+) {
+  // MIDI has no explicit rests or ties: a rest is a gap and tied tuplet slots
+  // arrive as one longer note. Score complete spans instead of requiring three
+  // consecutive, equally valued note events.
+  const tripletEventIndexes = events.flatMap((event, index) => (
+    isTripletDuration(event.duration, ppq) ? [index] : []
+  ));
+  const candidates = completeTripletSpanCandidates(
+    events,
+    tripletEventIndexes,
+    ppq,
+    measureTicks
+  ).sort((left, right) => (
+    left.start - right.start || right.end - left.end
+  ));
+  const selected: typeof candidates = [];
 
-  function finishRun() {
-    completeTripletGroupCount += Math.floor(run.length / 3);
-    orphanTripletEventCount += run.length % 3;
-    run = [];
-  }
-
-  for (const event of events) {
-    const previous = run.at(-1);
-    const triplet = isTripletDuration(event.duration, ppq);
-    const continues = triplet && (
-      !previous ||
-      (
-        previous.start + previous.duration === event.start &&
-        previous.duration === event.duration
-      )
-    );
-
-    if (!continues) {
-      finishRun();
+  for (const candidate of candidates) {
+    if (selected.some((span) => (
+      candidate.start < span.end && candidate.end > span.start
+    ))) {
+      continue;
     }
 
-    if (triplet) {
-      run.push(event);
+    selected.push(candidate);
+  }
+
+  const coveredEventIndexes = new Set(
+    selected.flatMap((span) => span.eventIndexes)
+  );
+
+  return {
+    completeTripletGroupCount: selected.length,
+    orphanTripletEventCount: tripletEventIndexes.filter(
+      (index) => !coveredEventIndexes.has(index)
+    ).length
+  };
+}
+
+function completeTripletSpanCandidates(
+  events: RankerEvent[],
+  tripletEventIndexes: number[],
+  ppq: number,
+  measureTicks: number
+) {
+  const units = [...new Set([
+    ppq * 8 / 3,
+    ppq * 4 / 3,
+    ppq * 2 / 3,
+    ppq / 3,
+    ppq / 6,
+    ppq / 12,
+    ppq / 24
+  ].map(Math.round))].filter((unit) => unit > 0 && unit * 3 <= measureTicks);
+  const candidates: Array<{
+    end: number;
+    eventIndexes: number[];
+    start: number;
+  }> = [];
+  const seen = new Set<string>();
+
+  for (const unit of units) {
+    const spanDuration = unit * 3;
+
+    for (const eventIndex of tripletEventIndexes) {
+      const event = events[eventIndex];
+
+      for (let slot = 0; slot < 3; slot += 1) {
+        const start = event.start - slot * unit;
+        const end = start + spanDuration;
+        const key = `${start}:${end}`;
+
+        if (start < 0 || end > measureTicks || seen.has(key)) {
+          continue;
+        }
+
+        const entries = events.flatMap((candidate, index) => (
+          candidate.start < end && candidate.start + candidate.duration > start
+            ? [{ event: candidate, index }]
+            : []
+        ));
+        const ordered = entries.map(({ event: candidate }) => candidate)
+          .sort((left, right) => left.start - right.start);
+        const fitsSpan = entries.length >= 2 && entries.every(({ event: candidate }) => (
+          candidate.start >= start &&
+          candidate.start + candidate.duration <= end &&
+          (candidate.start - start) % unit === 0 &&
+          candidate.duration % unit === 0 &&
+          candidate.duration <= unit * 2 &&
+          isTripletDuration(candidate.duration, ppq)
+        ));
+        const hasNoOverlaps = ordered.every((candidate, index) => (
+          index === 0 ||
+          ordered[index - 1].start + ordered[index - 1].duration <= candidate.start
+        ));
+
+        if (!fitsSpan || !hasNoOverlaps) {
+          continue;
+        }
+
+        seen.add(key);
+        candidates.push({
+          end,
+          eventIndexes: entries.map(({ index }) => index),
+          start
+        });
+      }
     }
   }
 
-  finishRun();
-  return { completeTripletGroupCount, orphanTripletEventCount };
+  return candidates;
 }

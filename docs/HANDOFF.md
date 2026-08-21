@@ -22,8 +22,10 @@ Read `AGENTS.md` for standing workflow instructions, `docs/TODO.md` for the shar
 ## Current Conversion Behavior
 
 - Audiotool export first creates MIDI, then `quantizeMidiForNotation` chooses canonical timing from ordinary and triplet grid candidates.
+- Triplet candidate scoring recognizes complete spans made from unequal triplet values or implicit MIDI rests, so patterns such as two tied eighth-triplet slots followed by one eighth triplet, or an eighth-triplet rest followed by two notes, remain triplets instead of being rounded to straight 32nd-note rhythms.
 - The direct MusicXML writer applies the executable rhythm grammar for values, ties, rests, staccato cleanup, beams, triplets, compound meters, odd-meter grouping, clefs, stems, and final barlines.
 - The web app and API no longer accept or display a notation-engine choice.
+- Browser OAuth initialization is single-flight so React Strict Mode cannot redeem one authorization code twice. OAuth grant, PKCE, verifier, and stale-state failures are logged for developers but shown to users only as a concise prompt to try signing in again.
 - The public sign-in page uses one wide content column. Its primary sign-in action sits in the app header, and a centered, borderless, single-column “Ready to get started?” CTA repeats the Audiotool sign-in action after both workflow comparisons; there is no separate introductory sign-in card.
 - The public sign-in page demonstrates both workflows without authentication as explicit, border-light before/after sections beneath the headline “Move music between Audiotool and notation.” Standardized media frames carry the visual hierarchy while source/result audio links remain quiet secondary actions. The export example pairs a captured Audiotool Studio project with its generated notation; a compact poster opens the bundled 21-second recording in a click-to-play modal. The import example shows notation generated from the bundled three-part MusicXML score beside a captured Audiotool Studio project created from it. The actual converter remains behind Audiotool sign-in.
 - Authenticated workspaces retain their compact operational layout while adopting the landing page’s hierarchy: a shorter authenticated header, slightly wider major-panel gaps, flatter project/track/part lists with shared list surfaces and selected-row accents, quieter result tabs, and a simplified score-viewer header and media frame.
@@ -144,9 +146,9 @@ npm test
 npm run check
 ```
 
-Last verified July 24, 2026:
+Last verified August 21, 2026:
 
-- `npm test`: 75 tests passed (34 Audiotool export, 37 direct MIDI/MusicXML, 3 score import, 1 web keyboard-focus regression).
+- `npm test`: 80 tests passed (34 Audiotool export, 42 direct MIDI/MusicXML, 3 score import, 1 web keyboard-focus regression).
 - `npm run check`: all workspace typechecks/builds/syntax checks passed. Vite still warns that local Node 22.2.0 is below its preferred 22.12+ patch level and reports large score-viewer chunks, but the build exits green.
 - Strict TypeScript unused-local and unused-parameter checks pass across every workspace.
 - Both local and Cloud Run API Dockerfiles built successfully at about 287 MB.

@@ -1,10 +1,10 @@
 import { useRef } from 'react';
 import { ArrowRight, ExternalLink, FileMusic, Music2, Play, X } from 'lucide-react';
-import exportedScoreImage from '../../../../../demo/exported-score.png?url';
-import importSourceScoreImage from '../../../../../demo/import-source-score.png?url';
-import importedProjectImage from '../../../../../demo/imported-project.png?url';
-import demoVideoUrl from '../../../../../demo/demo.mp4?url';
-import sourceProjectImage from '../../../../../demo/source-project.png?url';
+import demoVideoUrl from '../../assets/demo/demo.mp4?url';
+import exportedScoreImage from '../../assets/demo/exported-score.png?url';
+import importSourceScoreImage from '../../assets/demo/import-source-score.png?url';
+import importedProjectImage from '../../assets/demo/imported-project.png?url';
+import sourceProjectImage from '../../assets/demo/source-project.png?url';
 import './PublicDemoShowcase.css';
 
 const sourceTrackUrl = 'https://www.audiotool.com/track/9iu95sij';

@@ -53,6 +53,13 @@ export function formatAudiotoolBrowserAuthError(error: unknown) {
       'Audiotool sign-in could not start because browser Web Crypto is unavailable.';
   }
 
+  if (
+    /\binvalid_grant\b|authorization grant|code verifier|invalid state|\bpkce\b|refresh token is invalid/i
+      .test(message)
+  ) {
+    return 'Audiotool sign-in didn’t complete. Please try signing in again.';
+  }
+
   return message;
 }
 

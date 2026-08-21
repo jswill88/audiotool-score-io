@@ -59,6 +59,50 @@ test('quantizeMidiForNotation chooses a canonical multi-grid rhythm', async (t) 
   ]);
 });
 
+test('quantization preserves a complete triplet beat with a tied pair', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'tied-triplet-beat.mid');
+  const outputPath = path.join(dir, 'canonical.mid');
+
+  await writeMidiFile(inputPath, [
+    { midi: 60, ticks: 0, durationTicks: 320, velocity: 0.8 },
+    { midi: 62, ticks: 320, durationTicks: 160, velocity: 0.8 }
+  ]);
+
+  await quantizeMidiForNotation(inputPath, outputPath);
+
+  assert.deepEqual((await readMidiNotes(outputPath)).map((note) => ({
+    midi: note.midi,
+    ticks: note.ticks,
+    durationTicks: note.durationTicks
+  })), [
+    { midi: 60, ticks: 0, durationTicks: 320 },
+    { midi: 62, ticks: 320, durationTicks: 160 }
+  ]);
+});
+
+test('quantization preserves a complete triplet beat beginning with a rest', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'leading-rest-triplet-beat.mid');
+  const outputPath = path.join(dir, 'canonical.mid');
+
+  await writeMidiFile(inputPath, [
+    { midi: 60, ticks: 160, durationTicks: 160, velocity: 0.8 },
+    { midi: 62, ticks: 320, durationTicks: 160, velocity: 0.8 }
+  ]);
+
+  await quantizeMidiForNotation(inputPath, outputPath);
+
+  assert.deepEqual((await readMidiNotes(outputPath)).map((note) => ({
+    midi: note.midi,
+    ticks: note.ticks,
+    durationTicks: note.durationTicks
+  })), [
+    { midi: 60, ticks: 160, durationTicks: 160 },
+    { midi: 62, ticks: 320, durationTicks: 160 }
+  ]);
+});
+
 test('direct conversion writes MusicXML from MIDI', async (t) => {
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'input.mid');

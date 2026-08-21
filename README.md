@@ -4,7 +4,7 @@ Audiotool Score IO turns editable [Audiotool](https://www.audiotool.com/) note t
 
 The public sign-in page includes examples of both conversion directions—a short project-to-notation recording and a rendered MusicXML score with links to the corresponding Audiotool tracks—so visitors can understand the workflow before connecting an account.
 
-![Public sign-in page with Audiotool-to-MusicXML and MusicXML-to-Audiotool comparisons](demo/sign-in-page.png)
+![Public sign-in page with Audiotool-to-MusicXML and MusicXML-to-Audiotool comparisons](docs/images/sign-in-page.png)
 
 The interesting work happens between those formats. Audiotool timing is rendered to MIDI, evaluated against multiple ordinary and triplet grids, cleaned with an executable rhythm grammar, and written directly as MusicXML. The reverse flow parses MusicXML and compressed MXL directly, preserves the supported musical structure, and creates editable Audiotool note tracks.
 
