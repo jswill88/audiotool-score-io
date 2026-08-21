@@ -90,5 +90,6 @@ Use this as the first stop when deciding where a change belongs.
 - [`docs/deployment/cloud-run.md`](deployment/cloud-run.md): Primary Cloud Run API + Cloudflare Pages deployment runbook, including user/Codex ownership.
 - [`docs/deployment/artifact-registry-cleanup-policy.json`](deployment/artifact-registry-cleanup-policy.json): Automatic API image retention policy.
 - [`scripts/deploy/cloud-run.sh`](../scripts/deploy/cloud-run.sh): Idempotent API repository, cleanup-policy, image-push, Cloud Run deploy, and health-check helper.
+- [`.github/workflows/deploy-api.yml`](../.github/workflows/deploy-api.yml): Keyless push-to-`main` Cloud Run API deployment.
 - [`docs/deployment`](deployment/): Deployment runbooks and archived provider-specific notes.
 - [`AGENTS.md`](../AGENTS.md): Standing workflow instructions for coding agents.

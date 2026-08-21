@@ -26,7 +26,6 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 ### API, Deployment, And Operations
 
 - [ ] Investigate API timeout/abort handling around Audiotool project inspect/open requests so bad PAT/project probes cannot wedge the API or make `/health` time out.
-- [ ] Add keyless GitHub Actions API deployment using Google Workload Identity Federation.
 
 ### Standalone Node Package
 
