@@ -14,6 +14,8 @@ The project is a full-stack TypeScript monorepo rather than a wrapper around a d
 
 The web app is deployed at [audiotool-score-io.pages.dev](https://audiotool-score-io.pages.dev/), with the static React frontend on Cloudflare Pages and the conversion API on Google Cloud Run.
 
+Both production components deploy automatically after changes reach `main`: Cloudflare Pages rebuilds the frontend, while the `Deploy API` GitHub Actions workflow runs the repository tests and checks before building and deploying a new Cloud Run revision. The API workflow authenticates through Google Workload Identity Federation, so the repository does not store a long-lived Google service-account key.
+
 The current Pages build targets the deployed Cloud Run API, and both production health endpoints are responding. Direct production smoke tests have also passed for CORS, MIDI conversion, and MusicXML/MXL import. The authenticated browser workflow still needs a final owner-run check with real Audiotool projects.
 
 Audiotool OAuth is required to list, inspect, export, or create projects, so visitors need an Audiotool account for the converter itself. The public before/after examples and recording remain available without signing in.
@@ -24,7 +26,7 @@ Audiotool OAuth is required to list, inspect, export, or create projects, so vis
 - Audiotool OAuth and API integration for project discovery, note-track inspection, export, and creation.
 - Direct MIDI quantization and MusicXML generation with rhythm spelling, ties, rests, beams, triplets, compound and odd meters, clefs, and octave shifts.
 - Direct `.musicxml`, `.xml`, and compressed `.mxl` parsing without a MIDI round trip.
-- Multi-stage, Node-only Docker images deployed to Cloud Run, with a Cloudflare Pages frontend and automatic Artifact Registry cleanup.
+- Multi-stage, Node-only Docker images deployed to Cloud Run, with a Cloudflare Pages frontend, keyless push-to-`main` deployment, and automatic Artifact Registry cleanup.
 - Keyboard-oriented interaction design, visible focus states, semantic controls, roving focus for tab/radio groups, and a score-preview text alternative.
 - Production runbooks for health checks, CORS verification, synthetic conversion smoke tests, cost controls, and rollback.
 
@@ -60,7 +62,7 @@ See [`docs/CODEMAP.md`](docs/CODEMAP.md) for a file-by-file navigation guide and
 ## Engineering Tradeoffs
 
 - **Direct notation generation:** keeping conversion in TypeScript removes the runtime size, startup cost, and operational complexity of a desktop notation engine. It also means engraving behavior must be implemented and regression-tested explicitly; key-aware enharmonic spelling and arbitrary tuplets remain future work.
-- **Cloud Run plus Cloudflare Pages:** the split keeps static delivery inexpensive and lets the API scale to zero. In return, production needs explicit cross-origin configuration, two coordinated deployments, and tolerance for Cloud Run cold starts.
+- **Cloud Run plus Cloudflare Pages:** the split keeps static delivery inexpensive and lets the API scale to zero. In return, production needs explicit cross-origin configuration, two independently monitored deployment paths, and tolerance for Cloud Run cold starts.
 - **Focused import fidelity:** the importer preserves supported notes, chords, ties, transposition, timing, tempo, and meter while warning about unsupported notation. Richer voice/staff separation, percussion mapping, later tempo/meter changes, and instrument selection are deliberately left for future iterations.
 
 ## Run locally
@@ -321,7 +323,7 @@ docker compose down
 
 ### Cloud Run + Cloudflare Pages deployment details
 
-The recommended production setup puts the lightweight Node API on Cloud Run and the static React app on Cloudflare Pages. See [`docs/deployment/cloud-run.md`](docs/deployment/cloud-run.md) for the ownership checklist, exact Cloudflare build settings, one-command API deployment, automatic Artifact Registry image cleanup, verification, and rollback steps.
+The recommended production setup puts the lightweight Node API on Cloud Run and the static React app on Cloudflare Pages. Pushes to `main` deploy both components automatically: Cloudflare handles the frontend, and [`.github/workflows/deploy-api.yml`](.github/workflows/deploy-api.yml) tests and deploys the API with keyless Google authentication. Use `npm run deploy:cloud-run` when API environment variables or access settings must change. See [`docs/deployment/cloud-run.md`](docs/deployment/cloud-run.md) for the ownership checklist, exact Cloudflare build settings, identity configuration, verification, and rollback steps.
 
 ### API-only image
 

@@ -4,7 +4,7 @@ This is a Node 22 npm-workspaces monorepo for converting Audiotool note tracks a
 
 ## Current Goal
 
-The app now uses one lightweight, direct TypeScript notation path. MuseScore has been removed from the runtime, API, web UI, package surface, configuration, tests, and Docker images. The next product goal is to deploy the smaller build to Cloud Run plus Cloudflare Pages and evaluate it on real projects.
+The app now uses one lightweight, direct TypeScript notation path. MuseScore has been removed from the runtime, API, web UI, package surface, configuration, tests, and Docker images. The production build is deployed through Cloud Run plus Cloudflare Pages with push-to-`main` automation; the next product goal is to evaluate it on real projects.
 
 Reusable pieces:
 

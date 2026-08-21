@@ -245,7 +245,7 @@ Both paths tag each image with the current Git commit and update Cloud Run. The 
 
 ### One-time GitHub Actions identity setup
 
-The current production identity uses:
+This setup has been completed for the current production project. The workflow uses:
 
 ```text
 Workload Identity Pool: github-actions
@@ -291,5 +291,7 @@ Official references:
 - [Cloud Run pricing](https://cloud.google.com/run/pricing)
 - [Cloud Run request timeouts](https://docs.cloud.google.com/run/docs/configuring/request-timeout)
 - [Artifact Registry cleanup policies](https://docs.cloud.google.com/artifact-registry/docs/repositories/cleanup-policy)
+- [Workload Identity Federation with deployment pipelines](https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
+- [Google GitHub Actions authentication](https://github.com/google-github-actions/auth)
 - [Cloudflare Pages build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/)
 - [Cloudflare Pages SPA behavior](https://developers.cloudflare.com/pages/configuration/serving-pages/)
