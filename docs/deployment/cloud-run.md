@@ -6,6 +6,7 @@ This is the primary production plan:
 - Cloudflare Pages hosts the static React/Vite app.
 - Artifact Registry stores API images and automatically deletes old versions.
 - Cloudflare automatically rebuilds the web app when `main` changes.
+- GitHub Actions tests and deploys the Cloud Run API when `main` changes.
 
 The API has no database or persistent filesystem requirement. Uploaded files are temporary.
 
@@ -33,7 +34,7 @@ Once you have authenticated locally and supplied the values below, you can ask C
 5. Build, push, and deploy the API.
 6. Verify health, readiness, CORS, MIDI conversion, and MusicXML import.
 7. Help enter or verify the Cloudflare build settings.
-8. Add push-to-main API deployment automation later.
+8. Maintain the push-to-main API deployment automation and its Google Cloud identity.
 
 Do not send passwords, billing details, refresh tokens, or private keys in chat. Browser login and CLI authentication should happen directly on your machine.
 
@@ -227,7 +228,11 @@ Cloudflare Pages deploys automatically on pushes to `main`.
 
 ### API
 
-Until CI deployment is added, run:
+The [`Deploy API`](../../.github/workflows/deploy-api.yml) GitHub Actions workflow runs `npm test`, `npm run check`, and the Cloud Run deployment on every push to `main`. It can also be started manually with **Actions → Deploy API → Run workflow**.
+
+The workflow uses Google Workload Identity Federation rather than a stored service-account key. Its provider accepts only OIDC tokens for this repository's immutable GitHub repository ID on `main`. The deploy identity can write images to this Artifact Registry repository, update Cloud Run revisions, and act as the service's runtime identity; it cannot bootstrap APIs or repositories, apply cleanup policies, or change the service's public-access policy.
+
+Automated deployments preserve the Cloud Run service's existing environment variables and public-access policy. To change CORS, the Audiotool client ID, or other service configuration, run the full local deployment:
 
 ```bash
 export PROJECT_ID=<google-cloud-project-id>
@@ -236,9 +241,20 @@ export AUDIOTOOL_CLIENT_ID=<audiotool-client-id>
 npm run deploy:cloud-run
 ```
 
-The script tags each image with the current Git commit and updates Cloud Run.
+Both paths tag each image with the current Git commit and update Cloud Run. The workflow cancels an older in-progress deployment when a newer commit reaches `main`.
 
-After the first deployment works, Codex can add a GitHub Actions workflow using Google Workload Identity Federation. That avoids storing a Google service-account key in GitHub.
+### One-time GitHub Actions identity setup
+
+The current production identity uses:
+
+```text
+Workload Identity Pool: github-actions
+Provider: audiotool-score-io
+Deploy service account: github-actions-cloud-run@score-io-500615.iam.gserviceaccount.com
+GitHub repository ID: 1264427069
+```
+
+If the workflow is moved to a different repository or Google Cloud project, recreate the provider and IAM bindings for that repository. Do not replace Workload Identity Federation with a downloaded service-account key.
 
 ## Rollback
 

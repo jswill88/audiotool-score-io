@@ -13,3 +13,4 @@ scripts/oracle/a1-capacity-hunter.env
 npm-debug.log
 *.log
 .DS_Store
+gha-creds-*.json

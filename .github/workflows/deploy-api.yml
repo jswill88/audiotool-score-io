@@ -1,0 +1,64 @@
+name: Deploy API
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cloud-run-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Test and deploy to Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PROJECT_ID: score-io-500615
+      REGION: us-west1
+      REPOSITORY: audiotool-score-io
+      SERVICE: audiotool-score-api
+      BOOTSTRAP_INFRA: "false"
+      PRESERVE_SERVICE_ENV: "true"
+      MANAGE_SERVICE_ACCESS: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run checks
+        run: npm run check
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: score-io-500615
+          workload_identity_provider: projects/1024341798565/locations/global/workloadIdentityPools/github-actions/providers/audiotool-score-io
+          service_account: github-actions-cloud-run@score-io-500615.iam.gserviceaccount.com
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Build and deploy API
+        run: npm run deploy:cloud-run

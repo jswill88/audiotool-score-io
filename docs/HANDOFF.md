@@ -92,6 +92,7 @@ The primary deployment plan is now Cloud Run for the API plus Cloudflare Pages f
 - `CORS_ORIGINS` permits a separately hosted browser origin.
 - `docs/deployment/cloud-run.md` contains the complete account, Cloudflare, API, OAuth, verification, and rollback sequence with user/Codex ownership.
 - `scripts/deploy/cloud-run.sh` creates the Artifact Registry repository when needed, applies automatic cleanup, builds/pushes the API, deploys Cloud Run, checks health, and prints the final Cloudflare environment values.
+- `.github/workflows/deploy-api.yml` tests, builds, and deploys the API on every push to `main` using keyless Google Workload Identity Federation. CI preserves the Cloud Run service's existing runtime environment and public-access policy; use the local deploy script when configuration changes are required.
 - `docs/deployment/artifact-registry-cleanup-policy.json` deletes API images older than 14 days while retaining the five newest versions.
 - The suggested starting shape is 1 CPU, 1 GiB RAM, concurrency 4, `min-instances=0`, and a conservative instance cap. Tune from real measurements.
 - Cloudflare Pages should build from the repository root with `npm run build --workspace @midi-to-xml/web` and publish `apps/web/dist`.
