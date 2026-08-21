@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, LogIn } from 'lucide-react';
 import { SegmentedControl } from './components/SegmentedControl';
+import { PublicDemoShowcase } from './components/demos/PublicDemoShowcase';
 import { ScoreImportPanel, ScorePartsPanel } from './components/import/ScoreImportPanel';
 import { AppFooter } from './components/layout/AppFooter';
 import { AppHeader } from './components/layout/AppHeader';
@@ -193,28 +194,29 @@ function SignInPage({ auth }: { auth: AudiotoolBrowserAuth }) {
   const isLoading = auth.phase === 'loading';
   const isUnavailable = auth.phase === 'unconfigured' || auth.phase === 'error';
   const errorMessage = auth.error;
+  const unavailableMessage = isUnavailable
+    ? errorMessage || 'Sign-in setup needs attention before the app can open.'
+    : errorMessage;
 
   return (
     <main className="app-shell auth-shell">
-      <AppHeader />
-      <section className="auth-workspace" aria-labelledby="sign-in-title">
-        <div className="panel auth-panel">
-          <div className="auth-panel-copy">
-            <h2 id="sign-in-title">{authTitle(auth)}</h2>
-            <p>{authSubtitle(auth)}</p>
-            <div className="auth-flow-list" aria-label="Supported conversion workflows">
-              <span>Audiotool → MusicXML</span>
-              <span>MusicXML → Audiotool</span>
-            </div>
+      <AppHeader
+        onSignIn={auth.login}
+        signInDisabled={isLoading || isUnavailable}
+        signInLoading={isLoading}
+      />
+      <section className="auth-workspace auth-workspace-sign-in">
+        {unavailableMessage ? (
+          <div className="panel-error auth-page-error" role="alert">
+            <AlertTriangle size={15} aria-hidden="true" />
+            <span>{unavailableMessage}</span>
           </div>
-          {errorMessage ? (
-            <div className="panel-error" role="alert">
-              <AlertTriangle size={15} aria-hidden="true" />
-              <span>{errorMessage}</span>
-            </div>
-          ) : null}
+        ) : null}
+        <PublicDemoShowcase />
+        <section className="auth-cta" aria-labelledby="auth-cta-title">
+          <h2 id="auth-cta-title">Ready to get started?</h2>
           <button
-            className="primary-button auth-page-button"
+            className="primary-button auth-cta-button"
             type="button"
             tabIndex={0}
             disabled={isLoading || isUnavailable}
@@ -223,9 +225,9 @@ function SignInPage({ auth }: { auth: AudiotoolBrowserAuth }) {
             {isLoading
               ? <Loader2 className="spin" size={16} aria-hidden="true" />
               : <LogIn size={16} aria-hidden="true" />}
-            <span>{isLoading ? 'Checking' : 'Sign in'}</span>
+            <span>{isLoading ? 'Checking Audiotool' : 'Sign in with Audiotool'}</span>
           </button>
-        </div>
+        </section>
       </section>
       <AppFooter />
     </main>
@@ -245,17 +247,4 @@ function RouteStatusPage({ message }: { message: string }) {
       <AppFooter />
     </main>
   );
-}
-
-function authTitle(auth: AudiotoolBrowserAuth) {
-  if (auth.phase === 'loading') return 'Checking Audiotool session';
-  if (auth.phase === 'unconfigured') return 'Audiotool app not configured';
-  if (auth.phase === 'error') return 'Audiotool login unavailable';
-  return 'Sign in with Audiotool';
-}
-
-function authSubtitle(auth: AudiotoolBrowserAuth) {
-  if (auth.phase === 'loading') return 'Looking for an existing browser session.';
-  if (auth.phase === 'unconfigured' || auth.phase === 'error') return 'Sign-in setup needs attention before the app can open.';
-  return 'Connect your Audiotool account to open the converter.';
 }

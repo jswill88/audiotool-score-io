@@ -1,11 +1,14 @@
 .track-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   min-height: 220px;
   max-height: 340px;
   overflow: auto;
-  padding-right: 2px;
+  padding-right: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(8, 11, 14, 0.34);
 }
 
 .track-row {
@@ -18,58 +21,44 @@
   min-height: 72px;
   padding: 8px 16px 8px 10px;
   gap: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background:
-    linear-gradient(90deg, rgba(202, 164, 90, 0.14) 0, rgba(202, 164, 90, 0.04) 6px, transparent 6px),
-    var(--surface-gradient);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
   cursor: default;
+  transition: background 150ms ease;
+}
+
+.track-row:last-child {
+  border-bottom: 0;
 }
 
 .track-row.is-warning {
-  border-color: rgba(229, 170, 84, 0.42);
+  box-shadow: inset 3px 0 0 rgba(229, 170, 84, 0.62);
 }
 
 .track-row.is-skipped {
   opacity: 0.72;
 }
 
-.track-row.is-skipped::after {
-  background: rgba(150, 67, 90, 0.72);
-}
-
 .track-row:hover {
-  border-color: rgba(231, 189, 103, 0.62);
   background:
     var(--surface-hover),
     var(--console-3);
 }
 
 .track-row:focus-within {
-  border-color: rgba(231, 189, 103, 0.62);
+  outline: 2px solid var(--focus-ring-soft);
+  outline-offset: -2px;
   background:
     var(--surface-hover),
     var(--console-3);
 }
 
 .track-row.is-selected {
-  border-color: rgba(32, 199, 189, 0.58);
   background:
-    linear-gradient(90deg, rgba(32, 199, 189, 0.2) 0, rgba(32, 199, 189, 0.07) 6px, transparent 6px),
-    var(--surface-gradient);
-}
-
-.track-row::after {
-  content: "";
-  position: absolute;
-  right: 8px;
-  top: 12px;
-  bottom: 12px;
-  width: 3px;
-  border-radius: 999px;
-  background:
-    linear-gradient(to top, var(--teal), var(--brass-strong));
-  opacity: 0.52;
+    linear-gradient(90deg, rgba(32, 199, 189, 0.14), rgba(32, 199, 189, 0.035) 42%, transparent);
+  box-shadow: inset 3px 0 0 var(--teal);
 }
 
 .track-checkbox {
@@ -115,10 +104,6 @@
   border-color: var(--teal);
   background: var(--teal-soft);
   color: var(--teal);
-}
-
-.track-row.is-selected::after {
-  opacity: 0.88;
 }
 
 .track-main {
@@ -241,10 +226,7 @@
 }
 
 .track-row.is-empty:hover {
-  border-color: var(--line);
-  background:
-    linear-gradient(90deg, rgba(202, 164, 90, 0.14) 0, rgba(202, 164, 90, 0.04) 6px, transparent 6px),
-    var(--surface-gradient);
+  background: transparent;
 }
 
 .track-hint.is-empty {

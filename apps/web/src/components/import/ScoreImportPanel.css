@@ -89,11 +89,14 @@
 .score-part-list {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 0;
   min-height: 220px;
   max-height: 340px;
   overflow: auto;
-  padding-right: 2px;
+  padding-right: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(8, 11, 14, 0.34);
 }
 
 .score-part-row {
@@ -103,28 +106,34 @@
   align-items: start;
   height: auto;
   min-height: 58px;
-  padding: 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--control-well), var(--console-2);
+  padding: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  transition: background 150ms ease;
+}
+
+.score-part-row:last-child {
+  border-bottom: 0;
 }
 
 .score-part-row.is-selected {
-  border-color: rgba(32, 199, 189, 0.72);
   background:
-    linear-gradient(180deg, rgba(32, 199, 189, 0.12), rgba(15, 18, 21, 0.92)),
-    var(--console-2);
+    linear-gradient(90deg, rgba(32, 199, 189, 0.14), rgba(32, 199, 189, 0.035) 42%, transparent);
+  box-shadow: inset 3px 0 0 var(--teal);
 }
 
 .score-part-row:focus-within {
-  border-color: rgba(231, 189, 103, 0.62);
+  outline: 2px solid var(--focus-ring-soft);
+  outline-offset: -2px;
   background:
     var(--surface-hover),
     var(--console-3);
 }
 
 .score-part-row.is-selected:focus-within {
-  border-color: var(--focus-ring);
+  outline-color: var(--focus-ring-soft);
 }
 
 .score-part-check {

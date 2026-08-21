@@ -218,7 +218,8 @@ function serializeVoiceEvents(
     spelledEvents,
     measureDuration,
     meter,
-    spellingOverrides
+    spellingOverrides,
+    beamLookup
   );
   const octaveShiftRanges = useOctaveShifts
     ? createOctaveShiftRanges(spelledEvents, clef)

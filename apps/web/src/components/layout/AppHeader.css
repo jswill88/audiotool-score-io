@@ -12,6 +12,35 @@
   box-shadow: var(--shadow), var(--inner-glow);
 }
 
+.topbar-workspace {
+  min-height: 60px;
+  padding: 8px 12px;
+}
+
+.topbar-workspace .brand-lockup {
+  gap: 9px;
+}
+
+.topbar-workspace .brand-mark {
+  flex-basis: 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+}
+
+.topbar-workspace .brand-logo {
+  width: 29px;
+  height: 29px;
+}
+
+.topbar-workspace h1 {
+  font-size: 35px;
+}
+
+.topbar-workspace .command-button {
+  min-height: 34px;
+}
+
 .brand-lockup {
   display: flex;
   align-items: center;
@@ -55,6 +84,11 @@
   gap: 10px;
 }
 
+.topbar-sign-in-button {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
 .account-name {
   max-width: 220px;
   overflow: hidden;
@@ -82,5 +116,45 @@ h1 {
   .topbar-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .topbar-sign-in-actions {
+    justify-content: flex-end;
+  }
+
+  .topbar-workspace {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .topbar-workspace .topbar-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .topbar-workspace .account-name {
+    max-width: 120px;
+  }
+
+  .topbar-workspace h1 {
+    font-size: clamp(25px, 8vw, 32px);
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar-workspace .account-name {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar-workspace .command-button {
+    width: 38px;
+    padding: 0;
+  }
+
+  .topbar-workspace .command-button span {
+    display: none;
   }
 }

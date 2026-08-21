@@ -45,7 +45,7 @@ export type BeamMode =
   | 'forward hook';
 
 export type BeamLookup = Map<string, Map<number, BeamMode>>;
-export type TupletMode = 'start' | 'stop';
+export type TupletMode = 'start' | 'start-unbracketed' | 'stop';
 
 export type DurationNotation = {
   duration: number;

@@ -2,6 +2,10 @@
 
 Audiotool Score IO turns editable [Audiotool](https://www.audiotool.com/) note tracks into notation-friendly MusicXML and imports MusicXML scores into new Audiotool projects. It is designed for musicians who want to move compositions between a browser-based DAW and notation software without manually rebuilding every part.
 
+The public sign-in page includes examples of both conversion directions—a short project-to-notation recording and a rendered MusicXML score with links to the corresponding Audiotool tracks—so visitors can understand the workflow before connecting an account.
+
+![Public sign-in page with Audiotool-to-MusicXML and MusicXML-to-Audiotool comparisons](demo/sign-in-page.png)
+
 The interesting work happens between those formats. Audiotool timing is rendered to MIDI, evaluated against multiple ordinary and triplet grids, cleaned with an executable rhythm grammar, and written directly as MusicXML. The reverse flow parses MusicXML and compressed MXL directly, preserves the supported musical structure, and creates editable Audiotool note tracks.
 
 The project is a full-stack TypeScript monorepo rather than a wrapper around a desktop notation program. Its conversion packages are reusable independently of the React app and Express API, while the production containers remain Node-only.
@@ -12,7 +16,7 @@ The web app is deployed at [audiotool-score-io.pages.dev](https://audiotool-scor
 
 The current Pages build targets the deployed Cloud Run API, and both production health endpoints are responding. Direct production smoke tests have also passed for CORS, MIDI conversion, and MusicXML/MXL import. The authenticated browser workflow still needs a final owner-run check with real Audiotool projects.
 
-Audiotool OAuth is required to list, inspect, export, or create projects, so visitors need an Audiotool account. Anonymous sample conversions and public before/after examples are planned but are not available yet.
+Audiotool OAuth is required to list, inspect, export, or create projects, so visitors need an Audiotool account for the converter itself. The public before/after examples and recording remain available without signing in.
 
 ## Project Highlights
 
@@ -222,7 +226,7 @@ curl -X POST "http://localhost:3000/audiotool/convert" \
 
 Use `"mode":"parts"` for one MusicXML file per selected track, or `"mode":"both"` for a zip containing the full score and parts.
 
-The direct converter applies an executable rhythm grammar to canonical MIDI, with approved notation rules for ordinary and dotted values, ties, rests, staccato cleanup, beams, triplets, compound meters, odd-meter fallback grouping, and 2/2-as-4/4 spelling. Key selection, contextual sharp/flat respelling, and arbitrary quintuplet/septuplet candidate generation are not implemented yet. Output currently declares C major and uses sharp pitch-class spellings.
+The direct converter applies an executable rhythm grammar to canonical MIDI, with approved notation rules for ordinary and dotted values, ties, rests, staccato cleanup, beams, triplets, compound meters, odd-meter fallback grouping, and 2/2-as-4/4 spelling. Key selection, contextual enharmonic respelling, and arbitrary quintuplet/septuplet candidate generation are not implemented yet. Output currently declares C major and uses the fixed black-key spellings C-sharp, E-flat, F-sharp, A-flat, and B-flat.
 
 ## MusicXML to Audiotool
 

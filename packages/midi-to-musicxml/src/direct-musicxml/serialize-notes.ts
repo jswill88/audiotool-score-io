@@ -33,7 +33,10 @@ export function serializeRest(
   beamLookup: BeamLookup = new Map(),
   tupletLookup = new Map<string, TupletMode[]>()
 ) {
-  return spellRhythmDuration(start, duration, meter, { isStandardDuration })
+  return spellRhythmDuration(start, duration, meter, {
+    isStandardDuration,
+    splitSubsectionCrossings: true
+  })
     .flatMap((chunk) => serializeRestChunk(
       chunk.duration,
       voice,
@@ -80,6 +83,7 @@ export function serializeNoteGroup(
   const chunks = spellRhythmDuration(event.start, event.duration, meter, {
     isStandardDuration,
     override: spellingOverride,
+    splitSubsectionCrossings: true,
     splitShortBeatOverlaps: true
   });
   const lines: string[] = [];
@@ -212,9 +216,14 @@ function appendNotations(
   }
 
   for (const mode of tupletModes) {
-    lines.push(mode === 'start'
-      ? '          <tuplet number="1" type="start" bracket="yes" show-number="actual"/>'
-      : '          <tuplet number="1" type="stop"/>');
+    if (mode === 'stop') {
+      lines.push('          <tuplet number="1" type="stop"/>');
+      continue;
+    }
+
+    lines.push(
+      `          <tuplet number="1" type="start" bracket="${mode === 'start-unbracketed' ? 'no' : 'yes'}" show-number="actual"/>`
+    );
   }
 
   if (articulations.size > 0) {

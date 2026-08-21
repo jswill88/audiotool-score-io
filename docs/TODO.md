@@ -19,12 +19,6 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 
 ### Product And UX
 
-- [ ] Add public Audiotool-to-MusicXML and MusicXML-to-Audiotool examples to the sign-in page for portfolio/recruiter access, while keeping personal project conversion behind sign-in.
-- [ ] Create a short, original plain `.musicxml` file for the public MusicXML-to-Audiotool demo: use 8–16 measures, two or three clearly named parts, one tempo, one time signature, and no percussion, independent multi-staff/voice writing, grace notes, lyrics, repeats, or later tempo/meter changes.
-- [ ] Create and publish a short, original Audiotool project for the public Audiotool-to-MusicXML demo: use two or three note tracks, avoid relying on audio samples, and save the public listening-page URL.
-- [ ] Import the demo MusicXML file through the deployed app, confirm that the created Audiotool tracks and notes are correct, and keep the resulting project available in the demo owner's account.
-- [ ] Capture a short screen recording or a small set of screenshots showing the imported MusicXML result inside Audiotool Studio.
-- [ ] Decide whether to publish the imported Audiotool result for anonymous listening; if published, save its public listening-page URL and keep the captured Studio media because the public page does not show the editable note-track result.
 - [ ] Show the score following along during playback.
 - [ ] Allow pressing play from the browser.
 - [ ] Decide whether users should be able to choose which region to export/import.
@@ -42,7 +36,3 @@ Immediate issues, product polish, and later ideas for the Audiotool to MusicXML 
 - [ ] Document installation and standalone file/byte API examples.
 - [ ] Publish an initial npm release and verify installation from a separate project.
 - [ ] Decide whether to provide a browser-safe bytes-only entry point separately from the Node file API.
-
-### README And Portfolio Polish
-
-- [ ] Add screenshots or a short demo GIF once the production flow is stable enough to show confidently.

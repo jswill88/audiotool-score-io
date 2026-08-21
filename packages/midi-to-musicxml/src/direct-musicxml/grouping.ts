@@ -181,7 +181,8 @@ export function createTupletLookup(
   events: VoiceEvent[],
   measureDuration: number,
   meter: RhythmMeter,
-  spellingOverrides: Map<VoiceEvent, number[]>
+  spellingOverrides: Map<VoiceEvent, number[]>,
+  beamLookup: BeamLookup
 ) {
   const lookup = new Map<string, TupletMode[]>();
   const chunks = createVoiceChunks(
@@ -227,7 +228,13 @@ export function createTupletLookup(
         break;
       }
 
-      addMode(run[startIndex], 'start');
+      const group = run.slice(startIndex, matchedEnd + 1);
+      addMode(
+        run[startIndex],
+        hasContinuousPrimaryBeam(group, beamLookup)
+          ? 'start-unbracketed'
+          : 'start'
+      );
       addMode(run[matchedEnd], 'stop');
       startIndex = matchedEnd + 1;
     }
@@ -255,6 +262,30 @@ export function createTupletLookup(
   return lookup;
 }
 
+function hasContinuousPrimaryBeam(
+  chunks: VoiceChunk[],
+  beamLookup: BeamLookup
+) {
+  if (
+    chunks.length !== 3 ||
+    chunks.some((chunk) => (
+      chunk.kind !== 'note' || chunk.duration !== chunks[0].duration
+    ))
+  ) {
+    return false;
+  }
+
+  const modes = chunks.map((chunk) => (
+    beamLookup.get(eventKey(chunk.start, chunk.duration))?.get(1)
+  ));
+
+  return modes.every((mode) => mode !== undefined) &&
+    modes[0] !== 'end' &&
+    modes[1] !== 'begin' &&
+    modes[1] !== 'end' &&
+    modes[2] !== 'begin';
+}
+
 function createVoiceChunks(
   events: VoiceEvent[],
   measureDuration: number,
@@ -270,7 +301,10 @@ function createVoiceChunks(
         cursor,
         event.start - cursor,
         meter,
-        { isStandardDuration }
+        {
+          isStandardDuration,
+          splitSubsectionCrossings: true
+        }
       ).map((chunk) => ({ ...chunk, kind: 'rest' as const })));
     }
 
@@ -281,6 +315,7 @@ function createVoiceChunks(
       {
         isStandardDuration,
         override: spellingOverrides.get(event),
+        splitSubsectionCrossings: true,
         splitShortBeatOverlaps: true
       }
     ).map((chunk) => ({ ...chunk, kind: 'note' as const })));
@@ -292,7 +327,10 @@ function createVoiceChunks(
       cursor,
       measureDuration - cursor,
       meter,
-      { isStandardDuration }
+      {
+        isStandardDuration,
+        splitSubsectionCrossings: true
+      }
     ).map((chunk) => ({ ...chunk, kind: 'rest' as const })));
   }
 

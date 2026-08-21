@@ -53,10 +53,12 @@ export function spellRhythmDuration(
   {
     isStandardDuration,
     override,
+    splitSubsectionCrossings = false,
     splitShortBeatOverlaps = false
   }: {
     isStandardDuration: StandardDurationPredicate;
     override?: number[];
+    splitSubsectionCrossings?: boolean;
     splitShortBeatOverlaps?: boolean;
   }
 ): RhythmChunk[] {
@@ -72,9 +74,16 @@ export function spellRhythmDuration(
   const crossesGroup = meter.groupBoundaries.some((boundary) => (
     start < boundary && end > boundary
   ));
+  const splitsSubsection = splitSubsectionCrossings &&
+    crossesGroup &&
+    (
+      duration === meter.spellingBeatTicks ||
+      duration === Math.round(meter.quarterTicks * 1.5)
+    );
 
   if (
     isStandardDuration(duration) &&
+    !splitsSubsection &&
     (
       (meter.denominator === 8 || meter.denominator === 16)
         ? !crossesGroup
@@ -95,6 +104,7 @@ export function spellRhythmDuration(
   if (
     isStandardDuration(duration) &&
     duration <= meter.spellingBeatTicks &&
+    !splitsSubsection &&
     !(
       splitShortBeatOverlaps &&
       duration < meter.spellingBeatTicks &&

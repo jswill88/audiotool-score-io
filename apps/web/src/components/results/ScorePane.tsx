@@ -3,19 +3,25 @@ import type { SelectedProject } from '../../types';
 import './ScorePane.css';
 
 type ScorePaneProps = {
+  assistiveDescription?: string;
+  className?: string;
   emptyDescription?: string;
   emptyTitle?: string;
   id: string;
   labelledBy: string;
+  role?: 'region' | 'tabpanel';
   selectedProject: SelectedProject | null;
   xml: string;
 };
 
 export function ScorePane({
+  assistiveDescription = 'Score preview rendered from MusicXML. Use the XML tab to review the source text if the rendered notation is not available to your assistive technology.',
+  className = '',
   emptyDescription,
   emptyTitle,
   id,
   labelledBy,
+  role = 'tabpanel',
   selectedProject,
   xml
 }: ScorePaneProps) {
@@ -89,9 +95,9 @@ export function ScorePane({
 
     return (
       <div
-        className="score-empty"
+        className={`score-empty ${className}`.trim()}
         id={id}
-        role="tabpanel"
+        role={role}
         aria-labelledby={labelledBy}
         tabIndex={0}
       >
@@ -105,16 +111,14 @@ export function ScorePane({
 
   return (
     <div
-      className="score-surface"
+      className={`score-surface ${className}`.trim()}
       id={id}
-      role="tabpanel"
+      role={role}
       aria-labelledby={labelledBy}
       tabIndex={0}
     >
       {renderError ? <div className="render-error" role="alert">{renderError}</div> : null}
-      <p className="visually-hidden">
-        Score preview rendered from MusicXML. Use the XML tab to review the source text if the rendered notation is not available to your assistive technology.
-      </p>
+      <p className="visually-hidden">{assistiveDescription}</p>
       <div ref={containerRef} />
     </div>
   );

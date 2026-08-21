@@ -262,14 +262,14 @@ export function midiPitchToMusicXmlPitch(midiPitch: number) {
     { step: 'C', alter: 0 },
     { step: 'C', alter: 1 },
     { step: 'D', alter: 0 },
-    { step: 'D', alter: 1 },
+    { step: 'E', alter: -1 },
     { step: 'E', alter: 0 },
     { step: 'F', alter: 0 },
     { step: 'F', alter: 1 },
     { step: 'G', alter: 0 },
-    { step: 'G', alter: 1 },
+    { step: 'A', alter: -1 },
     { step: 'A', alter: 0 },
-    { step: 'A', alter: 1 },
+    { step: 'B', alter: -1 },
     { step: 'B', alter: 0 }
   ];
   const normalized = Math.min(127, Math.max(0, Math.round(midiPitch)));

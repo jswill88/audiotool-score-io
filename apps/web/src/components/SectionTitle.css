@@ -2,17 +2,18 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 7px;
+  gap: 8px;
   color: var(--ink);
 }
 
 .section-title svg {
-  color: var(--brass-strong);
+  color: var(--teal);
   flex: 0 0 auto;
 }
 
 .section-title h2 {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.2;
-  font-weight: 760;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }

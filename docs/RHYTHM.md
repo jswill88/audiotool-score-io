@@ -60,8 +60,10 @@ far as its duration vocabulary allows.
    small release gap only when it produces a clearer conventional duration.
 6. Add staccato when cleanup extends a written note to at least twice its
    performed duration.
-7. Keep complete tuplets inside their intended span, show the tuplet number,
-   and restart beams between complete triplet sets.
+7. Keep complete tuplets inside their intended span and show the tuplet number.
+   Omit the bracket only for an evenly valued three-note triplet under one
+   continuous primary beam; retain it for rests, mixed values, and unbeamed or
+   interrupted groups. Restart beams between complete triplet sets.
 8. In compound `/8` meters, use dotted-quarter pulses. Preserve values spanning
    complete aligned pulses and split partial pulse crossings.
 9. In simple `/4` meters, use a two-beat primary beam only for an uninterrupted

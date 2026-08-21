@@ -15,6 +15,11 @@ export const rhythmGrammar: RhythmGrammar = {
       description: 'Restart the beam for each complete three-note triplet set.'
     },
     {
+      id: 'omit-bracket-for-continuously-beamed-triplets',
+      confidence: 'high',
+      description: 'Omit the bracket only for an evenly valued three-note triplet under one continuous primary beam.'
+    },
+    {
       id: 'two-beat-primary-beams-only-for-plain-eighth-groups',
       confidence: 'high',
       description: 'In simple /4 meters, carry a primary beam across a two-beat group only when the whole group is plain eighth notes.'
@@ -75,8 +80,8 @@ export const rhythmGrammar: RhythmGrammar = {
       confidence: 'high',
       meter: '2/4',
       input: [eighth, quarter, eighth],
-      spelling: [[eighth], [quarter], [eighth]],
-      description: 'Keep the syncopated middle quarter intact.'
+      spelling: [[eighth], [eighth, eighth], [eighth]],
+      description: 'Split the syncopated middle quarter at the measure subsection.'
     },
     {
       id: '2-4-four-eighths',

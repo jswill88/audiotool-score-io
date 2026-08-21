@@ -86,6 +86,35 @@ test('direct conversion writes MusicXML from MIDI', async (t) => {
   assert.doesNotMatch(xml, /<type>64th<\/type>/);
 });
 
+test('direct conversion uses the fixed mixed accidental spelling', async (t) => {
+  const dir = await createTempDir(t);
+  const inputPath = path.join(dir, 'accidentals.mid');
+
+  await writeMidiFile(inputPath, [
+    { midi: 61, ticks: 0, durationTicks: 120, velocity: 0.8 },
+    { midi: 63, ticks: 240, durationTicks: 120, velocity: 0.8 },
+    { midi: 66, ticks: 480, durationTicks: 120, velocity: 0.8 },
+    { midi: 68, ticks: 720, durationTicks: 120, velocity: 0.8 },
+    { midi: 70, ticks: 960, durationTicks: 120, velocity: 0.8 }
+  ]);
+
+  const xml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(inputPath),
+    { quantize: false }
+  );
+  const accidentalPitches = [...xml.matchAll(
+    /<pitch>\s*<step>([A-G])<\/step>\s*<alter>(-?1)<\/alter>\s*<octave>(\d+)<\/octave>\s*<\/pitch>/g
+  )].map((match) => `${match[1]}:${match[2]}:${match[3]}`);
+
+  assert.deepEqual(accidentalPitches, [
+    'C:1:4',
+    'E:-1:4',
+    'F:1:4',
+    'A:-1:4',
+    'B:-1:4'
+  ]);
+});
+
 test('ranked direct stem direction uses the bass-clef middle line', async (t) => {
   const dir = await createTempDir(t);
   const inputPath = path.join(dir, 'bass-clef-stems.mid');
@@ -239,7 +268,7 @@ test('direct conversion adds octave-shift directions for extreme note runs', asy
   assert.doesNotMatch(isolatedXml, /<octave-shift/);
   assert.match(
     veryHighIsolatedXml,
-    /<octave-shift type="down" size="8"\/>[\s\S]*?<step>A<\/step>[\s\S]*?<alter>1<\/alter>[\s\S]*?<octave>7<\/octave>[\s\S]*?<octave-shift type="stop" size="8"\/>/
+    /<octave-shift type="down" size="8"\/>[\s\S]*?<step>B<\/step>[\s\S]*?<alter>-1<\/alter>[\s\S]*?<octave>7<\/octave>[\s\S]*?<octave-shift type="stop" size="8"\/>/
   );
   assert.match(
     veryLowIsolatedXml,
@@ -313,15 +342,15 @@ test('ranked direct MIDI spelling preserves complete compound-beat spans in 9/8'
 test('ranked direct MusicXML explicitly groups supported triplet note sizes', async (t) => {
   const dir = await createTempDir(t);
   const cases = [
-    ['half', 640],
-    ['quarter', 320],
-    ['eighth', 160],
-    ['16th', 80],
-    ['32nd', 40],
-    ['64th', 20]
+    ['half', 640, 'yes'],
+    ['quarter', 320, 'yes'],
+    ['eighth', 160, 'no'],
+    ['16th', 80, 'no'],
+    ['32nd', 40, 'no'],
+    ['64th', 20, 'no']
   ];
 
-  for (const [type, durationTicks] of cases) {
+  for (const [type, durationTicks, bracket] of cases) {
     const inputPath = path.join(dir, `${type}.mid`);
     await writeMidiFile(inputPath, Array.from({ length: 3 }, (_, index) => ({
       midi: 60 + index * 2,
@@ -346,6 +375,11 @@ test('ranked direct MusicXML explicitly groups supported triplet note sizes', as
       1,
       `${type} triplet should have one stop marker`
     );
+    assert.match(
+      xml,
+      new RegExp(`<tuplet number="1" type="start" bracket="${bracket}"`),
+      `${type} triplet should use bracket="${bracket}"`
+    );
   }
 });
 
@@ -367,7 +401,7 @@ test('direct MusicXML can group a triplet containing a rest', async (t) => {
 
   assert.equal(groupedNotes.length, 3);
   assert(groupedNotes[1].includes('<rest/>'));
-  assert.match(groupedNotes[0], /<tuplet number="1" type="start"[^>]*\/>/);
+  assert.match(groupedNotes[0], /<tuplet number="1" type="start" bracket="yes"[^>]*\/>/);
   assert.match(groupedNotes[2], /<tuplet number="1" type="stop"\/>/);
 });
 
@@ -396,6 +430,7 @@ test('six eighth-note triplets use a separate beam for each triplet set', async 
     ['begin', 'continue', 'end', 'begin', 'continue', 'end']
   );
   assert.equal((xml.match(/<tuplet number="1" type="start"/g) ?? []).length, 2);
+  assert.equal((xml.match(/<tuplet number="1" type="start" bracket="no"/g) ?? []).length, 2);
   assert.equal((xml.match(/<tuplet number="1" type="stop"\/>/g) ?? []).length, 2);
 });
 
@@ -422,7 +457,7 @@ test('an eighth and three triplet sixteenths share one beat beam', async (t) => 
   );
   assert.doesNotMatch(pitched[0], /<time-modification>/);
   assert(pitched.slice(1).every((note) => note.includes('<time-modification>')));
-  assert.match(pitched[1], /<tuplet number="1" type="start"/);
+  assert.match(pitched[1], /<tuplet number="1" type="start" bracket="no"/);
   assert.match(pitched[3], /<tuplet number="1" type="stop"\/>/);
 });
 
@@ -432,6 +467,7 @@ test('rhythm grammar exposes approved templates and deterministic odd-meter grou
   assert(rhythmGrammar.templates.some((template) => template.id === '2-4-dotted-eighth-dotted-eighth-eighth'));
   assert(rhythmGrammar.cleanupRules.some((rule) => rule.id === 'staccato-on-double-extension'));
   assert(rhythmGrammar.beamingRules.some((rule) => rule.id === 'separate-complete-triplet-sets'));
+  assert(rhythmGrammar.beamingRules.some((rule) => rule.id === 'omit-bracket-for-continuously-beamed-triplets'));
   assert(rhythmGrammar.beamingRules.some((rule) => rule.id === 'two-beat-primary-beams-only-for-plain-eighth-groups'));
   assert.deepEqual(meterGroupCounts(5, 4), [3, 2]);
   assert.deepEqual(meterGroupCounts(7, 4), [4, 3]);
@@ -540,7 +576,7 @@ test('grammar spells the approved dotted-eighth syncopation exception', async (t
   assert.deepEqual(noteDurationsForStep(fourFourXml, 'D'), [240, 480]);
 });
 
-test('grammar splits only short offbeat notes that cross a simple beat boundary', async (t) => {
+test('grammar splits notes that cross a simple-meter subsection boundary', async (t) => {
   const dir = await createTempDir(t);
   const shortOverlapPath = path.join(dir, 'two-four-short-offbeat-overlap.mid');
   const quarterOverlapPath = path.join(dir, 'two-four-quarter-offbeat-overlap.mid');
@@ -569,7 +605,82 @@ test('grammar splits only short offbeat notes that cross a simple beat boundary'
   );
 
   assert.deepEqual(noteDurationsForStep(shortOverlapXml, 'D'), [240, 240]);
-  assert.deepEqual(noteDurationsForStep(quarterOverlapXml, 'D'), [960]);
+  assert.deepEqual(noteDurationsForStep(quarterOverlapXml, 'D'), [480, 480]);
+});
+
+test('grammar exposes measure-subsection boundaries in rests and syncopations', async (t) => {
+  const dir = await createTempDir(t);
+  const dottedRestPath = path.join(dir, 'dotted-rest-beat-boundary.mid');
+  const restAdjacentQuarterPath = path.join(dir, 'rest-adjacent-quarter.mid');
+  const dottedNotePath = path.join(dir, 'dotted-note-beat-boundary.mid');
+
+  await writeMidiFile(dottedRestPath, [
+    { midi: 60, ticks: 0, durationTicks: 480, velocity: 0.8 },
+    { midi: 62, ticks: 1200, durationTicks: 480, velocity: 0.8 },
+    { midi: 64, ticks: 1680, durationTicks: 240, velocity: 0.8 }
+  ]);
+  await writeMidiFile(restAdjacentQuarterPath, [
+    { midi: 60, ticks: 0, durationTicks: 240, velocity: 0.8 },
+    { midi: 62, ticks: 240, durationTicks: 240, velocity: 0.8 },
+    { midi: 64, ticks: 720, durationTicks: 480, velocity: 0.8 },
+    { midi: 65, ticks: 1200, durationTicks: 240, velocity: 0.8 }
+  ]);
+  await writeMidiFile(dottedNotePath, [
+    { midi: 62, ticks: 480, durationTicks: 720, velocity: 0.8 },
+    { midi: 64, ticks: 1200, durationTicks: 240, velocity: 0.8 },
+    { midi: 65, ticks: 1440, durationTicks: 240, velocity: 0.8 },
+    { midi: 67, ticks: 1680, durationTicks: 240, velocity: 0.8 }
+  ]);
+
+  const dottedRestXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(dottedRestPath),
+    { quantize: false }
+  );
+  const restAdjacentQuarterXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(restAdjacentQuarterPath),
+    { quantize: false }
+  );
+  const dottedNoteXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(dottedNotePath),
+    { quantize: false }
+  );
+
+  assert.deepEqual(rhythmTokens(dottedRestXml), ['4n', '4r', '8r', '4n', '8n']);
+  assert.deepEqual(rhythmTokens(restAdjacentQuarterXml), ['8n', '8n', '8r', '8n~', '8n', '8n', '4r']);
+  assert.deepEqual(rhythmTokens(dottedNoteXml), ['4r', '4n~', '8n', '8n', '8n', '8n']);
+});
+
+test('grammar preserves dotted and offbeat quarters within a measure subsection', async (t) => {
+  const dir = await createTempDir(t);
+  const dottedQuarterPath = path.join(dir, 'dotted-quarter-within-subsection.mid');
+  const offbeatQuarterPath = path.join(dir, 'offbeat-quarter-within-subsection.mid');
+
+  await writeMidiFile(dottedQuarterPath, [
+    { midi: 60, ticks: 0, durationTicks: 720, velocity: 0.8 },
+    { midi: 62, ticks: 720, durationTicks: 240, velocity: 0.8 }
+  ]);
+  await writeMidiFile(offbeatQuarterPath, [
+    { midi: 60, ticks: 240, durationTicks: 480, velocity: 0.8 },
+    { midi: 62, ticks: 720, durationTicks: 240, velocity: 0.8 }
+  ]);
+
+  const dottedQuarterXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(dottedQuarterPath),
+    { quantize: false }
+  );
+  const offbeatQuarterXml = convertMidiBytesToDirectMusicXml(
+    await fs.readFile(offbeatQuarterPath),
+    { quantize: false }
+  );
+
+  assert.deepEqual(
+    rhythmTokens(dottedQuarterXml).slice(0, 2),
+    ['dotted 4n', '8n']
+  );
+  assert.deepEqual(
+    rhythmTokens(offbeatQuarterXml).slice(0, 3),
+    ['8r', '4n', '8n']
+  );
 });
 
 test('grammar uses two-beat primary beams only for plain eighth groups in 4/4', async (t) => {
@@ -1008,7 +1119,7 @@ test('grammar groups mixed half- and quarter-note triplet values', async (t) => 
     );
 
     assert.equal((xml.match(/<time-modification>/g) ?? []).length, 2);
-    assert.equal((xml.match(/<tuplet number="1" type="start"/g) ?? []).length, 1);
+    assert.equal((xml.match(/<tuplet number="1" type="start" bracket="yes"/g) ?? []).length, 1);
     assert.equal((xml.match(/<tuplet number="1" type="stop"\/>/g) ?? []).length, 1);
   }
 });
@@ -1093,4 +1204,21 @@ function noteDurationsForStep(xml, step) {
 
 function noteDuration(note) {
   return Number(note.match(/<duration>(\d+)<\/duration>/)?.[1]);
+}
+
+function rhythmTokens(xml) {
+  return noteBlocks(measureBlock(xml, 1)).map((note) => {
+    const kind = note.includes('<rest/>') ? 'r' : 'n';
+    const tie = note.includes('<tie type="start"/>') ? '~' : '';
+    const type = note.match(/<type>(.+)<\/type>/)?.[1];
+    const name = ({
+      whole: '1',
+      half: '2',
+      quarter: '4',
+      eighth: '8',
+      '16th': '16'
+    })[type];
+    const dot = note.includes('<dot/>') ? 'dotted ' : '';
+    return `${dot}${name}${kind}${tie}`;
+  });
 }
